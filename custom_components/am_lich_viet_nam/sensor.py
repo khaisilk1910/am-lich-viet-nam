@@ -4,21 +4,19 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-import voluptuous as vol
-import homeassistant.helpers.config_validation as cv
 
 from .amlich_core import get_lunar_date, get_year_can_chi, get_month_name, get_lunar_month_length, THU
 
 _LOGGER = logging.getLogger(__name__)
-PLATFORM_SCHEMA = cv.PLATFORM_SCHEMA
 
-async def async_setup_platform(hass: HomeAssistant, config, async_add_entities: AddEntitiesCallback, discovery_info=None):
-    async_add_entities([AmLichSensor()], True)
+# BẠN CÓ THỂ XÓA BỎ HOÀN TOÀN KHỐI async_setup_platform VÀ PLATFORM_SCHEMA
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
+    """Set up the sensor from a config entry."""
     async_add_entities([AmLichSensor()], True)
 
 class AmLichSensor(SensorEntity):
+    # ... phần còn lại của class giữ nguyên ...
     def __init__(self):
         """Initialize the sensor."""
         self._attr_name = "Âm lịch hằng ngày"
@@ -26,7 +24,7 @@ class AmLichSensor(SensorEntity):
         self._attr_native_value = None
         self._attr_extra_state_attributes = {}
 
-    async def async_update(self):  # <--- THAY ĐỔI Ở ĐÂY
+    async def async_update(self):
         """Fetch new state data for the sensor."""
         now = datetime.now()
         lunar = get_lunar_date(now.day, now.month, now.year)
@@ -52,4 +50,3 @@ class AmLichSensor(SensorEntity):
             "solar_date": now.strftime("%d/%m/%Y"),
             "lunar_date": f"{lunar.day:02}/{lunar.month:02}/{lunar.year}"
         }
-
