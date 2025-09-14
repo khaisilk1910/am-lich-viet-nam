@@ -1,7 +1,7 @@
 {
   "domain": "am_lich_viet_nam",
   "name": "Âm lịch Việt Nam",
-  "version": "2025.09.14f",
+  "version": "2025.09.14h",
   "documentation": "https://github.com/khaisilk1910/am-lich-viet-nam",
   "requirements": [],
   "dependencies": [],
@@ -9,6 +9,7 @@
   "iot_class": "calculated",
   "config_flow": true
 }
+
 
 
 
