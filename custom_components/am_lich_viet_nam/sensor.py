@@ -1,14 +1,21 @@
 from datetime import datetime
 import logging
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+import voluptuous as vol
+import homeassistant.helpers.config_validation as cv
+
 from .amlich_core import get_lunar_date, get_year_can_chi, get_month_name, get_lunar_month_length, THU
 
 _LOGGER = logging.getLogger(__name__)
+PLATFORM_SCHEMA = cv.PLATFORM_SCHEMA
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+async def async_setup_platform(hass: HomeAssistant, config, async_add_entities: AddEntitiesCallback, discovery_info=None):
     async_add_entities([AmLichSensor()], True)
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
     async_add_entities([AmLichSensor()], True)
 
 class AmLichSensor(SensorEntity):
