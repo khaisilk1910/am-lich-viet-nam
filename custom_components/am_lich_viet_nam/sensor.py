@@ -9,18 +9,18 @@ from .amlich_core import get_lunar_date, get_year_can_chi, get_month_name, get_l
 
 _LOGGER = logging.getLogger(__name__)
 
-# BẠN CÓ THỂ XÓA BỎ HOÀN TOÀN KHỐI async_setup_platform VÀ PLATFORM_SCHEMA
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
     """Set up the sensor from a config entry."""
     async_add_entities([AmLichSensor()], True)
 
 class AmLichSensor(SensorEntity):
-    # ... phần còn lại của class giữ nguyên ...
+
     def __init__(self):
         """Initialize the sensor."""
         self._attr_name = "Âm lịch hằng ngày"
         self._attr_unique_id = "amlich_hangngay"
+        self._attr_icon = "mdi:calendar-today-outline"
         self._attr_native_value = None
         self._attr_extra_state_attributes = {}
 
@@ -50,4 +50,5 @@ class AmLichSensor(SensorEntity):
             "solar_date": now.strftime("%d/%m/%Y"),
             "lunar_date": f"{lunar.day:02}/{lunar.month:02}/{lunar.year}"
         }
+
 
