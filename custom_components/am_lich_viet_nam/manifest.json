@@ -6,6 +6,8 @@
   "requirements": [],
   "dependencies": [],
   "codeowners": ["@khaisilk1910"],
-  "iot_class": "calculated"
+  "iot_class": "calculated",
+  "config_flow": false
 }
+
 
