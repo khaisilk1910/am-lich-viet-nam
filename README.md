@@ -26,3 +26,27 @@ Sau khi cài đặt, bạn sẽ có sensor:
 <img width="733" height="802" alt="image" src="https://github.com/user-attachments/assets/78d81e97-8391-4512-bafb-bff8b34b26f8" />
 
 
+## Thêm thẻ hiển thị lịch âm 
+
+<img width="483" height="79" alt="image" src="https://github.com/user-attachments/assets/53fc11e0-b090-4ce3-8cbd-e37bf4541e76" />
+
+```
+type: custom:mushroom-template-card
+primary: "{{states(entity)}}"
+icon: mdi:mushroom
+features_position: bottom
+entity: sensor.am_lich_hang_ngay
+grid_options:
+  columns: full
+color: red
+picture: /local/am_lich_viet_nam.png
+badge_text: "{{state_attr(entity,'lunar_day_type')}}"
+secondary: Dương Lịch, {{now().day}}/{{now().month}}/{{now().year}}
+badge_color: red
+
+```
+
+- Các bạn cần cài thẻ Mush Room https://github.com/piitaya/lovelace-mushroom
+- Ảnh được lưu vào thư mục `www`
+  
+
