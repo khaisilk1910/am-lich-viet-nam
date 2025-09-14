@@ -32,10 +32,10 @@ class AmLichSensor(SensorEntity):
         thu = THU[now.weekday()]
         thang_chu = get_month_name(lunar.month, lunar.leap)
         thang_am_length = get_lunar_month_length(lunar)
-        thang_am_day_type = "(Đ)" if thang_am_length == 30 else "(T)"
+        thang_am_day_type = "Đ" if thang_am_length == 30 else "T"
         nam_can_chi = get_year_can_chi(lunar.year)
 
-        summary = f"{thu}, ngày {lunar.day} {thang_chu} {thang_am_day_type}, {nam_can_chi}"
+        summary = f"{thu}, ngày {lunar.day} {thang_chu}, {nam_can_chi}"
 
         self._attr_native_value = summary
         self._attr_extra_state_attributes = {
@@ -50,3 +50,4 @@ class AmLichSensor(SensorEntity):
             "solar_date": now.strftime("%d/%m/%Y"),
             "lunar_date": f"{lunar.day:02}/{lunar.month:02}/{lunar.year}"
         }
+
