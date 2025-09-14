@@ -47,6 +47,6 @@ badge_color: red
 ```
 
 - Các bạn cần cài thẻ Mush Room https://github.com/piitaya/lovelace-mushroom
-- Ảnh được lưu vào thư mục `www`
+- Tải ảnh `am_lich_viet_nam.png` và lưu vào thư mục `www`
   
 
