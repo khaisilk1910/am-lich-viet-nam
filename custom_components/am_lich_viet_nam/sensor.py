@@ -20,12 +20,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 class AmLichSensor(SensorEntity):
     def __init__(self):
+        """Initialize the sensor."""
         self._attr_name = "Âm lịch hằng ngày"
         self._attr_unique_id = "amlich_hangngay"
         self._attr_native_value = None
         self._attr_extra_state_attributes = {}
 
-    def update(self):
+    async def async_update(self):  # <--- THAY ĐỔI Ở ĐÂY
+        """Fetch new state data for the sensor."""
         now = datetime.now()
         lunar = get_lunar_date(now.day, now.month, now.year)
 
@@ -50,3 +52,4 @@ class AmLichSensor(SensorEntity):
             "solar_date": now.strftime("%d/%m/%Y"),
             "lunar_date": f"{lunar.day:02}/{lunar.month:02}/{lunar.year}"
         }
+
