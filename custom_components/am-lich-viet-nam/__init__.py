@@ -1,1 +1,2 @@
-DOMAIN = "amlichvietnam"
+DOMAIN = "am-lich-viet-nam"
+
