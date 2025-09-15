@@ -4,8 +4,6 @@ Custom integration hiển thị thông tin âm lịch hằng ngày
 
 ![20250915-0245-08 3692589](https://github.com/user-attachments/assets/657c1d05-5174-46d6-8dc1-2ad0debb2133)
 
-<img width="509" height="64" alt="image" src="https://github.com/user-attachments/assets/2634ba4a-cd92-499d-a76e-f95cf46a04fe" />
-
 
 ## Cài đặt
 
