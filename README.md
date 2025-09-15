@@ -28,7 +28,7 @@ Sau khi cài đặt, bạn sẽ có sensor:
 
 ## Thêm thẻ hiển thị lịch âm 
 
-<img width="509" height="64" alt="image" src="https://github.com/user-attachments/assets/2634ba4a-cd92-499d-a76e-f95cf46a04fe" />
+![20250915-0721-35 5325033](https://github.com/user-attachments/assets/b4f0585a-81c9-402b-b762-04fce674f69e)
 
 
 ```
