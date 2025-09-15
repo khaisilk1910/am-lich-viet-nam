@@ -28,7 +28,8 @@ Sau khi cài đặt, bạn sẽ có sensor:
 
 ## Thêm thẻ hiển thị lịch âm 
 
-<img width="483" height="79" alt="image" src="https://github.com/user-attachments/assets/53fc11e0-b090-4ce3-8cbd-e37bf4541e76" />
+<img width="509" height="64" alt="image" src="https://github.com/user-attachments/assets/2634ba4a-cd92-499d-a76e-f95cf46a04fe" />
+
 
 ```
 type: custom:mushroom-template-card
