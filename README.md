@@ -80,7 +80,7 @@ card_mod:
       }
 ```
 
-- Các bạn cần cài thẻ Mush Room https://github.com/piitaya/lovelace-mushroom
+- Các bạn cần cài thêm trong HACS https://github.com/piitaya/lovelace-mushroom và https://github.com/thomasloven/lovelace-card-mod
 - Tải ảnh `am_lich_viet_nam.png` và lưu vào thư mục `www`
   
 
