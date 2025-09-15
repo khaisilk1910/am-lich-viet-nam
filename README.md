@@ -81,6 +81,6 @@ card_mod:
 ```
 
 - Các bạn cần cài thêm trong HACS https://github.com/piitaya/lovelace-mushroom và https://github.com/thomasloven/lovelace-card-mod
-- Tải ảnh `am_lich_viet_nam.png` và lưu vào thư mục `www`
+- Tải ảnh `am_lich_viet_nam.png` (hoặc ảnh bạn thích đổi đúng tên am_lich_viet_nam.png) và lưu vào thư mục `www`
   
 
