@@ -2,7 +2,7 @@
 
 Custom integration hiển thị thông tin âm lịch hằng ngày
 
-![20250915-0245-08 3692589](https://github.com/user-attachments/assets/657c1d05-5174-46d6-8dc1-2ad0debb2133)
+![20250915-0721-35 5325033](https://github.com/user-attachments/assets/7d96d243-e18f-48a5-8672-4bb73c466fbd)
 
 
 ## Cài đặt
@@ -39,18 +39,25 @@ entity: sensor.am_lich_hang_ngay
 grid_options:
   columns: full
 picture: /local/am_lich_viet_nam.png
-badge_text: "{{state_attr(entity,'lunar_day_type')}}"
 secondary: Dương Lịch, {{ now().day }}/{{ now().month }}/{{ now().year }}
 badge_color: "{{ 'green' if state_attr(entity,'lunar_day_type')=='Đ' else 'red' }}"
 color: blue
 icon: mdi:mushroom
+badge_icon: >-
+  {{ 'mdi:moon-full' if state_attr(entity,'lunar_day_type')=='Đ' else
+  'mdi:moon-waning-crescent' }}
 card_mod:
   style:
+    .: |
+      ha-card {
+        border: 2.2px outset rgba(255,165,0,.8) !important;
+      }
     ha-tile-icon$: |
       .container {
-        width: 40px !important;
-        height: 40px !important;
-        animation: rotate-center 0.6s ease-in-out infinite alternate-reverse both;
+        width: 60px !important;
+        height: 60px !important;
+        margin-top: -13px !important;
+        animation: rotate-center 1s ease-in-out infinite alternate-reverse both;
       }
       @keyframes rotate-center {
         0% {
@@ -66,17 +73,27 @@ card_mod:
       .primary {
         color: rgba(255,165,0,1) !important;
         font-weight: bold !important;
+        margin-top: -11px !important;
+        margin-left: 5px !important;
+        font-size: clamp(12px, 16px, 18px) !important;
       }
       .secondary {
+        margin-left: 5px !important;
         color:  rgba(255,255,255,1) !important;
       }
     ha-tile-badge$: |
       .badge {
-        width: 18px !important;
-        height: 18px !important;
-        font-weight: bold !important;
-        background-color: rgba(255,255,255,0) !important;
+        width: 15px !important;
+        height: 15px !important;
+        margin-right: -5px !important;
+        background-color: rgba(255,255,255,.1) !important;
         --tile-badge-icon-color: rgba(255,165,0,1) !important;
+        animation: ping 2s infinite;
+      }
+      @keyframes ping {
+        0% {box-shadow: 0 0 0 0 rgba(255,165,0,3);}
+        70% {box-shadow: 0 0 0 10px transparent;}
+        100% {box-shadow: 0 0 0 0 transparent;}
       }
 ```
 
