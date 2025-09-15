@@ -1,8 +1,8 @@
 # Âm lịch Việt Nam cho Home Assistant
 
 Custom integration hiển thị thông tin âm lịch hằng ngày
-<img width="733" height="802" alt="image" src="https://github.com/user-attachments/assets/e6bcaf30-2ee2-4930-8194-5447d28efb30" />
 
+<img width="509" height="64" alt="image" src="https://github.com/user-attachments/assets/2634ba4a-cd92-499d-a76e-f95cf46a04fe" />
 
 
 ## Cài đặt
@@ -33,17 +33,50 @@ Sau khi cài đặt, bạn sẽ có sensor:
 ```
 type: custom:mushroom-template-card
 primary: "{{states(entity)}}"
-icon: mdi:mushroom
 features_position: bottom
 entity: sensor.am_lich_hang_ngay
 grid_options:
   columns: full
-color: red
 picture: /local/am_lich_viet_nam.png
 badge_text: "{{state_attr(entity,'lunar_day_type')}}"
-secondary: Dương Lịch, {{now().day}}/{{now().month}}/{{now().year}}
-badge_color: red
-
+secondary: Dương Lịch, {{ now().day }}/{{ now().month }}/{{ now().year }}
+badge_color: "{{ 'green' if state_attr(entity,'lunar_day_type')=='Đ' else 'red' }}"
+color: blue
+icon: mdi:mushroom
+card_mod:
+  style:
+    ha-tile-icon$: |
+      .container {
+        width: 40px !important;
+        height: 40px !important;
+        animation: rotate-center 0.6s ease-in-out infinite alternate-reverse both;
+      }
+      @keyframes rotate-center {
+        0% {
+          -webkit-transform: rotate(0);
+                  transform: rotate(0);
+        }
+        100% {
+          -webkit-transform: rotate(360deg);
+                  transform: rotate(360deg);
+        }
+      }
+    ha-tile-info$: |
+      .primary {
+        color: rgba(255,165,0,1) !important;
+        font-weight: bold !important;
+      }
+      .secondary {
+        color:  rgba(255,255,255,1) !important;
+      }
+    ha-tile-badge$: |
+      .badge {
+        width: 18px !important;
+        height: 18px !important;
+        font-weight: bold !important;
+        background-color: rgba(255,255,255,0) !important;
+        --tile-badge-icon-color: rgba(255,165,0,1) !important;
+      }
 ```
 
 - Các bạn cần cài thẻ Mush Room https://github.com/piitaya/lovelace-mushroom
