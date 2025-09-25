@@ -23,9 +23,9 @@ class AmLichSensor(SensorEntity):
 
     def __init__(self):
         """Initialize the sensor."""
-        self._attr_name = "Âm lịch Việt Nam"
-        self._attr_unique_id = "amlich_vietnam_daily"
-        self._attr_icon = "mdi:calendar-star"
+        self._attr_name = "Âm lịch hằng ngày"
+        self._attr_unique_id = "amlich_hangngay"
+        self._attr_icon = "mdi:calendar-today-outline"
         self._attr_native_value = None
         self._attr_extra_state_attributes = {}
 
@@ -84,6 +84,7 @@ class AmLichSensor(SensorEntity):
             "is_leap_month": lunar.leap == 1,
             "month_name": thang_chu,
             "lunar_month_type": thang_am_day_type,
+            "lunar_date": f"{lunar.day:02}/{lunar.month:02}/{lunar.year}",
             
             "can_chi_day": can_chi_day,
             "can_chi_month": can_chi_month,
@@ -106,3 +107,4 @@ class AmLichSensor(SensorEntity):
             "ngay_chi_tiet": ngay_thong_tin.get('chiTiet', []),
             "ngay_mo_ta": ngay_thong_tin.get('moTa', '')
         }
+
