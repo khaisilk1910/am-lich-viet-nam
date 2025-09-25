@@ -75,71 +75,6 @@ NGAY_LE_AL = {
     "15/10": "Tết Hạ Nguyên", "23/12": "Ông Táo Về Trời"
 }
 
-VIEC_NEN_LAM = {
-  "Giáp Tý": "Khai Trương, Cầu Tài, Xuất Hành, Cưới Hỏi", "Ất Sửu": "Động Thổ, Xây Dựng, Cầu Phúc",
-  "Bính Dần": "Cầu Tài, Ký Kết, Khai Trương", "Đinh Mão": "Cưới Hỏi, Nhập Trạch, Động Thổ",
-  "Mậu Thìn": "Khai Trương, Tế Lễ, Cầu Phúc", "Kỷ Tỵ": "Cầu Tài, Khai Trương, Ký Kết",
-  "Canh Ngọ": "Cưới Hỏi, Xuất Hành, Cầu Lộc", "Tân Mùi": "Động Thổ, Nhập Trạch, An Táng",
-  "Nhâm Thân": "Cầu Tài, Khai Trương, Giao Dịch", "Quý Dậu": "Cưới Hỏi, Tế Lễ, Nhập Trạch",
-  "Giáp Tuất": "Khai Trương, Cầu Phúc, Xây Dựng", "Ất Hợi": "Cầu Tài, Cầu Lộc, Xuất Hành",
-  "Bính Tý": "Cưới Hỏi, Ký Kết, Khai Trương", "Đinh Sửu": "Động Thổ, Xây Dựng, Tu Tạo",
-  "Mậu Dần": "Cầu Tài, Khai Trương, Xuất Hành", "Kỷ Mão": "Cưới Hỏi, Cầu Phúc, Nhập Trạch",
-  "Canh Thìn": "Khai Trương, Cầu Tài, Giao Dịch", "Tân Tỵ": "Cầu Tài, Ký Kết, Xuất Hành",
-  "Nhâm Ngọ": "Cưới Hỏi, Cầu Lộc, Khai Trương", "Quý Mùi": "Động Thổ, An Táng, Tu Tạo",
-  "Giáp Thân": "Cầu Tài, Khai Trương, Ký Kết", "Ất Dậu": "Cưới Hỏi, Nhập Trạch, Cầu Phúc",
-  "Bính Tuất": "Khai Trương, Xuất Hành, Giao Dịch", "Đinh Hợi": "Cầu Tài, Cầu Lộc, Ký Kết",
-  "Mậu Tý": "Cưới Hỏi, Tế Lễ, Nhập Trạch", "Kỷ Sửu": "Động Thổ, Xây Dựng, An Táng",
-  "Canh Dần": "Khai Trương, Cầu Tài, Ký Kết", "Tân Mão": "Cưới Hỏi, Cầu Lộc, Nhập Trạch",
-  "Nhâm Thìn": "Khai Trương, Tế Lễ, Xuất Hành", "Quý Tỵ": "Cầu Tài, Giao Dịch, Cầu Lộc",
-  "Giáp Ngọ": "Cưới Hỏi, Khai Trương, Xuất Hành", "Ất Mùi": "Động Thổ, Xây Dựng, An Táng",
-  "Bính Thân": "Cầu Tài, Ký Kết, Khai Trương", "Đinh Dậu": "Cưới Hỏi, Nhập Trạch, Cầu Phúc",
-  "Mậu Tuất": "Khai Trương, Cầu Tài, Giao Dịch", "Kỷ Hợi": "Cầu Tài, Xuất Hành, Cầu Lộc",
-  "Canh Tý": "Cưới Hỏi, Cầu Phúc, Khai Trương", "Tân Sửu": "Động Thổ, Tu Tạo, An Táng",
-  "Nhâm Dần": "Cầu Tài, Ký Kết, Khai Trương", "Quý Mão": "Cưới Hỏi, Nhập Trạch, Cầu Phúc",
-  "Giáp Thìn": "Khai Trương, Xuất Hành, Cầu Tài", "Ất Tỵ": "Cầu Tài, Ký Kết, Cầu Lộc",
-  "Bính Ngọ": "Cưới Hỏi, Cầu Phúc, Khai Trương", "Đinh Mùi": "Động Thổ, Xây Dựng, Nhập Trạch",
-  "Mậu Thân": "Khai Trương, Cầu Tài, Xuất Hành", "Kỷ Dậu": "Cưới Hỏi, Cầu Phúc, Tế Lễ",
-  "Canh Tuất": "Khai Trương, Cầu Tài, Ký Kết", "Tân Hợi": "Cầu Tài, Xuất Hành, Cầu Lộc",
-  "Nhâm Tý": "Cưới Hỏi, Nhập Trạch, Cầu Phúc", "Quý Sửu": "Động Thổ, Xây Dựng, An Táng",
-  "Giáp Dần": "Khai Trương, Cầu Tài, Ký Kết", "Ất Mão": "Cưới Hỏi, Cầu Lộc, Nhập Trạch",
-  "Bính Thìn": "Khai Trương, Tế Lễ, Xuất Hành", "Đinh Tỵ": "Cầu Tài, Giao Dịch, Cầu Lộc",
-  "Mậu Ngọ": "Cưới Hỏi, Khai Trương, Xuất Hành", "Kỷ Mùi": "Động Thổ, Xây Dựng, Tu Tạo",
-  "Canh Thân": "Cầu Tài, Ký Kết, Khai Trương", "Tân Dậu": "Cưới Hỏi, Nhập Trạch, Cầu Phúc",
-  "Nhâm Tuất": "Khai Trương, Cầu Tài, Xuất Hành", "Quý Hợi": "Cầu Tài, Cầu Lộc, Giao Dịch"
-}
-
-VIEC_KIENGLAM = {
-  "Giáp Tý": "Chôn Cất, Đi Xa, Kiện Tụng", "Ất Sửu": "Cưới Hỏi, Khai Trương Lớn",
-  "Bính Dần": "An Táng, Kiện Tụng", "Đinh Mão": "Xây Dựng Lớn, Đi Xa",
-  "Mậu Thìn": "Cưới Hỏi, Chôn Cất", "Kỷ Tỵ": "Xây Nhà, Xuất Hành Hướng Nam",
-  "Canh Ngọ": "An Táng, Động Thổ Lớn", "Tân Mùi": "Khai Trương, Xuất Hành Xa",
-  "Nhâm Thân": "Cưới Hỏi, Chôn Cất", "Quý Dậu": "Xây Dựng, Khai Trương",
-  "Giáp Tuất": "An Táng, Kiện Tụng", "Ất Hợi": "Cưới Hỏi, Xuất Hành Xa",
-  "Bính Tý": "Động Thổ, Chôn Cất", "Đinh Sửu": "Khai Trương, Xuất Hành Xa",
-  "Mậu Dần": "Cưới Hỏi, An Táng", "Kỷ Mão": "Xây Dựng, Xuất Hành Xa",
-  "Canh Thìn": "An Táng, Cầu Tài", "Tân Tỵ": "Cưới Hỏi, Xây Dựng Lớn",
-  "Nhâm Ngọ": "Chôn Cất, Động Thổ", "Quý Mùi": "Khai Trương, Đi Xa",
-  "Giáp Thân": "Cưới Hỏi, Chôn Cất", "Ất Dậu": "Xây Dựng, Xuất Hành Xa",
-  "Bính Tuất": "Khai Trương, Kiện Tụng", "Đinh Hợi": "An Táng, Cưới Hỏi",
-  "Mậu Tý": "Xây Dựng, Xuất Hành Xa", "Kỷ Sửu": "Cưới Hỏi, An Táng",
-  "Canh Dần": "Khai Trương, Động Thổ", "Tân Mão": "Chôn Cất, Kiện Tụng",
-  "Nhâm Thìn": "Cưới Hỏi, Xây Dựng", "Quý Tỵ": "Khai Trương, Đi Xa",
-  "Giáp Ngọ": "An Táng, Cưới Hỏi", "Ất Mùi": "Xây Dựng, Khai Trương",
-  "Bính Thân": "Cưới Hỏi, An Táng", "Đinh Dậu": "Khai Trương, Kiện Tụng",
-  "Mậu Tuất": "Xây Dựng, Xuất Hành Xa", "Kỷ Hợi": "Cưới Hỏi, Chôn Cất",
-  "Canh Tý": "Khai Trương, Động Thổ", "Tân Sửu": "An Táng, Cưới Hỏi",
-  "Nhâm Dần": "Xây Dựng, Xuất Hành Xa", "Quý Mão": "Cưới Hỏi, An Táng",
-  "Giáp Thìn": "Khai Trương, Đi Xa", "Ất Tỵ": "Xây Dựng, Cưới Hỏi",
-  "Bính Ngọ": "An Táng, Cầu Tài", "Đinh Mùi": "Khai Trương, Chôn Cất",
-  "Mậu Thân": "Cưới Hỏi, Xuất Hành Xa", "Kỷ Dậu": "Xây Dựng, Kiện Tụng",
-  "Canh Tuất": "Chôn Cất, Đi Xa", "Tân Hợi": "Cưới Hỏi, Khai Trương",
-  "Nhâm Tý": "Động Thổ, Xây Dựng", "Quý Sửu": "Cưới Hỏi, Đi Xa",
-  "Giáp Dần": "Chôn Cất, Khai Trương", "Ất Mão": "Xây Dựng, An Táng",
-  "Bính Thìn": "Cưới Hỏi, Kiện Tụng", "Đinh Tỵ": "Khai Trương, Xuất Hành Xa",
-  "Mậu Ngọ": "An Táng, Xây Dựng", "Kỷ Mùi": "Cưới Hỏi, Đi Xa",
-  "Canh Thân": "Khai Trương, Cầu Tài", "Tân Dậu": "Xây Dựng, Chôn Cất",
-  "Nhâm Tuất": "Cưới Hỏi, Khai Trương", "Quý Hợi": "Động Thổ, Đi Xa"
-}
 
 THAP_NHI_TRUC = {
   "Kiến": { "tot": "Khai trương, nhậm chức, cưới hỏi, trồng cây, đền ơn đáp nghĩa. Xuất hành đặng lợi, sinh con rất tốt.", "xau": "Động thổ, chôn cất, đào giếng, lợp nhà." },
@@ -487,3 +422,4 @@ def get_nhi_thap_bat_tu(jd):
     current_mansion_index = (mansion_ref_index + day_diff) % 28
     sao_name = sao_names[current_mansion_index]
     return {"name": sao_name, "details": NHI_THAP_BAT_TU.get(sao_name, {})}
+
