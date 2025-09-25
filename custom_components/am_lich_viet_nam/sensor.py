@@ -10,7 +10,7 @@ from .amlich_core import (
     get_lunar_date, get_year_can_chi, get_month_name, get_lunar_month_length, THU,
     get_can_chi_day_month_year, get_can_hour_0, get_tiet_khi, get_gio_hoang_dao,
     get_gio_hac_dao, get_huong_xuat_hanh, get_thap_nhi_truc, get_nhi_thap_bat_tu,
-    NGAY_THONG_TIN, VIEC_NEN_LAM, VIEC_KIENGLAM, NGAY_LE_DL, NGAY_LE_AL
+    NGAY_THONG_TIN, NGAY_LE_DL, NGAY_LE_AL
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -66,8 +66,6 @@ class AmLichSensor(SensorEntity):
 
         # Thông tin ngày
         ngay_thong_tin = NGAY_THONG_TIN.get(can_chi_day, {})
-        viec_nen_lam = VIEC_NEN_LAM.get(can_chi_day, "Không có thông tin")
-        viec_kieng_lam = VIEC_KIENGLAM.get(can_chi_day, "Không có thông tin")
         
         # Cập nhật trạng thái chính
         summary = f"{thu}, {lunar.day} {thang_chu} năm {can_chi_year}"
@@ -102,9 +100,8 @@ class AmLichSensor(SensorEntity):
             "thap_nhi_truc": thap_nhi_truc,
             "nhi_thap_bat_tu": nhi_thap_bat_tu,
             
-            "viec_nen_lam": viec_nen_lam,
-            "viec_kieng_lam": viec_kieng_lam,
             "ngay_chi_tiet": ngay_thong_tin.get('chiTiet', []),
             "ngay_mo_ta": ngay_thong_tin.get('moTa', '')
         }
+
 
