@@ -393,7 +393,7 @@ def get_huong_xuat_hanh(jd):
     tai_than = find_direction(TAI_THAN_RULES, can_ngay)
 
     if can_chi_ngay in HAC_THAN_FREE:
-        hac_than = "Hạc Thần tại Thiên"
+        hac_than = "Tránh xuất hành hướng Lên Trời gặp Hạc Thần (xấu)"
     else:
         hac_than = HAC_THAN_MAP.get(can_chi_ngay, "Không rõ")
         
@@ -422,4 +422,5 @@ def get_nhi_thap_bat_tu(jd):
     current_mansion_index = (mansion_ref_index + day_diff) % 28
     sao_name = sao_names[current_mansion_index]
     return {"name": sao_name, "details": NHI_THAP_BAT_TU.get(sao_name, {})}
+
 
