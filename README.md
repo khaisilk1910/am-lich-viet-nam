@@ -46,6 +46,9 @@ icon: mdi:mushroom
 badge_icon: >-
   {{ 'mdi:moon-full' if state_attr(entity,'lunar_day_type')=='Đ' else
   'mdi:moon-waning-crescent' }}
+tap_action:
+  action: navigate
+  navigation_path: "#chitietamlich"
 card_mod:
   style:
     .: |
@@ -87,14 +90,101 @@ card_mod:
         height: 15px !important;
         margin-right: -5px !important;
         background-color: rgba(255,255,255,.1) !important;
-        --tile-badge-icon-color: rgba(255,165,0,1) !important;
+        --tile-badge-icon-color: rgba(255,255,0,1) !important;
         animation: ping 2s infinite;
       }
       @keyframes ping {
-        0% {box-shadow: 0 0 0 0 rgba(255,165,0,3);}
+        0% {box-shadow: 0 0 0 0 rgba(255,2555,0,2);}
         70% {box-shadow: 0 0 0 10px transparent;}
         100% {box-shadow: 0 0 0 0 transparent;}
       }
+```
+
+## Thêm thẻ popup khi nhấn vào thẻ trên sẽ hiện chi tiết Âm Lịch
+
+- Cần cài thêm: https://github.com/Clooos/Bubble-Card
+
+<img width="504" height="983" alt="image" src="https://github.com/user-attachments/assets/6095236a-d310-4850-88d8-27459e55aee7" />
+
+```
+type: markdown
+content: >-
+  ## 📅 <font color="orange">{{ states('sensor.am_lich_hang_ngay') }}</font>
+
+  📖 **Tháng:** <font color="orange">{{
+  state_attr('sensor.am_lich_hang_ngay','lunar_month_type') }}</font>
+
+  ☀️ **Dương lịch:** <font color="gold">{{
+  state_attr('sensor.am_lich_hang_ngay','solar_date') }}</font> 
+
+  🪧 **Ngày:** <font color="orange">{{
+  state_attr('sensor.am_lich_hang_ngay','can_chi_day') }}</font> | **Tháng:**
+  <font color="orange">{{ state_attr('sensor.am_lich_hang_ngay','can_chi_month')
+  }}</font>
+
+  🍃 **Tiết khí:** <font color="orange">{{
+  state_attr('sensor.am_lich_hang_ngay','tiet_khi') }}</font>
+
+  ⏰ **Giờ Hoàng đạo:** <font color="limegreen">{{
+  state_attr('sensor.am_lich_hang_ngay','gio_hoang_dao') }}</font>  
+
+  🌑 **Giờ Hắc đạo:** <font color="red">{{
+  state_attr('sensor.am_lich_hang_ngay','gio_hac_dao') }}</font>  
+
+  🧭 **Hướng xuất hành:**  
+
+  - 🎉 Hỷ Thần: <font color="orange">{{
+  state_attr('sensor.am_lich_hang_ngay','huong_xuat_hanh')['Hỷ Thần'] }}</font>
+
+  - 💰 Tài Thần: <font color="orange">{{
+  state_attr('sensor.am_lich_hang_ngay','huong_xuat_hanh')['Tài Thần'] }}</font>
+
+  - 🪶 Hạc Thần: <font color="red">{{
+  state_attr('sensor.am_lich_hang_ngay','huong_xuat_hanh')['Hạc Thần'] }}</font>
+
+
+  🌀 **Thập Nhị Trực: <font color="orange">{{
+  state_attr('sensor.am_lich_hang_ngay','thap_nhi_truc')['name'] }}</font>**  
+
+  - ✅ **Tốt:** <font color="limegreen">{{
+  state_attr('sensor.am_lich_hang_ngay','thap_nhi_truc')['details']['tot']
+  }}</font>
+
+  - ❌ **Xấu:** <font color="red">{{
+  state_attr('sensor.am_lich_hang_ngay','thap_nhi_truc')['details']['xau']
+  }}</font>
+
+
+  ✨ **Nhị Thập Bát Tú: Sao {{
+  state_attr('sensor.am_lich_hang_ngay','nhi_thap_bat_tu')['name'] }}**  
+
+  - 🌟 **{{
+  state_attr('sensor.am_lich_hang_ngay','nhi_thap_bat_tu')['details']['tenNgay']
+  }}**
+
+  - 📋 **{{
+  state_attr('sensor.am_lich_hang_ngay','nhi_thap_bat_tu')['details']['danhGia']
+  }}**   
+
+  - ✅ **Nên làm:** {{
+  state_attr('sensor.am_lich_hang_ngay','nhi_thap_bat_tu')['details']['nenLam']
+  }}   
+
+  - ❌ **Kiêng cữ:** {{
+  state_attr('sensor.am_lich_hang_ngay','nhi_thap_bat_tu')['details']['kiengCu']
+  }} 
+
+
+  🔮 **Ngũ Hành:**
+
+  - {{ state_attr('sensor.am_lich_hang_ngay','ngay_mo_ta') }}
+
+  {%- for dong in state_attr('sensor.am_lich_hang_ngay','ngay_chi_tiet') %}
+
+  {{ dong }} {% endfor %}
+grid_options:
+  columns: full
+
 ```
 
 - Các bạn cần cài thêm trong HACS https://github.com/piitaya/lovelace-mushroom và https://github.com/thomasloven/lovelace-card-mod
