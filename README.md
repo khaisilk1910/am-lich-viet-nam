@@ -23,7 +23,8 @@ Custom integration hiển thị thông tin âm lịch hằng ngày
 
 Sau khi cài đặt, bạn sẽ có sensor:
 
-<img width="733" height="802" alt="image" src="https://github.com/user-attachments/assets/78d81e97-8391-4512-bafb-bff8b34b26f8" />
+<img width="573" height="923" alt="image" src="https://github.com/user-attachments/assets/fc385557-2145-40a7-8572-b8cd0a339738" />
+
 
 
 ## Thêm thẻ hiển thị lịch âm 
