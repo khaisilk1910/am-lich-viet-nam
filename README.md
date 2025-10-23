@@ -44,16 +44,23 @@ entity: sensor.am_lich_hang_ngay
 grid_options:
   columns: full
 picture: /local/am_lich_viet_nam.png
-secondary: Dương Lịch, {{ now().day }}/{{ now().month }}/{{ now().year }}
-badge_color: "{{ 'green' if state_attr(entity,'lunar_day_type')=='Đ' else 'red' }}"
+secondary: >-
+  Dương Lịch, {{ now().day }}/{{ now().month }}/{{ now().year }}{% if
+  state_attr('sensor.am_lich_hang_ngay','lunar_holiday') != none or
+  state_attr('sensor.am_lich_hang_ngay','solar_holiday') != none %}
+
+  - 📅 Có sự kiện
+
+  {%endif%}
+badge_color: "{{ 'green' if 'Đủ' in state_attr(entity,'lunar_month_type') else 'red' }}"
 color: blue
 icon: mdi:mushroom
-badge_icon: >-
-  {{ 'mdi:moon-full' if state_attr(entity,'lunar_day_type')=='Đ' else
-  'mdi:moon-waning-crescent' }}
 tap_action:
   action: navigate
   navigation_path: "#chitietamlich"
+badge_icon: >-
+  {{ 'mdi:moon-full' if 'Đủ' in state_attr(entity,'lunar_month_type') else
+  'mdi:moon-waning-crescent' }}
 card_mod:
   style:
     .: |
@@ -112,84 +119,103 @@ card_mod:
 <img width="504" height="983" alt="image" src="https://github.com/user-attachments/assets/6095236a-d310-4850-88d8-27459e55aee7" />
 
 ```
-type: markdown
-content: >-
-  ## 📅 <font color="orange">{{ states('sensor.am_lich_hang_ngay') }}</font>
+type: vertical-stack
+cards:
+  - type: custom:bubble-card
+    card_type: pop-up
+    hash: "#chitietamlich"
+    button_type: name
+    close_on_click: true
+    background_update: true
+    show_header: false
+  - type: markdown
+    content: >-
+      ## 📅 <font color="orange">{{ states('sensor.am_lich_hang_ngay') }}</font>
 
-  📖 **Tháng:** <font color="orange">{{
-  state_attr('sensor.am_lich_hang_ngay','lunar_month_type') }}</font>
+      📖 **Tháng:** <font color="orange">{{
+      state_attr('sensor.am_lich_hang_ngay','lunar_month_type') }}</font>
 
-  ☀️ **Dương lịch:** <font color="gold">{{
-  state_attr('sensor.am_lich_hang_ngay','solar_date') }}</font> 
+      ☀️ **Dương lịch:** <font color="gold">{{
+      state_attr('sensor.am_lich_hang_ngay','solar_date') }}</font>
 
-  🪧 **Ngày:** <font color="orange">{{
-  state_attr('sensor.am_lich_hang_ngay','can_chi_day') }}</font> | **Tháng:**
-  <font color="orange">{{ state_attr('sensor.am_lich_hang_ngay','can_chi_month')
-  }}</font>
+      🎊 **Sự kiện:** <font color="gold">{% if
+      state_attr('sensor.am_lich_hang_ngay','lunar_holiday') != none %}- {{
+      state_attr('sensor.am_lich_hang_ngay','lunar_holiday')}} {%endif%}{% if
+      state_attr('sensor.am_lich_hang_ngay','solar_holiday') != none %}- {{
+      state_attr('sensor.am_lich_hang_ngay','solar_holiday')}}{%endif%}</font>
 
-  🍃 **Tiết khí:** <font color="orange">{{
-  state_attr('sensor.am_lich_hang_ngay','tiet_khi') }}</font>
+      🪧 **Ngày:** <font color="orange">{{
+      state_attr('sensor.am_lich_hang_ngay','can_chi_day') }}</font> |
+      **Tháng:** <font color="orange">{{
+      state_attr('sensor.am_lich_hang_ngay','can_chi_month') }}</font>
 
-  ⏰ **Giờ Hoàng đạo:** <font color="limegreen">{{
-  state_attr('sensor.am_lich_hang_ngay','gio_hoang_dao') }}</font>  
+      🍃 **Tiết khí:** <font color="orange">{{
+      state_attr('sensor.am_lich_hang_ngay','tiet_khi') }}</font>
 
-  🌑 **Giờ Hắc đạo:** <font color="red">{{
-  state_attr('sensor.am_lich_hang_ngay','gio_hac_dao') }}</font>  
+      ⏰ **Giờ Hoàng đạo:** <font color="limegreen">{{
+      state_attr('sensor.am_lich_hang_ngay','gio_hoang_dao') }}</font>  
 
-  🧭 **Hướng xuất hành:**  
+      🌑 **Giờ Hắc đạo:** <font color="red">{{
+      state_attr('sensor.am_lich_hang_ngay','gio_hac_dao') }}</font>  
 
-  - 🎉 Hỷ Thần: <font color="orange">{{
-  state_attr('sensor.am_lich_hang_ngay','huong_xuat_hanh')['Hỷ Thần'] }}</font>
+      🧭 **Hướng xuất hành:**  
 
-  - 💰 Tài Thần: <font color="orange">{{
-  state_attr('sensor.am_lich_hang_ngay','huong_xuat_hanh')['Tài Thần'] }}</font>
+      - 🎉 Hỷ Thần: <font color="orange">{{
+      state_attr('sensor.am_lich_hang_ngay','huong_xuat_hanh')['Hỷ Thần']
+      }}</font>
 
-  - 🪶 Hạc Thần: <font color="red">{{
-  state_attr('sensor.am_lich_hang_ngay','huong_xuat_hanh')['Hạc Thần'] }}</font>
+      - 💰 Tài Thần: <font color="orange">{{
+      state_attr('sensor.am_lich_hang_ngay','huong_xuat_hanh')['Tài Thần']
+      }}</font>
 
-
-  🌀 **Thập Nhị Trực: <font color="orange">{{
-  state_attr('sensor.am_lich_hang_ngay','thap_nhi_truc')['name'] }}</font>**  
-
-  - ✅ **Tốt:** <font color="limegreen">{{
-  state_attr('sensor.am_lich_hang_ngay','thap_nhi_truc')['details']['tot']
-  }}</font>
-
-  - ❌ **Xấu:** <font color="red">{{
-  state_attr('sensor.am_lich_hang_ngay','thap_nhi_truc')['details']['xau']
-  }}</font>
-
-
-  ✨ **Nhị Thập Bát Tú: Sao {{
-  state_attr('sensor.am_lich_hang_ngay','nhi_thap_bat_tu')['name'] }}**  
-
-  - 🌟 **{{
-  state_attr('sensor.am_lich_hang_ngay','nhi_thap_bat_tu')['details']['tenNgay']
-  }}**
-
-  - 📋 **{{
-  state_attr('sensor.am_lich_hang_ngay','nhi_thap_bat_tu')['details']['danhGia']
-  }}**   
-
-  - ✅ **Nên làm:** {{
-  state_attr('sensor.am_lich_hang_ngay','nhi_thap_bat_tu')['details']['nenLam']
-  }}   
-
-  - ❌ **Kiêng cữ:** {{
-  state_attr('sensor.am_lich_hang_ngay','nhi_thap_bat_tu')['details']['kiengCu']
-  }} 
+      - 🪶 Hạc Thần: <font color="red">{{
+      state_attr('sensor.am_lich_hang_ngay','huong_xuat_hanh')['Hạc Thần']
+      }}</font>
 
 
-  🔮 **Ngũ Hành:**
+      🌀 **Thập Nhị Trực: <font color="orange">{{
+      state_attr('sensor.am_lich_hang_ngay','thap_nhi_truc')['name']
+      }}</font>**  
 
-  - {{ state_attr('sensor.am_lich_hang_ngay','ngay_mo_ta') }}
+      - ✅ **Tốt:** <font color="limegreen">{{
+      state_attr('sensor.am_lich_hang_ngay','thap_nhi_truc')['details']['tot']
+      }}</font>
 
-  {%- for dong in state_attr('sensor.am_lich_hang_ngay','ngay_chi_tiet') %}
+      - ❌ **Xấu:** <font color="red">{{
+      state_attr('sensor.am_lich_hang_ngay','thap_nhi_truc')['details']['xau']
+      }}</font>
 
-  {{ dong }} {% endfor %}
-grid_options:
-  columns: full
 
+      ✨ **Nhị Thập Bát Tú: <font color="orange">Sao {{
+      state_attr('sensor.am_lich_hang_ngay','nhi_thap_bat_tu')['name']
+      }}</font>**  
+
+      - 🌟 **{{
+      state_attr('sensor.am_lich_hang_ngay','nhi_thap_bat_tu')['details']['tenNgay']
+      }}**
+
+      - 📋 **{{
+      state_attr('sensor.am_lich_hang_ngay','nhi_thap_bat_tu')['details']['danhGia']
+      }}**   
+
+      - ✅ **Nên làm:** {{
+      state_attr('sensor.am_lich_hang_ngay','nhi_thap_bat_tu')['details']['nenLam']
+      }}   
+
+      - ❌ **Kiêng cữ:** {{
+      state_attr('sensor.am_lich_hang_ngay','nhi_thap_bat_tu')['details']['kiengCu']
+      }} 
+
+
+      🔮 **Ngũ Hành:**
+
+      - {{ state_attr('sensor.am_lich_hang_ngay','ngay_mo_ta') }}
+
+      {%- for dong in state_attr('sensor.am_lich_hang_ngay','ngay_chi_tiet') %}
+
+      {{ dong }} {% endfor %}
+    grid_options:
+      columns: full
 ```
 
   
