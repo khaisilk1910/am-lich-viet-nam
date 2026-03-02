@@ -12,7 +12,6 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="single_instance_allowed")
 
         if user_input is not None:
-            # Lưu Integration với mảng sự kiện rỗng ban đầu
             return self.async_create_entry(title="Âm lịch Việt Nam", data={}, options={CONF_EVENTS: []})
 
         return self.async_show_form(step_id="user")
@@ -27,28 +26,26 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
-        # CẦN THIẾT: Khởi tạo lớp cha để HA sinh ra các biến hệ thống (flow_id...)
-        super().__init__()
         self.config_entry = config_entry
         self.events = list(config_entry.options.get(CONF_EVENTS, []))
 
     async def async_step_init(self, user_input=None):
         """Bước 1: Chọn hành động"""
         if user_input is not None:
-            if user_input["action"] == "add":
+            if user_input["action"] == "Thêm sự kiện mới":
                 return await self.async_step_add_event()
-            elif user_input["action"] == "remove":
+            elif user_input["action"] == "Xóa sự kiện đã lưu":
                 return await self.async_step_remove_event()
 
-        # Dùng dictionary để tự tạo menu dropdown đẹp mắt
-        actions = {"add": "Thêm sự kiện mới"}
+        # Đổi thành kiểu List (mảng) thay vì Dict để chống lỗi 500 trên UI của HA
+        actions = ["Thêm sự kiện mới"]
         if self.events:
-            actions["remove"] = "Xóa sự kiện đã lưu"
+            actions.append("Xóa sự kiện đã lưu")
 
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
-                vol.Required("action", default="add"): vol.In(actions)
+                vol.Required("action", default="Thêm sự kiện mới"): vol.In(actions)
             })
         )
 
@@ -76,14 +73,12 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
             self.events = [e for e in self.events if f"{e['name']} ({e['date']})" != selected]
             return self.async_create_entry(title="", data={CONF_EVENTS: self.events})
 
-        event_dict = {
-            f"{e['name']} ({e['date']})": f"{e['name']} ({e['date']})"
-            for e in self.events
-        }
+        # Dùng List cho an toàn
+        event_list = [f"{e['name']} ({e['date']})" for e in self.events]
         
         return self.async_show_form(
             step_id="remove_event",
             data_schema=vol.Schema({
-                vol.Required("chon_su_kien_de_xoa"): vol.In(event_dict)
+                vol.Required("chon_su_kien_de_xoa"): vol.In(event_list)
             })
         )
