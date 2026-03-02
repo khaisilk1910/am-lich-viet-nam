@@ -42,7 +42,6 @@ class AmLichSensor(SensorEntity):
             
         jd = lunar.jd
 
-        # 1. Đọc và nhóm các sự kiện cá nhân từ mảng đối tượng
         custom_events_list = self._entry.options.get(CONF_EVENTS, [])
         custom_events = {}
         
@@ -55,7 +54,6 @@ class AmLichSensor(SensorEntity):
                     custom_events[date_key] = []
                 custom_events[date_key].append(event_name)
 
-        # 2. Hàm tính Julian Day cho một ngày sự kiện âm lịch (để đếm ngược)
         def get_lunar_event_jd(t_day, t_month, s_year, cur_jd):
             for year_offset in range(3):
                 try:
@@ -78,22 +76,19 @@ class AmLichSensor(SensorEntity):
                     continue
             return None
 
-        # 3. Phân loại sự kiện: Hôm nay và Đếm ngược
         today_events = []
         events_countdown = {}
-
-        lunar_holiday_key = f"{lunar.day}/{lunar.month}"
         
         for date_key, ev_list in custom_events.items():
-            if date_key == lunar_holiday_key:
-                today_events.extend(ev_list)
-
             try:
                 parts = date_key.replace("-", "/").split('/')
                 if len(parts) >= 2:
                     t_day = int(parts[0])
                     t_month = int(parts[1])
                     
+                    if t_day == lunar.day and t_month == lunar.month and lunar.leap == 0:
+                        today_events.extend(ev_list)
+
                     ev_jd = get_lunar_event_jd(t_day, t_month, lunar.year, jd)
                     if ev_jd is not None:
                         days_left = int(ev_jd - jd)
@@ -102,10 +97,14 @@ class AmLichSensor(SensorEntity):
             except ValueError:
                 continue
 
-        events_countdown = dict(sorted(events_countdown.items(), key=lambda item: item[1]))
-        custom_event_today_str = ", ".join(today_events) if today_events else None
+        # Sắp xếp và chuyển thành "Không Có" nếu trống
+        if events_countdown:
+            events_countdown = dict(sorted(events_countdown.items(), key=lambda item: item[1]))
+        else:
+            events_countdown = "Không Có"
+            
+        custom_event_today_str = ", ".join(today_events) if today_events else "Không Có"
 
-        # --- CÁC THÔNG TIN KHÁC GIỮ NGUYÊN ---
         thu = THU[now.weekday()]
         thang_chu = get_month_name(lunar.month, lunar.leap == 1)
         thang_am_length = get_lunar_month_length(lunar)
@@ -114,9 +113,12 @@ class AmLichSensor(SensorEntity):
         can_chi_day, can_chi_month, can_chi_year = get_can_chi_day_month_year(lunar)
         can_chi_hour_0 = get_can_hour_0(jd)
         
+        # Cập nhật "Không Có" cho các ngày Lễ
         solar_holiday_key = f"{now.day}/{now.month}"
-        solar_holiday = NGAY_LE_DL.get(solar_holiday_key)
-        lunar_holiday = NGAY_LE_AL.get(lunar_holiday_key)
+        solar_holiday = NGAY_LE_DL.get(solar_holiday_key, "Không Có")
+        
+        lunar_holiday = NGAY_LE_AL.get(f"{lunar.day}/{lunar.month}") if lunar.leap == 0 else None
+        lunar_holiday = lunar_holiday if lunar_holiday else "Không Có"
         
         tiet_khi = get_tiet_khi(jd)
         gio_hoang_dao = get_gio_hoang_dao(jd)
@@ -133,7 +135,6 @@ class AmLichSensor(SensorEntity):
         self._attr_extra_state_attributes = {
             "solar_date": now.strftime("%d/%m/%Y"),
             "weekday": thu,
-            
             "lunar_day": lunar.day,
             "lunar_month": lunar.month,
             "lunar_year": lunar.year,
@@ -141,7 +142,6 @@ class AmLichSensor(SensorEntity):
             "month_name": thang_chu,
             "lunar_month_type": thang_am_day_type,
             "lunar_date": f"{lunar.day:02}/{lunar.month:02}/{lunar.year}",
-            
             "can_chi_day": can_chi_day,
             "can_chi_month": can_chi_month,
             "can_chi_year": can_chi_year,
@@ -149,7 +149,6 @@ class AmLichSensor(SensorEntity):
             
             "solar_holiday": solar_holiday,
             "lunar_holiday": lunar_holiday,
-            
             "custom_event_today": custom_event_today_str,
             "custom_events_countdown": events_countdown,
             
@@ -157,10 +156,8 @@ class AmLichSensor(SensorEntity):
             "gio_hoang_dao": gio_hoang_dao,
             "gio_hac_dao": gio_hac_dao,
             "huong_xuat_hanh": huong_xuat_hanh,
-            
             "thap_nhi_truc": thap_nhi_truc,
             "nhi_thap_bat_tu": nhi_thap_bat_tu,
-            
             "ngay_chi_tiet": ngay_thong_tin.get('chiTiet', []),
             "ngay_mo_ta": ngay_thong_tin.get('moTa', '')
         }
