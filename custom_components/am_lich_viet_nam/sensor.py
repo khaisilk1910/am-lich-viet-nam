@@ -5,7 +5,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_CUSTOM_EVENTS
+from .const import CONF_EVENTS
 
 from .amlich_core import (
     get_lunar_date, get_year_can_chi, get_month_name, get_lunar_month_length, THU,
@@ -42,30 +42,26 @@ class AmLichSensor(SensorEntity):
             
         jd = lunar.jd
 
-        # 1. Đọc và nhóm các sự kiện cá nhân (Xử lý trùng ngày)
-        custom_events_text = self._entry.options.get(CONF_CUSTOM_EVENTS, "")
+        # 1. Đọc và nhóm các sự kiện cá nhân từ mảng đối tượng
+        custom_events_list = self._entry.options.get(CONF_EVENTS, [])
         custom_events = {}
-        if custom_events_text:
-            for line in custom_events_text.split('\n'):
-                line = line.strip()
-                if ':' in line:
-                    parts = line.split(':', 1)
-                    date_key = parts[0].strip()  # ví dụ: "13/2"
-                    event_name = parts[1].strip() # ví dụ: "Giỗ Mẹ"
-                    
-                    if date_key not in custom_events:
-                        custom_events[date_key] = []
-                    custom_events[date_key].append(event_name)
+        
+        for ev in custom_events_list:
+            date_key = ev.get("date", "").strip()
+            event_name = ev.get("name", "").strip()
+            
+            if date_key and event_name:
+                if date_key not in custom_events:
+                    custom_events[date_key] = []
+                custom_events[date_key].append(event_name)
 
         # 2. Hàm tính Julian Day cho một ngày sự kiện âm lịch (để đếm ngược)
         def get_lunar_event_jd(t_day, t_month, s_year, cur_jd):
-            # Quét năm hiện tại và 2 năm tiếp theo để đảm bảo luôn tìm được sự kiện tương lai
             for year_offset in range(3):
                 try:
                     ly = get_year_info(s_year + year_offset)
                     for i in range(len(ly)):
                         m_info = ly[i]
-                        # Tìm đúng tháng âm lịch (không tính tháng nhuận cho giỗ chạp)
                         if m_info.month == t_month and m_info.leap == 0:
                             if i + 1 < len(ly):
                                 m_len = ly[i+1].jd - m_info.jd
@@ -73,11 +69,9 @@ class AmLichSensor(SensorEntity):
                                 next_ly = get_year_info(s_year + year_offset + 1)
                                 m_len = next_ly[0].jd - m_info.jd
                             
-                            # Xử lý trường hợp nhập ngày 30 nhưng tháng đó thiếu (chỉ có 29 ngày)
                             actual_day = min(t_day, m_len)
                             event_jd = m_info.jd + actual_day - 1
                             
-                            # Nếu ngày này lớn hơn hoặc bằng hôm nay -> Trả về kết quả JD
                             if event_jd >= cur_jd:
                                 return event_jd
                 except ValueError:
@@ -91,31 +85,24 @@ class AmLichSensor(SensorEntity):
         lunar_holiday_key = f"{lunar.day}/{lunar.month}"
         
         for date_key, ev_list in custom_events.items():
-            # Gom sự kiện hôm nay (days_left = 0)
             if date_key == lunar_holiday_key:
                 today_events.extend(ev_list)
 
-            # Tính đếm ngược cho tất cả các sự kiện
             try:
-                parts = date_key.split('/')
-                if len(parts) == 2:
+                parts = date_key.replace("-", "/").split('/')
+                if len(parts) >= 2:
                     t_day = int(parts[0])
                     t_month = int(parts[1])
-                    # Dùng lunar.year làm mốc tính toán (tránh lấn cấn năm dương và âm)
-                    ev_jd = get_lunar_event_jd(t_day, t_month, lunar.year, jd)
                     
+                    ev_jd = get_lunar_event_jd(t_day, t_month, lunar.year, jd)
                     if ev_jd is not None:
                         days_left = int(ev_jd - jd)
                         for ev in ev_list:
-                            # Lưu vào dictionary đếm ngược theo định dạng {"Tên sự kiện": số_ngày}
                             events_countdown[ev] = days_left
             except ValueError:
                 continue
 
-        # Sắp xếp dictionary theo số ngày còn lại (từ gần nhất đến xa nhất)
         events_countdown = dict(sorted(events_countdown.items(), key=lambda item: item[1]))
-
-        # Format sự kiện hôm nay thành chuỗi (để dễ hiển thị lên giao diện nếu cần)
         custom_event_today_str = ", ".join(today_events) if today_events else None
 
         # --- CÁC THÔNG TIN KHÁC GIỮ NGUYÊN ---
@@ -163,7 +150,6 @@ class AmLichSensor(SensorEntity):
             "solar_holiday": solar_holiday,
             "lunar_holiday": lunar_holiday,
             
-            # --- ATTRIBUTES MỚI CHO SỰ KIỆN ---
             "custom_event_today": custom_event_today_str,
             "custom_events_countdown": events_countdown,
             
