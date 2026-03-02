@@ -12,7 +12,11 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="single_instance_allowed")
 
         if user_input is not None:
-            return self.async_create_entry(title="Âm lịch Việt Nam", data={}, options={CONF_EVENTS: []})
+            return self.async_create_entry(
+                title="Âm lịch Việt Nam", 
+                data={}, 
+                options={CONF_EVENTS: []}
+            )
 
         return self.async_show_form(step_id="user")
 
@@ -23,41 +27,36 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
-
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
-        # DÒNG NÀY RẤT QUAN TRỌNG ĐỂ FIX LỖI 500:
-        super().__init__() 
         self.config_entry = config_entry
-        self.events = list(config_entry.options.get(CONF_EVENTS, []))
 
     async def async_step_init(self, user_input=None):
-        """Bước 1: Chọn hành động"""
-        if user_input is not None:
-            if user_input["action"] == "Thêm sự kiện mới":
-                return await self.async_step_add_event()
-            elif user_input["action"] == "Xóa sự kiện đã lưu":
-                return await self.async_step_remove_event()
+        """Bước 1: Menu chính (Sử dụng Menu chuẩn của HA)"""
+        events = self.config_entry.options.get(CONF_EVENTS)
+        if not isinstance(events, list):
+            events = []
+            
+        menu_options = ["add_event"]
+        if len(events) > 0:
+            # Chỉ hiện nút Xóa nếu đang có sự kiện
+            menu_options.append("remove_event")
 
-        actions = ["Thêm sự kiện mới"]
-        if self.events:
-            actions.append("Xóa sự kiện đã lưu")
-
-        return self.async_show_form(
+        return self.async_show_menu(
             step_id="init",
-            data_schema=vol.Schema({
-                vol.Required("action", default="Thêm sự kiện mới"): vol.In(actions)
-            })
+            menu_options=menu_options
         )
 
     async def async_step_add_event(self, user_input=None):
         """Bước 2: Form nhập sự kiện mới"""
+        events = list(self.config_entry.options.get(CONF_EVENTS, []))
+        
         if user_input is not None:
-            self.events.append({
-                "name": user_input["ten_su_kien"],
-                "date": user_input["ngay_am_lich"]
+            events.append({
+                "name": user_input.get("ten_su_kien", ""),
+                "date": user_input.get("ngay_am_lich", "")
             })
-            return self.async_create_entry(title="", data={CONF_EVENTS: self.events})
+            return self.async_create_entry(title="", data={CONF_EVENTS: events})
 
         return self.async_show_form(
             step_id="add_event",
@@ -68,13 +67,21 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
         )
 
     async def async_step_remove_event(self, user_input=None):
-        """Bước 3: Chọn và Xóa sự kiện"""
-        if user_input is not None:
-            selected = user_input["chon_su_kien_de_xoa"]
-            self.events = [e for e in self.events if f"{e['name']} ({e['date']})" != selected]
-            return self.async_create_entry(title="", data={CONF_EVENTS: self.events})
+        """Bước 3: Form Xóa sự kiện"""
+        events = list(self.config_entry.options.get(CONF_EVENTS, []))
+        
+        if not events:
+            return await self.async_step_init()
 
-        event_list = [f"{e['name']} ({e['date']})" for e in self.events]
+        event_list = [f"{e.get('name')} ({e.get('date')})" for e in events]
+
+        if user_input is not None:
+            selected = user_input.get("chon_su_kien_de_xoa")
+            new_events = [
+                e for e in events 
+                if f"{e.get('name')} ({e.get('date')})" != selected
+            ]
+            return self.async_create_entry(title="", data={CONF_EVENTS: new_events})
         
         return self.async_show_form(
             step_id="remove_event",
