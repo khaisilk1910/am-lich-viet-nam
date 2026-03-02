@@ -22,9 +22,13 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(config_entry):
         return AmLichOptionsFlowHandler(config_entry)
 
+
 class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
 
-    def __init__(self, config_entry: config_entries.ConfigEntry):
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        # CẦN THIẾT: Khởi tạo lớp cha để HA sinh ra các biến hệ thống (flow_id...)
+        super().__init__()
         self.config_entry = config_entry
         self.events = list(config_entry.options.get(CONF_EVENTS, []))
 
