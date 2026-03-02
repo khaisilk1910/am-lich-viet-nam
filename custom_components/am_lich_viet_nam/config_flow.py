@@ -26,6 +26,8 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
+        # DÒNG NÀY RẤT QUAN TRỌNG ĐỂ FIX LỖI 500:
+        super().__init__() 
         self.config_entry = config_entry
         self.events = list(config_entry.options.get(CONF_EVENTS, []))
 
@@ -37,7 +39,6 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
             elif user_input["action"] == "Xóa sự kiện đã lưu":
                 return await self.async_step_remove_event()
 
-        # Đổi thành kiểu List (mảng) thay vì Dict để chống lỗi 500 trên UI của HA
         actions = ["Thêm sự kiện mới"]
         if self.events:
             actions.append("Xóa sự kiện đã lưu")
@@ -73,7 +74,6 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
             self.events = [e for e in self.events if f"{e['name']} ({e['date']})" != selected]
             return self.async_create_entry(title="", data={CONF_EVENTS: self.events})
 
-        # Dùng List cho an toàn
         event_list = [f"{e['name']} ({e['date']})" for e in self.events]
         
         return self.async_show_form(
