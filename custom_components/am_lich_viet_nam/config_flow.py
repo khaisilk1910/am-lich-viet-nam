@@ -18,7 +18,11 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 options={CONF_EVENTS: []}
             )
 
-        return self.async_show_form(step_id="user")
+        # Thêm data_schema trống để tránh cảnh báo form từ HA
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema({})
+        )
 
     @staticmethod
     @callback
@@ -32,19 +36,26 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
         self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
-        """Bước 1: Menu chính (Sử dụng Menu chuẩn của HA)"""
+        """Bước 1: Menu chính (Sử dụng Form thay cho Menu để tránh lỗi 500)"""
         events = self.config_entry.options.get(CONF_EVENTS)
         if not isinstance(events, list):
             events = []
-            
-        menu_options = ["add_event"]
-        if len(events) > 0:
-            # Chỉ hiện nút Xóa nếu đang có sự kiện
-            menu_options.append("remove_event")
 
-        return self.async_show_menu(
+        if user_input is not None:
+            if user_input.get("hanh_dong") == "Thêm sự kiện":
+                return await self.async_step_add_event()
+            elif user_input.get("hanh_dong") == "Xóa sự kiện":
+                return await self.async_step_remove_event()
+
+        actions = ["Thêm sự kiện"]
+        if len(events) > 0:
+            actions.append("Xóa sự kiện")
+
+        return self.async_show_form(
             step_id="init",
-            menu_options=menu_options
+            data_schema=vol.Schema({
+                vol.Required("hanh_dong", default="Thêm sự kiện"): vol.In(actions)
+            })
         )
 
     async def async_step_add_event(self, user_input=None):
@@ -61,8 +72,8 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="add_event",
             data_schema=vol.Schema({
-                vol.Required("ten_su_kien", default=""): str,
-                vol.Required("ngay_am_lich", default=""): str,
+                vol.Required("ten_su_kien"): str,
+                vol.Required("ngay_am_lich"): str,
             })
         )
 
@@ -74,6 +85,8 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
             return await self.async_step_init()
 
         event_list = [f"{e.get('name')} ({e.get('date')})" for e in events]
+        # Loại bỏ các chuỗi trùng lặp để tránh thư viện voluptuous báo lỗi
+        event_list = list(dict.fromkeys(event_list))
 
         if user_input is not None:
             selected = user_input.get("chon_su_kien_de_xoa")
