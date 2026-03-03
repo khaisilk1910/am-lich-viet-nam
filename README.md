@@ -15,8 +15,6 @@ Custom integration hiển thị thông tin âm lịch hằng ngày
    - Sau khi thêm trong HACS và khởi động lại Home Assistant
      
    - Vào Settings -> Integrations -> Add integration nhập `Âm lịch Việt Nam` để thêm
-  
-     <img width="633" height="810" alt="image" src="https://github.com/user-attachments/assets/6d1baaaf-444f-4405-8559-1a78cccfb672" />
 
 
 ## Sensor
