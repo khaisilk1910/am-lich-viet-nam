@@ -8,10 +8,11 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         if user_input is not None:
             action = user_input.get("action")
-            if action == "su_kien":
-                return await self.async_step_event()
+            if action == "su_kien_am_lich":
+                return await self.async_step_event_am_lich()
+            elif action == "su_kien_duong_lich":
+                return await self.async_step_event_duong_lich()
             else:
-                # Ngăn người dùng tạo 2 Lịch Âm Chính
                 await self.async_set_unique_id("amlich_main")
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
@@ -21,32 +22,53 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         actions_dict = {
             "main": "Lịch Âm Chính (Thông tin hằng ngày)",
-            "su_kien": "Sự kiện Âm lịch (Đếm ngược ngày lễ, giỗ)"
+            "su_kien_am_lich": "Sự kiện Âm lịch (Giỗ, Lễ Âm lịch...)",
+            "su_kien_duong_lich": "Sự kiện Dương lịch (Sinh nhật, Kỷ niệm...)"
         }
 
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema({
-                vol.Required("action", default="su_kien"): vol.In(actions_dict)
+                vol.Required("action", default="su_kien_am_lich"): vol.In(actions_dict)
             })
         )
 
-    async def async_step_event(self, user_input=None):
-        """Bước tạo sự kiện mới"""
+    async def async_step_event_am_lich(self, user_input=None):
         if user_input is not None:
             return self.async_create_entry(
                 title=user_input.get("event_name"), 
                 data={
                     "is_main": False,
+                    "event_type": "lunar",
                     "event_name": user_input.get("event_name"),
                     "event_date": user_input.get("event_date")
                 }
             )
 
         return self.async_show_form(
-            step_id="event",
+            step_id="event_am_lich",
             data_schema=vol.Schema({
                 vol.Required("event_name"): str,
-                vol.Required("event_date"): str,
+                vol.Required("event_date", description={"suggested_value": "15/8"}): str,
+            })
+        )
+
+    async def async_step_event_duong_lich(self, user_input=None):
+        if user_input is not None:
+            return self.async_create_entry(
+                title=user_input.get("event_name"), 
+                data={
+                    "is_main": False,
+                    "event_type": "solar",
+                    "event_name": user_input.get("event_name"),
+                    "event_date": user_input.get("event_date")
+                }
+            )
+
+        return self.async_show_form(
+            step_id="event_duong_lich",
+            data_schema=vol.Schema({
+                vol.Required("event_name"): str,
+                vol.Required("event_date", description={"suggested_value": "1/1"}): str,
             })
         )
