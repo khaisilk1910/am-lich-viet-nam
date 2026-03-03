@@ -5,8 +5,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_EVENTS
-
 from .amlich_core import (
     get_lunar_date, get_year_can_chi, get_month_name, get_lunar_month_length, THU,
     get_can_chi_day_month_year, get_can_hour_0, get_tiet_khi, get_gio_hoang_dao,
@@ -18,12 +16,15 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
     """Set up the sensor from a config entry."""
-    async_add_entities([AmLichSensor(entry)], True)
+    is_main = entry.data.get("is_main", entry.data.get("event_name") is None)
+    
+    if is_main:
+        async_add_entities([AmLichSensor(entry)], True)
+    else:
+        async_add_entities([AmLichEventSensor(entry)], True)
 
 class AmLichSensor(SensorEntity):
-
     def __init__(self, entry: ConfigEntry):
-        """Initialize the sensor."""
         self._entry = entry
         self._attr_name = "Âm lịch hằng ngày"
         self._attr_unique_id = "amlich_hangngay"
@@ -32,79 +33,14 @@ class AmLichSensor(SensorEntity):
         self._attr_extra_state_attributes = {}
 
     async def async_update(self):
-        """Fetch new state data for the sensor."""
         now = datetime.now()
         lunar = get_lunar_date(now.day, now.month, now.year)
 
         if not lunar:
-            self._attr_native_value = "Lỗi: Không thể tính toán ngày âm lịch"
+            self._attr_native_value = "Lỗi: Không thể tính toán"
             return
             
         jd = lunar.jd
-
-        custom_events_list = self._entry.options.get(CONF_EVENTS, [])
-        custom_events = {}
-        
-        for ev in custom_events_list:
-            date_key = ev.get("date", "").strip()
-            event_name = ev.get("name", "").strip()
-            
-            if date_key and event_name:
-                if date_key not in custom_events:
-                    custom_events[date_key] = []
-                custom_events[date_key].append(event_name)
-
-        def get_lunar_event_jd(t_day, t_month, s_year, cur_jd):
-            for year_offset in range(3):
-                try:
-                    ly = get_year_info(s_year + year_offset)
-                    for i in range(len(ly)):
-                        m_info = ly[i]
-                        if m_info.month == t_month and m_info.leap == 0:
-                            if i + 1 < len(ly):
-                                m_len = ly[i+1].jd - m_info.jd
-                            else:
-                                next_ly = get_year_info(s_year + year_offset + 1)
-                                m_len = next_ly[0].jd - m_info.jd
-                            
-                            actual_day = min(t_day, m_len)
-                            event_jd = m_info.jd + actual_day - 1
-                            
-                            if event_jd >= cur_jd:
-                                return event_jd
-                except ValueError:
-                    continue
-            return None
-
-        today_events = []
-        events_countdown = {}
-        
-        for date_key, ev_list in custom_events.items():
-            try:
-                parts = date_key.replace("-", "/").split('/')
-                if len(parts) >= 2:
-                    t_day = int(parts[0])
-                    t_month = int(parts[1])
-                    
-                    if t_day == lunar.day and t_month == lunar.month and lunar.leap == 0:
-                        today_events.extend(ev_list)
-
-                    ev_jd = get_lunar_event_jd(t_day, t_month, lunar.year, jd)
-                    if ev_jd is not None:
-                        days_left = int(ev_jd - jd)
-                        for ev in ev_list:
-                            events_countdown[ev] = days_left
-            except ValueError:
-                continue
-
-        # Sắp xếp và chuyển thành "Không Có" nếu trống
-        if events_countdown:
-            events_countdown = dict(sorted(events_countdown.items(), key=lambda item: item[1]))
-        else:
-            events_countdown = "Không Có"
-            
-        custom_event_today_str = ", ".join(today_events) if today_events else "Không Có"
-
         thu = THU[now.weekday()]
         thang_chu = get_month_name(lunar.month, lunar.leap == 1)
         thang_am_length = get_lunar_month_length(lunar)
@@ -113,20 +49,12 @@ class AmLichSensor(SensorEntity):
         can_chi_day, can_chi_month, can_chi_year = get_can_chi_day_month_year(lunar)
         can_chi_hour_0 = get_can_hour_0(jd)
         
-        # Cập nhật "Không Có" cho các ngày Lễ
         solar_holiday_key = f"{now.day}/{now.month}"
         solar_holiday = NGAY_LE_DL.get(solar_holiday_key, "Không Có")
         
         lunar_holiday = NGAY_LE_AL.get(f"{lunar.day}/{lunar.month}") if lunar.leap == 0 else None
         lunar_holiday = lunar_holiday if lunar_holiday else "Không Có"
         
-        tiet_khi = get_tiet_khi(jd)
-        gio_hoang_dao = get_gio_hoang_dao(jd)
-        gio_hac_dao = get_gio_hac_dao(jd)
-        huong_xuat_hanh = get_huong_xuat_hanh(jd)
-        thap_nhi_truc = get_thap_nhi_truc(jd)
-        nhi_thap_bat_tu = get_nhi_thap_bat_tu(jd)
-
         ngay_thong_tin = NGAY_THONG_TIN.get(can_chi_day, {})
         
         summary = f"{thu}, {lunar.day} {thang_chu} năm {can_chi_year}"
@@ -146,18 +74,80 @@ class AmLichSensor(SensorEntity):
             "can_chi_month": can_chi_month,
             "can_chi_year": can_chi_year,
             "can_chi_hour_0": can_chi_hour_0,
-            
             "solar_holiday": solar_holiday,
             "lunar_holiday": lunar_holiday,
-            "custom_event_today": custom_event_today_str,
-            "custom_events_countdown": events_countdown,
-            
-            "tiet_khi": tiet_khi,
-            "gio_hoang_dao": gio_hoang_dao,
-            "gio_hac_dao": gio_hac_dao,
-            "huong_xuat_hanh": huong_xuat_hanh,
-            "thap_nhi_truc": thap_nhi_truc,
-            "nhi_thap_bat_tu": nhi_thap_bat_tu,
+            "tiet_khi": get_tiet_khi(jd),
+            "gio_hoang_dao": get_gio_hoang_dao(jd),
+            "gio_hac_dao": get_gio_hac_dao(jd),
+            "huong_xuat_hanh": get_huong_xuat_hanh(jd),
+            "thap_nhi_truc": get_thap_nhi_truc(jd),
+            "nhi_thap_bat_tu": get_nhi_thap_bat_tu(jd),
             "ngay_chi_tiet": ngay_thong_tin.get('chiTiet', []),
             "ngay_mo_ta": ngay_thong_tin.get('moTa', '')
         }
+
+
+class AmLichEventSensor(SensorEntity):
+    def __init__(self, entry: ConfigEntry):
+        self._entry = entry
+        self._event_name = entry.data.get("event_name", "Sự kiện")
+        self._event_date = entry.data.get("event_date", "1/1")
+        
+        self._attr_name = self._event_name
+        self._attr_unique_id = f"amlich_event_{entry.entry_id}"
+        self._attr_icon = "mdi:calendar-clock"
+        self._attr_native_unit_of_measurement = "ngày"
+
+    async def async_update(self):
+        now = datetime.now()
+        lunar = get_lunar_date(now.day, now.month, now.year)
+        if not lunar:
+            self._attr_native_value = "Lỗi"
+            return
+
+        try:
+            parts = self._event_date.replace("-", "/").split('/')
+            t_day = int(parts[0])
+            t_month = int(parts[1])
+        except (ValueError, IndexError):
+            self._attr_native_value = "Sai định dạng ngày"
+            return
+
+        cur_jd = lunar.jd
+        ev_jd = None
+
+        # Logic tìm ngày JDN kế tiếp của sự kiện
+        for year_offset in range(3):
+            try:
+                ly = get_year_info(lunar.year + year_offset)
+                for i in range(len(ly)):
+                    m_info = ly[i]
+                    if m_info.month == t_month and m_info.leap == 0:
+                        if i + 1 < len(ly):
+                            m_len = ly[i+1].jd - m_info.jd
+                        else:
+                            try:
+                                next_ly = get_year_info(lunar.year + year_offset + 1)
+                                m_len = next_ly[0].jd - m_info.jd
+                            except ValueError:
+                                m_len = 30
+                        
+                        actual_day = min(t_day, m_len)
+                        temp_jd = m_info.jd + actual_day - 1
+                        
+                        if temp_jd >= cur_jd:
+                            ev_jd = temp_jd
+                            break
+                if ev_jd is not None:
+                    break
+            except ValueError:
+                continue
+
+        if ev_jd is not None:
+            days_left = int(ev_jd - cur_jd)
+            self._attr_native_value = days_left
+            self._attr_extra_state_attributes = {
+                "ngày_âm_lịch_sự_kiện": self._event_date,
+            }
+        else:
+            self._attr_native_value = "Không tính được"
