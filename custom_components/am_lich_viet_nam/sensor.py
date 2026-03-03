@@ -1,9 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+
+from .const import CONF_EVENTS
 
 from .amlich_core import (
     get_lunar_date, get_year_can_chi, get_month_name, get_lunar_month_length, THU,
@@ -16,6 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
     """Set up the sensor from a config entry."""
+    # Kiểm tra xem đây là Entry Lịch Âm chính hay Entry Sự kiện
     is_main = entry.data.get("is_main", entry.data.get("event_name") is None)
     
     if is_main:
@@ -86,7 +89,6 @@ class AmLichSensor(SensorEntity):
             "ngay_mo_ta": ngay_thong_tin.get('moTa', '')
         }
 
-
 class AmLichEventSensor(SensorEntity):
     def __init__(self, entry: ConfigEntry):
         self._entry = entry
@@ -146,8 +148,17 @@ class AmLichEventSensor(SensorEntity):
         if ev_jd is not None:
             days_left = int(ev_jd - cur_jd)
             self._attr_native_value = days_left
+            
+            # Tính ngày dương lịch và thứ dựa trên số ngày đếm ngược
+            # Dùng midnight (00:00:00) của ngày hôm nay để cộng timedelta, tránh lệch thứ
+            today_start = datetime(now.year, now.month, now.day)
+            event_datetime = today_start + timedelta(days=days_left)
+            
             self._attr_extra_state_attributes = {
-                "ngày_âm_lịch_sự_kiện": self._event_date,
+                "ngay_am_lich_su_kien": self._event_date,
+                "ngay_duong_lich_tuong_ung": event_datetime.strftime("%d/%m/%Y"),
+                "thu_trong_tuan": THU[event_datetime.weekday()]
             }
         else:
             self._attr_native_value = "Không tính được"
+            self._attr_extra_state_attributes = {}
