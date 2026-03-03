@@ -30,8 +30,8 @@ Custom integration hiển thị thông tin âm lịch hằng ngày
 
 ## Automation để thông báo khi 1 Tuần Sau sẽ có sự kiện ( các bạn có thể tùy biến theo khả năng dựa vào các sensor)
 ```
-alias: "Thông báo Sự kiện Âm lịch (Trước 7 ngày)"
-description: "Gửi thông báo các sự kiện âm lịch còn 7 ngày nữa là tới"
+alias: "Thông báo Sự kiện Âm và Dương lịch (Trước 7 ngày)"
+description: "Gửi thông báo sự kiện đếm ngược còn 7 ngày"
 mode: single
 trigger:
   - platform: time
@@ -39,11 +39,21 @@ trigger:
 variables:
   su_kien_sap_toi: >
     {% set ns = namespace(events=[]) %}
+    
+    {# Quét sự kiện Âm lịch #}
     {% for state in states.sensor | selectattr('attributes.ngay_am_lich_su_kien', 'defined') %}
       {% if state.state == '7' %}
         {% set ns.events = ns.events + ['- ' ~ state.name ~ ' (Âm lịch: ' ~ state.attributes.ngay_am_lich_su_kien ~ ' | Dương lịch: ' ~ state.attributes.thu_trong_tuan ~ ', ' ~ state.attributes.ngay_duong_lich_tuong_ung ~ ')'] %}
       {% endif %}
     {% endfor %}
+
+    {# Quét sự kiện Dương lịch #}
+    {% for state in states.sensor | selectattr('attributes.ngay_duong_lich_su_kien', 'defined') %}
+      {% if state.state == '7' %}
+        {% set ns.events = ns.events + ['- ' ~ state.name ~ ' (Dương lịch: ' ~ state.attributes.ngay_duong_lich_su_kien ~ ' | Âm lịch quy đổi: ' ~ state.attributes.ngay_am_lich_tuong_ung ~ ')'] %}
+      {% endif %}
+    {% endfor %}
+    
     {{ ns.events | join('\n') }}
 condition:
   - condition: template
@@ -51,7 +61,7 @@ condition:
 action:
   - service: notify.notify
     data:
-      title: "📅 Sắp đến sự kiện âm lịch!"
+      title: "📅 Sắp đến sự kiện quan trọng!"
       message: >
         Chỉ còn 1 tuần nữa là đến các sự kiện sau:
         
