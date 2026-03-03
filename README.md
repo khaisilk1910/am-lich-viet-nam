@@ -25,6 +25,38 @@ Custom integration hiển thị thông tin âm lịch hằng ngày
      <img width="408" height="342" alt="image" src="https://github.com/user-attachments/assets/c0781c02-89bd-4a16-a1aa-58ec6552ee75" />
 
 
+## Automation để thông báo khi 1 Tuần Sau sẽ có sự kiện ( các bạn có thể tùy biến theo khả năng dựa vào các sensor)
+```
+alias: "Thông báo Sự kiện Âm lịch (Trước 7 ngày)"
+description: "Gửi thông báo các sự kiện âm lịch còn 7 ngày nữa là tới"
+mode: single
+trigger:
+  - platform: time
+    at: "08:00:00"
+variables:
+  su_kien_sap_toi: >
+    {% set ns = namespace(events=[]) %}
+    {% for state in states.sensor | selectattr('attributes.ngay_am_lich_su_kien', 'defined') %}
+      {% if state.state == '7' %}
+        {% set ns.events = ns.events + ['- ' ~ state.name ~ ' (Âm lịch: ' ~ state.attributes.ngay_am_lich_su_kien ~ ' | Dương lịch: ' ~ state.attributes.thu_trong_tuan ~ ', ' ~ state.attributes.ngay_duong_lich_tuong_ung ~ ')'] %}
+      {% endif %}
+    {% endfor %}
+    {{ ns.events | join('\n') }}
+condition:
+  - condition: template
+    value_template: "{{ su_kien_sap_toi | length > 0 }}"
+action:
+  - service: notify.notify
+    data:
+      title: "📅 Sắp đến sự kiện âm lịch!"
+      message: >
+        Chỉ còn 1 tuần nữa là đến các sự kiện sau:
+        
+        {{ su_kien_sap_toi }}
+        
+        Bạn hãy chuẩn bị nhé!
+```
+
 
 ## Sensor
 
