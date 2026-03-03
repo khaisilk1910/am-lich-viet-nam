@@ -8,6 +8,7 @@ Custom integration hiển thị thông tin âm lịch hằng ngày
 
 
 
+
 ## Cài đặt
 
 1. Nhấn nút bên dưới để thêm vào HACS trên Home Assistant.
@@ -23,6 +24,8 @@ Custom integration hiển thị thông tin âm lịch hằng ngày
      **Ví dụ:** **20/3**
      
      <img width="408" height="342" alt="image" src="https://github.com/user-attachments/assets/c0781c02-89bd-4a16-a1aa-58ec6552ee75" />
+
+
 
 
 ## Automation để thông báo khi 1 Tuần Sau sẽ có sự kiện ( các bạn có thể tùy biến theo khả năng dựa vào các sensor)
@@ -56,6 +59,8 @@ action:
         
         Bạn hãy chuẩn bị nhé!
 ```
+
+
 
 
 ## Sensor
@@ -150,6 +155,9 @@ card_mod:
         100% {box-shadow: 0 0 0 0 transparent;}
       }
 ```
+
+
+
 
 ## Thêm thẻ popup khi nhấn vào thẻ trên sẽ hiện chi tiết Âm Lịch
 
