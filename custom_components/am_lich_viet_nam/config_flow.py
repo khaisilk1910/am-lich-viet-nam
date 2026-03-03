@@ -18,7 +18,6 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 options={CONF_EVENTS: []}
             )
 
-        # Thêm data_schema trống để tránh cảnh báo form từ HA
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema({})
@@ -36,25 +35,27 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
         self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
-        """Bước 1: Menu chính (Sử dụng Form thay cho Menu để tránh lỗi 500)"""
-        events = self.config_entry.options.get(CONF_EVENTS)
+        """Bước 1: Menu chính bằng Form an toàn"""
+        events = self.config_entry.options.get(CONF_EVENTS, [])
         if not isinstance(events, list):
             events = []
 
         if user_input is not None:
-            if user_input.get("hanh_dong") == "Thêm sự kiện":
+            action = user_input.get("action")
+            if action == "add_event":
                 return await self.async_step_add_event()
-            elif user_input.get("hanh_dong") == "Xóa sự kiện":
+            elif action == "remove_event":
                 return await self.async_step_remove_event()
 
-        actions = ["Thêm sự kiện"]
+        # Dùng dictionary mapping để giao diện hiện tiếng Việt, hệ thống dùng tiếng Anh
+        actions_dict = {"add_event": "Thêm sự kiện"}
         if len(events) > 0:
-            actions.append("Xóa sự kiện")
+            actions_dict["remove_event"] = "Xóa sự kiện"
 
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
-                vol.Required("hanh_dong", default="Thêm sự kiện"): vol.In(actions)
+                vol.Required("action", default="add_event"): vol.In(actions_dict)
             })
         )
 
@@ -64,16 +65,16 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
         
         if user_input is not None:
             events.append({
-                "name": user_input.get("ten_su_kien", ""),
-                "date": user_input.get("ngay_am_lich", "")
+                "name": user_input.get("event_name", ""),
+                "date": user_input.get("event_date", "")
             })
             return self.async_create_entry(title="", data={CONF_EVENTS: events})
 
         return self.async_show_form(
             step_id="add_event",
             data_schema=vol.Schema({
-                vol.Required("ten_su_kien"): str,
-                vol.Required("ngay_am_lich"): str,
+                vol.Required("event_name", default=""): str,
+                vol.Required("event_date", default=""): str,
             })
         )
 
@@ -84,12 +85,12 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
         if not events:
             return await self.async_step_init()
 
+        # Tạo danh sách các sự kiện để hiển thị trong dropdown
         event_list = [f"{e.get('name')} ({e.get('date')})" for e in events]
-        # Loại bỏ các chuỗi trùng lặp để tránh thư viện voluptuous báo lỗi
         event_list = list(dict.fromkeys(event_list))
 
         if user_input is not None:
-            selected = user_input.get("chon_su_kien_de_xoa")
+            selected = user_input.get("event_to_remove")
             new_events = [
                 e for e in events 
                 if f"{e.get('name')} ({e.get('date')})" != selected
@@ -99,6 +100,6 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="remove_event",
             data_schema=vol.Schema({
-                vol.Required("chon_su_kien_de_xoa"): vol.In(event_list)
+                vol.Required("event_to_remove"): vol.In(event_list)
             })
         )
