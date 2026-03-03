@@ -73,6 +73,99 @@ action:
 
 
 
+## Thẻ hiển thị
+<img width="506" height="637" alt="image" src="https://github.com/user-attachments/assets/d280360d-afa0-48e3-bd8b-a788ed3a3584" />
+
+```
+type: vertical-stack
+cards:
+  - type: markdown
+    title: 📅 Sự Kiện Âm Lịch Sắp Tới
+    content: |
+      <table border="1" cellpadding="4" cellspacing="0" width="100%">
+        <tr>
+          <td align="center"><font size="3px" color="yellow"><b>Thứ</b></font></td>
+          <td align="center"><font size="3px" color="yellow"><b>Dương</b></font></td>
+          <td align="center"><font size="3px" color="yellow"><b>Âm</b></font></td>
+          <td align="center"><font size="3px" color="yellow"><b>Chi Tiết</b></font></td>
+        </tr>
+        {%- set ns = namespace(events=[]) -%}
+        {%- for state in states.sensor | selectattr('attributes.ngay_am_lich_su_kien', 'defined') -%}
+          {%- if state.state | int(-1) >= 0 -%}
+            {%- set ns.events = ns.events + [{
+              'thu': state.attributes.thu_trong_tuan, 
+              'duong': state.attributes.ngay_duong_lich_tuong_ung[:5], 
+              'name': state.name,
+              'am': state.attributes.ngay_am_lich_su_kien, 
+              'days': state.state | int
+            }] -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {# 3. Sắp xếp tất cả theo số ngày còn lại và in ra bảng #}
+        {%- for ev in ns.events | sort(attribute='days') -%}
+        <tr>
+          <td align="center"><font color="orange">{{ ev.thu }}</font></td>
+          <td align="center">{{ ev.duong }}</td>
+          <td align="center">{{ ev.am }}</td>
+          <td align="center">{{ ev.name }}<br><font color="orange"><i>(còn {{ ev.days }} ngày)<i></font></td>
+
+        </tr>
+        {%- endfor -%}
+      </table>
+    grid_options:
+      columns: full
+    card_mod:
+      style: |
+        ha-card {
+          background: rgba(246,220,131,1) !important;
+        }
+  - type: markdown
+    title: 📅 Sự Kiện Dương Lịch Sắp Tới
+    content: |
+      <table border="1" cellpadding="4" cellspacing="0" width="100%">
+        <tr>
+          <td align="center"><font size="3px" color="yellow"><b>Thứ</b></font></td>
+          <td align="center"><font size="3px" color="yellow"><b>Dương</b></font></td>
+          <td align="center"><font size="3px" color="yellow"><b>Âm</b></font></td>
+          <td align="center"><font size="3px" color="yellow"><b>Chi Tiết</b></font></td>
+        </tr>
+        {%- set ns = namespace(events=[]) -%}
+        {%- for state in states.sensor | selectattr('attributes.ngay_duong_lich_su_kien', 'defined') -%}
+          {%- if state.state | int(-1) >= 0 -%}
+            {%- set ns.events = ns.events + [{
+              'thu': state.attributes.thu_trong_tuan, 
+              'duong': state.attributes.ngay_duong_lich_su_kien[:5], 
+              'name': state.name,
+              'am': state.attributes.ngay_am_lich_tuong_ung, 
+              'days': state.state | int
+            }] -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {# 3. Sắp xếp tất cả theo số ngày còn lại và in ra bảng #}
+        {%- for ev in ns.events | sort(attribute='days') -%}
+        <tr>
+          <td align="center"><font color="orange">{{ ev.thu }}</font></td>
+          <td align="center">{{ ev.duong }}</td>
+          <td align="center">{{ ev.am }}</td>
+          <td align="center">{{ ev.name }}<br><font color="orange"><i>(còn {{ ev.days }} ngày)<i></font></td>
+
+        </tr>
+        {%- endfor -%}
+      </table>
+    grid_options:
+      columns: full
+    card_mod:
+      style: |
+        ha-card {
+          background: rgba(246,220,131,1) !important;
+        }
+
+```
+
+
+
+
+
 ## Sensor
 
 Sau khi cài đặt, bạn sẽ có sensor:
