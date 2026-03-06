@@ -242,13 +242,15 @@ card_mod:
   style:
     .: |
       ha-card {
+        height: 60px !important;
         border: 2.2px outset rgba(255,165,0,.8) !important;
       }
     ha-tile-icon$: |
       .container {
         width: 60px !important;
         height: 60px !important;
-        margin-top: -13px !important;
+        margin-top: -11px !important;
+        margin-left: -10px !important;
         animation: rotate-center 1s ease-in-out infinite alternate-reverse both;
       }
       @keyframes rotate-center {
@@ -265,7 +267,7 @@ card_mod:
       .primary {
         color: rgba(255,165,0,1) !important;
         font-weight: bold !important;
-        margin-top: -11px !important;
+        margin-top: -5px !important;
         margin-left: 5px !important;
         font-size: clamp(12px, 16px, 18px) !important;
       }
@@ -287,6 +289,7 @@ card_mod:
         70% {box-shadow: 0 0 0 10px transparent;}
         100% {box-shadow: 0 0 0 0 transparent;}
       }
+
 ```
 
 
