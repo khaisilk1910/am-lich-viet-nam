@@ -79,19 +79,34 @@ action:
 ```
 type: vertical-stack
 cards:
+  - type: tile
+    entity: input_number.su_kien_am_duong_sap_toi
+    name: Chọn số ngày
+    icon: mdi:calendar-filter
+    color: accent
+    vertical: false
+    features:
+      - style: slider
+        type: numeric-input
+    features_position: inline
+    card_mod:
+      style: |
+        ha-card {
+          background: rgba(0,0,0,0.3) !important;
+        }
   - type: markdown
     title: 📅 Sự Kiện Âm Lịch Sắp Tới
-    content: |
-      <table border="1" cellpadding="4" cellspacing="0" width="100%">
+    content: >
+      <table border="1" cellpadding="4" cellspacing="0" width="100%"
+      style="border-collapse: collapse;">
         <tr>
-          <td align="center"><font size="3px" color="yellow"><b>Thứ</b></font></td>
-          <td align="center"><font size="3px" color="yellow"><b>Dương</b></font></td>
-          <td align="center"><font size="3px" color="yellow"><b>Âm</b></font></td>
+          <td align="center"><font size="3px" color="yellow"><b>Ngày</b></font></td>
           <td align="center"><font size="3px" color="yellow"><b>Chi Tiết</b></font></td>
         </tr>
         {%- set ns = namespace(events=[]) -%}
+        {%- set so_ngay = states('input_number.su_kien_am_duong_sap_toi')| int(365) -%}
         {%- for state in states.sensor | selectattr('attributes.ngay_am_lich_su_kien', 'defined') -%}
-          {%- if state.state | int(-1) >= 0 -%}
+          {%- if 0 <= state.state | int(-1) <= so_ngay -%}
             {%- set ns.events = ns.events + [{
               'thu': state.attributes.thu_trong_tuan, 
               'duong': state.attributes.ngay_duong_lich_tuong_ung[:5], 
@@ -101,37 +116,44 @@ cards:
             }] -%}
           {%- endif -%}
         {%- endfor -%}
-        {# 3. Sắp xếp tất cả theo số ngày còn lại và in ra bảng #}
-        {%- for ev in ns.events | sort(attribute='days') -%}
-        <tr>
-          <td align="center"><font color="orange">{{ ev.thu }}</font></td>
-          <td align="center">{{ ev.duong }}</td>
-          <td align="center">{{ ev.am }}</td>
-          <td align="center">{{ ev.name }}<br><font color="orange"><i>(còn {{ ev.days }} ngày)<i></font></td>
-
-        </tr>
-        {%- endfor -%}
+        
+        {%- if ns.events | count > 0 -%}
+          {%- for ev in ns.events | sort(attribute='days') -%}
+          <tr>
+            <td align="center" width="30%">
+              <div><font color="orange">{{ ev.thu }}</font></div>
+              <div><font size="5"><b>{{ ev.duong }}</b></font></div>
+              <div><font color="orange">{{ ev.am }}</font></div>
+            </td>
+            <td align="center">{{ ev.name }}<br><font color="orange"><i>(còn {{ ev.days }} ngày)</i></font></td>
+          </tr>
+          {%- endfor -%}
+        {%- else -%}
+          <tr>
+            <td colspan="2" align="center" style="padding: 20px;">Không có sự kiện nào trong {{ so_ngay }} ngày tới</td>
+          </tr>
+        {%- endif -%}
       </table>
     grid_options:
       columns: full
     card_mod:
       style: |
         ha-card {
-          background: rgba(246,220,131,1) !important;
+          background: rgba(0,0,0,0.3) !important;
         }
   - type: markdown
     title: 📅 Sự Kiện Dương Lịch Sắp Tới
-    content: |
-      <table border="1" cellpadding="4" cellspacing="0" width="100%">
+    content: >
+      <table border="1" cellpadding="4" cellspacing="0" width="100%"
+      style="border-collapse: collapse;">
         <tr>
-          <td align="center"><font size="3px" color="yellow"><b>Thứ</b></font></td>
-          <td align="center"><font size="3px" color="yellow"><b>Dương</b></font></td>
-          <td align="center"><font size="3px" color="yellow"><b>Âm</b></font></td>
+          <td align="center"><font size="3px" color="yellow"><b>Ngày</b></font></td>
           <td align="center"><font size="3px" color="yellow"><b>Chi Tiết</b></font></td>
         </tr>
         {%- set ns = namespace(events=[]) -%}
+        {%- set so_ngay = states('input_number.su_kien_am_duong_sap_toi')| int(365) -%}
         {%- for state in states.sensor | selectattr('attributes.ngay_duong_lich_su_kien', 'defined') -%}
-          {%- if state.state | int(-1) >= 0 -%}
+          {%- if 0 <= state.state | int(-1) <= so_ngay -%}
             {%- set ns.events = ns.events + [{
               'thu': state.attributes.thu_trong_tuan, 
               'duong': state.attributes.ngay_duong_lich_su_kien[:5], 
@@ -141,24 +163,32 @@ cards:
             }] -%}
           {%- endif -%}
         {%- endfor -%}
-        {# 3. Sắp xếp tất cả theo số ngày còn lại và in ra bảng #}
-        {%- for ev in ns.events | sort(attribute='days') -%}
-        <tr>
-          <td align="center"><font color="orange">{{ ev.thu }}</font></td>
-          <td align="center">{{ ev.duong }}</td>
-          <td align="center">{{ ev.am }}</td>
-          <td align="center">{{ ev.name }}<br><font color="orange"><i>(còn {{ ev.days }} ngày)<i></font></td>
 
-        </tr>
-        {%- endfor -%}
+        {%- if ns.events | count > 0 -%}
+          {%- for ev in ns.events | sort(attribute='days') -%}
+          <tr>
+            <td align="center" width="30%">
+              <div><font color="orange">{{ ev.thu }}</font></div>
+              <div><font size="5"><b>{{ ev.duong }}</b></font></div>
+              <div><font color="orange">{{ ev.am }}</font></div>
+            </td>
+            <td align="center" width="70%">{{ ev.name }}<br><font color="orange"><i>(còn {{ ev.days }} ngày)</i></font></td>
+          </tr>
+          {%- endfor -%}
+        {%- else -%}
+          <tr>
+            <td colspan="2" align="center" style="padding: 20px;">Không có sự kiện nào trong {{ so_ngay }} ngày tới</td>
+          </tr>
+        {%- endif -%}
       </table>
     grid_options:
       columns: full
     card_mod:
       style: |
         ha-card {
-          background: rgba(246,220,131,1) !important;
+          background: rgba(0,0,0,0.3) !important;
         }
+
 
 ```
 
