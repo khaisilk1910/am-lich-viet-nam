@@ -74,7 +74,8 @@ action:
 
 
 ## Thẻ hiển thị
-<img width="506" height="637" alt="image" src="https://github.com/user-attachments/assets/d280360d-afa0-48e3-bd8b-a788ed3a3584" />
+<img width="509" height="460" alt="image" src="https://github.com/user-attachments/assets/2a67e662-b9b0-4b2a-89f3-e2f99d09e1b9" />
+
 
 ```
 type: vertical-stack
