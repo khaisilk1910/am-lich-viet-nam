@@ -155,7 +155,7 @@ cards:
               <div style="color:orange; text-align: right; padding-right: 10px;">
                 <span style="font-style: italic;">
                   {{ ev.days }} ngày
-                </span>⏳
+                </span><span class="flip-emoji" style="font-size:18px;">⏳</span>
               </div>
             </td>
             
@@ -163,8 +163,8 @@ cards:
           {%- endfor -%}
         {%- else -%}
           <tr cellpadding="2" cellspacing="4">
-            <td colspan="3" align="center"">
-              Không có sự kiện nào trong {{ so_ngay }} ngày tới
+            <td colspan="3" align="left">
+              Không có sự kiện nào trong <span style="color:red; font-size:20px; font-weight:bold;">{{ so_ngay }}</span> ngày tới
             </td>
           </tr>
         {%- endif -%}
@@ -173,6 +173,17 @@ cards:
       style: |
         ha-card {
           background: rgba(0,0,0,0.3) !important;
+        }
+        .flip-emoji {
+          display: inline-block;
+          animation: flip-hourglass 6s ease-in-out 3s infinite;
+        }
+        @keyframes flip-hourglass {
+          0% { transform: rotate(0deg); }
+          30% { transform: rotate(180deg); }
+          50% { transform: rotate(180deg); }
+          80% { transform: rotate(0deg); }
+          100% { transform: rotate(0deg); }
         }
   - type: custom:html-template-card
     visibility:
@@ -236,7 +247,8 @@ cards:
               <div style="color:orange; text-align: right; padding-right: 10px;">
                 <span style="font-style: italic;">
                   {{ ev.days }} ngày
-                </span>⏳
+                </span>
+                <span class="flip-emoji" style="font-size:18px;">⏳</span>
               </div>
             </td>
             
@@ -244,8 +256,8 @@ cards:
           {%- endfor -%}
         {%- else -%}
           <tr cellpadding="2" cellspacing="4">
-            <td colspan="3" align="center"">
-              Không có sự kiện nào trong {{ so_ngay }} ngày tới
+            <td colspan="3" align="left">
+              Không có sự kiện nào trong <span style="color:red; font-size:25px; font-weight:bold;">{{ so_ngay }}</span> ngày tới
             </td>
           </tr>
         {%- endif -%}
@@ -254,6 +266,17 @@ cards:
       style: |
         ha-card {
           background: rgba(0,0,0,0.3) !important;
+        }
+        .flip-emoji {
+          display: inline-block;
+          animation: flip-hourglass 6s ease-in-out 3s infinite;
+        }
+        @keyframes flip-hourglass {
+          0% { transform: rotate(0deg); }
+          30% { transform: rotate(180deg); }
+          50% { transform: rotate(180deg); }
+          80% { transform: rotate(0deg); }
+          100% { transform: rotate(0deg); }
         }
 ```
 
