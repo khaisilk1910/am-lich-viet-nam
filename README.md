@@ -75,6 +75,7 @@ action:
 
 ## Thẻ hiển thị
 <img width="504" height="445" alt="image" src="https://github.com/user-attachments/assets/341e5a35-3895-4177-b70a-f65947785117" />
+
 - Cài thêm: [Home-Assistant-Lovelace-HTML-Jinja2-Template-card](https://github.com/PiotrMachowski/Home-Assistant-Lovelace-HTML-Jinja2-Template-card) và card_mod
 
 ```
