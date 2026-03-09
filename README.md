@@ -74,15 +74,19 @@ action:
 
 
 ## Thẻ hiển thị
-<img width="509" height="460" alt="image" src="https://github.com/user-attachments/assets/2a67e662-b9b0-4b2a-89f3-e2f99d09e1b9" />
+<img width="504" height="445" alt="image" src="https://github.com/user-attachments/assets/341e5a35-3895-4177-b70a-f65947785117" />
 
 
 ```
 type: vertical-stack
 cards:
   - type: tile
+    visibility:
+      - condition: user
+        users:
+          - 5ca39776d7c446b9b9653a60d5dd2c05
     entity: input_number.su_kien_am_duong_sap_toi
-    name: Chọn số ngày
+    name: Trượt số ngày
     icon: mdi:calendar-filter
     color: accent
     vertical: false
@@ -95,15 +99,12 @@ cards:
         ha-card {
           background: rgba(0,0,0,0.3) !important;
         }
-  - type: markdown
-    title: 📅 Sự Kiện Âm Lịch Sắp Tới
+  - type: custom:html-template-card
+    title: ⏰ Sự kiện Âm Lịch sắp đến
+    ignore_line_breaks: true
     content: >
-      <table border="1" cellpadding="4" cellspacing="0" width="100%"
-      style="border-collapse: collapse;">
-        <tr>
-          <td align="center"><font size="3px" color="yellow"><b>Ngày</b></font></td>
-          <td align="center"><font size="3px" color="yellow"><b>Chi Tiết</b></font></td>
-        </tr>
+      <table border="0" cellpadding="2" cellspacing="4" width="100%"
+      style="margin-top: -10px;">
         {%- set ns = namespace(events=[]) -%}
         {%- set so_ngay = states('input_number.su_kien_am_duong_sap_toi')| int(365) -%}
         {%- for state in states.sensor | selectattr('attributes.ngay_am_lich_su_kien', 'defined') -%}
@@ -120,37 +121,71 @@ cards:
         
         {%- if ns.events | count > 0 -%}
           {%- for ev in ns.events | sort(attribute='days') -%}
+          
+          {%- set mau_td = "blue" -%}
+          {%- if ev.days <= 2 -%}
+            {%- set mau_td = "red" -%}
+          {%- elif ev.days <= 7 -%}
+            {%- set mau_td = "orange" -%}
+          {%- elif 7 < ev.days <= 15  -%}
+            {%- set mau_td = "yellow" -%}
+          {%- endif -%}
+          
           <tr>
-            <td align="center" width="30%">
-              <div><font color="orange">{{ ev.thu }}</font></div>
-              <div><font size="5"><b>{{ ev.duong }}</b></font></div>
-              <div><font color="orange">{{ ev.am }}</font></div>
+          
+            <td align="center" width="20%" style="border-bottom: solid 1px gray; vertical-align: middle;">
+              <div style="color:orange; margin-bottom: -8px;">
+                {{ ev.thu }}
+              </div>
+              <div style="color:white; font-size:25px; font-weight:bold;">
+                {{ ev.duong }}
+              </div>
+              <div style="color:orange; margin-top: -8px;">
+                {{ ev.am }}
+              </div>
             </td>
-            <td align="center">{{ ev.name }}<br><font color="orange"><i>(còn {{ ev.days }} ngày)</i></font></td>
+            
+            <td align="center" style="background:{{mau_td}}; vertical-align: middle; margin-bottom: 5px; padding-bottom: 5px;"></td>
+            
+            <td align="center" width="80%" style="border-bottom: solid 1px gray;">
+              <div style="color:white; text-align: left; padding-left: 10px;">
+                {{ev.name}}
+              </div>
+              <div style="color:orange; text-align: right; padding-right: 10px;">
+                <span style="font-style: italic;">
+                  {{ ev.days }} ngày
+                </span>⏳
+              </div>
+            </td>
+            
           </tr>
           {%- endfor -%}
         {%- else -%}
-          <tr>
-            <td colspan="2" align="center" style="padding: 20px;">Không có sự kiện nào trong {{ so_ngay }} ngày tới</td>
+          <tr cellpadding="2" cellspacing="4">
+            <td colspan="3" align="center"">
+              Không có sự kiện nào trong {{ so_ngay }} ngày tới
+            </td>
           </tr>
         {%- endif -%}
       </table>
-    grid_options:
-      columns: full
     card_mod:
       style: |
         ha-card {
           background: rgba(0,0,0,0.3) !important;
         }
-  - type: markdown
-    title: 📅 Sự Kiện Dương Lịch Sắp Tới
+  - type: custom:html-template-card
+    visibility:
+      - condition: user
+        users:
+          - 5ca39776d7c446b9b9653a60d5dd2c05
+          - 3c7fe20a96f74d77bf9847b5675be1b7
+          - 08923e3e3ef643ac93a3cdffb81e5fbd
+          - dabc7c60685747118b4b716233015bd4
+    title: ⏰ Sự kiện Dương Lịch sắp đến
+    ignore_line_breaks: true
     content: >
-      <table border="1" cellpadding="4" cellspacing="0" width="100%"
-      style="border-collapse: collapse;">
-        <tr>
-          <td align="center"><font size="3px" color="yellow"><b>Ngày</b></font></td>
-          <td align="center"><font size="3px" color="yellow"><b>Chi Tiết</b></font></td>
-        </tr>
+      <table border="0" cellpadding="2" cellspacing="4" width="100%"
+      style="margin-top: -10px;">
         {%- set ns = namespace(events=[]) -%}
         {%- set so_ngay = states('input_number.su_kien_am_duong_sap_toi')| int(365) -%}
         {%- for state in states.sensor | selectattr('attributes.ngay_duong_lich_su_kien', 'defined') -%}
@@ -164,33 +199,61 @@ cards:
             }] -%}
           {%- endif -%}
         {%- endfor -%}
-
+        
         {%- if ns.events | count > 0 -%}
           {%- for ev in ns.events | sort(attribute='days') -%}
+                
+          {%- set mau_td = "blue" -%}
+          {%- if ev.days <= 2 -%}
+            {%- set mau_td = "red" -%}
+          {%- elif ev.days <= 7 -%}
+            {%- set mau_td = "orange" -%}
+          {%- elif 7 < ev.days <= 15  -%}
+            {%- set mau_td = "yellow" -%}
+          {%- endif -%}
+          
           <tr>
-            <td align="center" width="30%">
-              <div><font color="orange">{{ ev.thu }}</font></div>
-              <div><font size="5"><b>{{ ev.duong }}</b></font></div>
-              <div><font color="orange">{{ ev.am }}</font></div>
+          
+            <td align="center" width="20%" style="border-bottom: solid 1px gray; vertical-align: middle;">
+              <div style="color:orange; margin-bottom: -8px;">
+                {{ ev.thu }}
+              </div>
+              <div style="color:white; font-size:25px; font-weight:bold;">
+                {{ ev.duong }}
+              </div>
+              <div style="color:orange; margin-top: -8px;">
+                {{ ev.am }}
+              </div>
             </td>
-            <td align="center" width="70%">{{ ev.name }}<br><font color="orange"><i>(còn {{ ev.days }} ngày)</i></font></td>
+            
+            <td align="center" style="background:blue; vertical-align: middle; margin-bottom: 5px; padding-bottom: 5px;"></td>
+            
+            <td align="center" width="80%" style="border-bottom: solid 1px gray;">
+              <div style="color:white; text-align: left; padding-left: 10px;">
+                {{ev.name}}
+              </div>
+              <div style="color:orange; text-align: right; padding-right: 10px;">
+                <span style="font-style: italic;">
+                  {{ ev.days }} ngày
+                </span>⏳
+              </div>
+            </td>
+            
           </tr>
           {%- endfor -%}
         {%- else -%}
-          <tr>
-            <td colspan="2" align="center" style="padding: 20px;">Không có sự kiện nào trong {{ so_ngay }} ngày tới</td>
+          <tr cellpadding="2" cellspacing="4">
+            <td colspan="3" align="center"">
+              Không có sự kiện nào trong {{ so_ngay }} ngày tới
+            </td>
           </tr>
         {%- endif -%}
       </table>
-    grid_options:
-      columns: full
     card_mod:
       style: |
         ha-card {
           background: rgba(0,0,0,0.3) !important;
         }
-
-
 ```
 
 
