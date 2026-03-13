@@ -81,40 +81,14 @@ action:
 ```
 type: vertical-stack
 cards:
-  - type: tile
-    visibility:
-      - condition: user
-        users:
-          - 5ca39776d7c446b9b9653a60d5dd2c05
-    entity: input_number.su_kien_am_duong_sap_toi
-    name: Trượt số ngày
-    icon: mdi:calendar-filter
-    color: accent
-    vertical: false
-    features:
-      - style: slider
-        type: numeric-input
-    features_position: inline
-    card_mod:
-      style: |
-        ha-card {
-          background: rgba(0,0,0,0.3) !important;
-        }
   - type: custom:html-template-card
-    visibility:
-      - condition: user
-        users:
-          - 5ca39776d7c446b9b9653a60d5dd2c05
-          - 3c7fe20a96f74d77bf9847b5675be1b7
-          - 08923e3e3ef643ac93a3cdffb81e5fbd
-          - dabc7c60685747118b4b716233015bd4
     title: ⏰ Sự kiện sắp đến
     ignore_line_breaks: true
     content: |
       <div class="scroll-area">
         <table border="0" cellpadding="2" cellspacing="4" width="100%" style="margin-top: -10px;">
           {%- set ns = namespace(events=[]) -%}
-          {%- set so_ngay = states('input_number.su_kien_am_duong_sap_toi')| int(365) -%}
+          {%- set so_ngay = 365 -%}
           
           {# 1. Lấy danh sách sự kiện ÂM LỊCH #}
           {%- for state in states.sensor | selectattr('attributes.ngay_am_lich_su_kien', 'defined') -%}
