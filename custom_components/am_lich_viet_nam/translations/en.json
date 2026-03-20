@@ -10,14 +10,14 @@
         "data": {
           "event_name": "Tên sự kiện",
           "event_date": "Ngày diễn ra (ngày/tháng)",
-          "event_details": "Chi tiết (Tuỳ chọn)"
+          "event_details": "Chi tiết"
         }
       },
       "event_duong_lich": {
         "data": {
           "event_name": "Tên sự kiện",
           "event_date": "Ngày diễn ra (ngày/tháng)",
-          "event_details": "Chi tiết (Tuỳ chọn)"
+          "event_details": "Chi tiết"
         }
       }
     }
