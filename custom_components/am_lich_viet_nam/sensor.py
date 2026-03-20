@@ -1,12 +1,14 @@
-from datetime import datetime, timedelta
+import os
+import json
 import logging
+from datetime import datetime, timedelta
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
-from .const import CONF_EVENTS
-
+from .const import DOMAIN, FILE_EVENTS, SIGNAL_RELOAD_EVENTS
 from .amlich_core import (
     get_lunar_date, get_year_can_chi, get_month_name, get_lunar_month_length, THU,
     get_can_chi_day_month_year, get_can_hour_0, get_tiet_khi, get_gio_hoang_dao,
@@ -16,21 +18,77 @@ from .amlich_core import (
 
 _LOGGER = logging.getLogger(__name__)
 
+def load_events_from_file(hass):
+    """Đọc file ở luồng phụ"""
+    file_path = hass.config.path(DOMAIN, FILE_EVENTS)
+    try:
+        if os.path.exists(file_path):
+            with open(file_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        _LOGGER.error(f"Lỗi đọc file sự kiện JSON: {e}")
+    return []
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
-    """Set up the sensor from a config entry."""
     is_main = entry.data.get("is_main", entry.data.get("event_name") is None)
     
     if is_main:
+        # 1. Thêm Sensor lịch hằng ngày
         async_add_entities([AmLichSensor(entry)], True)
+        
+        # 2. Quản lý danh sách các entity sự kiện để không bị trùng lặp
+        active_entities = {}
+
+        async def load_and_add_entities():
+            # Đọc file không gây nghẽn Home Assistant
+            events = await hass.async_add_executor_job(load_events_from_file, hass)
+            new_entities = []
+            
+            for ev in events:
+                ev_id = ev.get("id")
+                if not ev_id: continue # Bỏ qua nếu lỗi không có ID
+                
+                if ev_id not in active_entities:
+                    # Tạo sensor mới
+                    if ev.get("type") == "solar":
+                        entity = DuongLichEventSensor(ev_id, ev)
+                    else:
+                        entity = AmLichEventSensor(ev_id, ev)
+                    
+                    new_entities.append(entity)
+                    active_entities[ev_id] = entity
+                else:
+                    # Nếu đã tồn tại, cập nhật dữ liệu (phục vụ cho trường hợp reload)
+                    entity = active_entities[ev_id]
+                    entity.update_data(ev)
+                    entity.async_schedule_update_ha_state(True)
+
+            # Thêm hàng loạt các entity mới vào HA
+            if new_entities:
+                async_add_entities(new_entities, True)
+
+        @callback
+        def handle_reload_signal():
+            """Hàm mồi bắt tín hiệu để chạy tiến trình quét file"""
+            hass.async_create_task(load_and_add_entities())
+
+        # Lắng nghe tín hiệu khi user thêm sự kiện hoặc gọi service
+        async_dispatcher_connect(hass, SIGNAL_RELOAD_EVENTS, handle_reload_signal)
+        
+        # Chạy quét file lần đầu khi khởi động HA
+        await load_and_add_entities()
+        
     else:
-        # Nhận diện loại sự kiện (mặc định lunar để tương thích ngược với các sự kiện cũ)
+        # Giữ lại logic cũ để tương thích ngược với các sự kiện người dùng đã tạo từ phiên bản trước
         event_type = entry.data.get("event_type", "lunar")
         if event_type == "solar":
-            async_add_entities([DuongLichEventSensor(entry)], True)
+            async_add_entities([DuongLichEventSensor(entry.entry_id, entry.data)], True)
         else:
-            async_add_entities([AmLichEventSensor(entry)], True)
+            async_add_entities([AmLichEventSensor(entry.entry_id, entry.data)], True)
+
 
 class AmLichSensor(SensorEntity):
+    # ... (Giữ nguyên toàn bộ Class AmLichSensor của bạn không thay đổi) ...
     def __init__(self, entry: ConfigEntry):
         self._entry = entry
         self._attr_name = "Âm lịch hằng ngày"
@@ -94,18 +152,25 @@ class AmLichSensor(SensorEntity):
         }
 
 class AmLichEventSensor(SensorEntity):
-    def __init__(self, entry: ConfigEntry):
-        self._entry = entry
-        self._event_name = entry.data.get("event_name", "Sự kiện")
-        self._event_date = entry.data.get("event_date", "1/1")
-        self._event_details = entry.data.get("event_details", "")
-        
-        self._attr_name = self._event_name
-        self._attr_unique_id = f"amlich_event_{entry.entry_id}"
+    def __init__(self, unique_id, data):
+        self._data = data
+        self._attr_unique_id = f"amlich_event_{unique_id}"
         self._attr_icon = "mdi:calendar-clock"
         self._attr_native_unit_of_measurement = "ngày"
+        self._update_internal_data()
+
+    def update_data(self, new_data):
+        self._data = new_data
+        self._update_internal_data()
+
+    def _update_internal_data(self):
+        self._event_name = self._data.get("event_name", "Sự kiện")
+        self._event_date = self._data.get("event_date", "1/1")
+        self._event_details = self._data.get("event_details", "")
+        self._attr_name = self._event_name
 
     async def async_update(self):
+        # ... (Giữ nguyên phần tính toán cũ) ...
         now = datetime.now()
         lunar = get_lunar_date(now.day, now.month, now.year)
         if not lunar:
@@ -166,18 +231,25 @@ class AmLichEventSensor(SensorEntity):
             self._attr_extra_state_attributes = {}
 
 class DuongLichEventSensor(SensorEntity):
-    def __init__(self, entry: ConfigEntry):
-        self._entry = entry
-        self._event_name = entry.data.get("event_name", "Sự kiện")
-        self._event_date = entry.data.get("event_date", "1/1")
-        self._event_details = entry.data.get("event_details", "")
-        
-        self._attr_name = self._event_name
-        self._attr_unique_id = f"duonglich_event_{entry.entry_id}"
+    def __init__(self, unique_id, data):
+        self._data = data
+        self._attr_unique_id = f"duonglich_event_{unique_id}"
         self._attr_icon = "mdi:calendar-star"
         self._attr_native_unit_of_measurement = "ngày"
+        self._update_internal_data()
+
+    def update_data(self, new_data):
+        self._data = new_data
+        self._update_internal_data()
+
+    def _update_internal_data(self):
+        self._event_name = self._data.get("event_name", "Sự kiện")
+        self._event_date = self._data.get("event_date", "1/1")
+        self._event_details = self._data.get("event_details", "")
+        self._attr_name = self._event_name
 
     async def async_update(self):
+        # ... (Giữ nguyên phần tính toán cũ) ...
         now = datetime.now()
         try:
             parts = self._event_date.replace("-", "/").split('/')
@@ -189,19 +261,17 @@ class DuongLichEventSensor(SensorEntity):
 
         target_year = now.year
         
-        # Xử lý an toàn cho ngày 29/2
         try:
             event_date_this_year = datetime(target_year, t_month, t_day)
         except ValueError:
             if t_month == 2 and t_day == 29:
-                event_date_this_year = datetime(target_year, 3, 1) # Không nhuận thì dời sang 1/3
+                event_date_this_year = datetime(target_year, 3, 1) 
             else:
                 self._attr_native_value = "Ngày không hợp lệ"
                 return
 
         today_start = datetime(now.year, now.month, now.day)
         
-        # Nếu ngày sự kiện trong năm nay đã qua, tính cho năm sau
         if event_date_this_year < today_start:
             target_year += 1
             try:
@@ -213,7 +283,6 @@ class DuongLichEventSensor(SensorEntity):
         days_left = (event_date_this_year - today_start).days
         self._attr_native_value = days_left
         
-        # Tính ngày Âm lịch tương ứng
         lunar_equiv = get_lunar_date(event_date_this_year.day, event_date_this_year.month, event_date_this_year.year)
         ngay_am_str = f"{lunar_equiv.day}/{lunar_equiv.month}" if lunar_equiv else "Không tính được"
         if lunar_equiv and lunar_equiv.leap == 1:
