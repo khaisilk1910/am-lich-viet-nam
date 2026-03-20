@@ -23,7 +23,7 @@
     },
     "abort": {
       "already_configured": "Lịch Âm chính đã được thiết lập.",
-      "event_saved_to_json": "Thành công! Sự kiện đã được lưu vào file events.json và cảm biến (sensor) đã được tạo/cập nhật ngay lập tức."
+      "event_saved_to_json": "Thành công! Sự kiện đã được lưu vào file events.json và cập nhật ngay lập tức."
     }
   }
 }
