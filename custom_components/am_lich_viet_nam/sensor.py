@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import uuid
 from datetime import datetime, timedelta
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -33,23 +34,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     is_main = entry.data.get("is_main", entry.data.get("event_name") is None)
     
     if is_main:
-        # 1. Thêm Sensor lịch hằng ngày
         async_add_entities([AmLichSensor(entry)], True)
-        
-        # 2. Quản lý danh sách các entity sự kiện để không bị trùng lặp
         active_entities = {}
 
         async def load_and_add_entities():
-            # Đọc file không gây nghẽn Home Assistant
             events = await hass.async_add_executor_job(load_events_from_file, hass)
             new_entities = []
+            file_needs_update = False 
             
             for ev in events:
                 ev_id = ev.get("id")
-                if not ev_id: continue # Bỏ qua nếu lỗi không có ID
+                
+                # Tự động cấp ID nếu người dùng gõ tay vào JSON mà thiếu
+                if not ev_id: 
+                    ev_id = str(uuid.uuid4())
+                    ev["id"] = ev_id
+                    file_needs_update = True
+                    _LOGGER.info(f"Đã tự động tạo ID mới cho sự kiện gõ tay: {ev.get('event_name')}")
                 
                 if ev_id not in active_entities:
-                    # Tạo sensor mới
                     if ev.get("type") == "solar":
                         entity = DuongLichEventSensor(ev_id, ev)
                     else:
@@ -58,37 +61,37 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                     new_entities.append(entity)
                     active_entities[ev_id] = entity
                 else:
-                    # Nếu đã tồn tại, cập nhật dữ liệu (phục vụ cho trường hợp reload)
                     entity = active_entities[ev_id]
                     entity.update_data(ev)
                     entity.async_schedule_update_ha_state(True)
 
-            # Thêm hàng loạt các entity mới vào HA
             if new_entities:
                 async_add_entities(new_entities, True)
 
+            # Ghi đè file nếu có sự kiện mới được cấp ID
+            if file_needs_update:
+                def save_corrected_json():
+                    file_path = hass.config.path(DOMAIN, FILE_EVENTS)
+                    with open(file_path, "w", encoding="utf-8") as f:
+                        json.dump(events, f, ensure_ascii=False, indent=4)
+                await hass.async_add_executor_job(save_corrected_json)
+
         @callback
         def handle_reload_signal():
-            """Hàm mồi bắt tín hiệu để chạy tiến trình quét file"""
             hass.async_create_task(load_and_add_entities())
 
-        # Lắng nghe tín hiệu khi user thêm sự kiện hoặc gọi service
         async_dispatcher_connect(hass, SIGNAL_RELOAD_EVENTS, handle_reload_signal)
-        
-        # Chạy quét file lần đầu khi khởi động HA
         await load_and_add_entities()
         
     else:
-        # Giữ lại logic cũ để tương thích ngược với các sự kiện người dùng đã tạo từ phiên bản trước
+        # Tương thích ngược với config cũ
         event_type = entry.data.get("event_type", "lunar")
         if event_type == "solar":
             async_add_entities([DuongLichEventSensor(entry.entry_id, entry.data)], True)
         else:
             async_add_entities([AmLichEventSensor(entry.entry_id, entry.data)], True)
 
-
 class AmLichSensor(SensorEntity):
-    # ... (Giữ nguyên toàn bộ Class AmLichSensor của bạn không thay đổi) ...
     def __init__(self, entry: ConfigEntry):
         self._entry = entry
         self._attr_name = "Âm lịch hằng ngày"
@@ -170,7 +173,6 @@ class AmLichEventSensor(SensorEntity):
         self._attr_name = self._event_name
 
     async def async_update(self):
-        # ... (Giữ nguyên phần tính toán cũ) ...
         now = datetime.now()
         lunar = get_lunar_date(now.day, now.month, now.year)
         if not lunar:
@@ -249,7 +251,6 @@ class DuongLichEventSensor(SensorEntity):
         self._attr_name = self._event_name
 
     async def async_update(self):
-        # ... (Giữ nguyên phần tính toán cũ) ...
         now = datetime.now()
         try:
             parts = self._event_date.replace("-", "/").split('/')
