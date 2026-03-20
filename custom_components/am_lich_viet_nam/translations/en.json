@@ -8,14 +8,14 @@
       },
       "event_am_lich": {
         "data": {
-          "event_name": "Tên sự kiện",
+          "event_name": "Tên sự kiện Âm Lịch",
           "event_date": "Ngày diễn ra (ngày/tháng)",
           "event_details": "Chi tiết (Tuỳ chọn)"
         }
       },
       "event_duong_lich": {
         "data": {
-          "event_name": "Tên sự kiện",
+          "event_name": "Tên sự kiện Dương Lịch",
           "event_date": "Ngày diễn ra (ngày/tháng)",
           "event_details": "Chi tiết (Tuỳ chọn)"
         }
