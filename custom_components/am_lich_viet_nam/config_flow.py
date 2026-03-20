@@ -21,7 +21,6 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 except ValueError:
                     pass
         
-        # Thêm ID duy nhất cho sự kiện để sensor dễ quản lý
         event_data["id"] = str(uuid.uuid4())
         events.append(event_data)
         
@@ -64,12 +63,8 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 "event_date": user_input.get("event_date"),
                 "event_details": user_input.get("event_details", "")
             }
-            # Ghi file
             await self.hass.async_add_executor_job(self._save_event_to_json, event_data)
-            # Kích hoạt update sensor ngay lập tức
             async_dispatcher_send(self.hass, SIGNAL_RELOAD_EVENTS)
-            
-            # Đóng luồng cài đặt và báo thành công
             return self.async_abort(reason="event_saved_to_json")
 
         return self.async_show_form(
@@ -91,11 +86,8 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 "event_date": user_input.get("event_date"),
                 "event_details": user_input.get("event_details", "")
             }
-            # Ghi file
             await self.hass.async_add_executor_job(self._save_event_to_json, event_data)
-            # Kích hoạt update sensor ngay lập tức
             async_dispatcher_send(self.hass, SIGNAL_RELOAD_EVENTS)
-            
             return self.async_abort(reason="event_saved_to_json")
 
         return self.async_show_form(
