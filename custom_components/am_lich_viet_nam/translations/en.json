@@ -1,15 +1,12 @@
 {
   "config": {
     "step": {
-      "user": {
-        "data": {
-          "action": "Chọn thao tác"
-        }
-      },
+      "user": { "data": { "action": "Chọn thao tác" } },
       "event_am_lich": {
         "data": {
           "event_name": "Tên sự kiện",
           "event_date": "Ngày diễn ra (ngày/tháng)",
+          "remind_before": "Nhắc nhở trước (số ngày)",
           "event_details": "Chi tiết (Tuỳ chọn)"
         }
       },
@@ -17,13 +14,25 @@
         "data": {
           "event_name": "Tên sự kiện",
           "event_date": "Ngày diễn ra (ngày/tháng)",
+          "remind_before": "Nhắc nhở trước (số ngày)",
           "event_details": "Chi tiết (Tuỳ chọn)"
         }
       }
     },
     "abort": {
       "already_configured": "Lịch Âm chính đã được thiết lập.",
-      "event_saved_to_json": "Thành công! Sự kiện đã được lưu vào file events.json và cập nhật ngay lập tức."
+      "event_saved_to_json": "Thành công! Sự kiện đã được lưu."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Quản lý Sự Kiện",
+        "description": "Đánh dấu tick vào các sự kiện bạn muốn xóa bỏ. Để nguyên nếu không muốn thay đổi gì.",
+        "data": {
+          "delete_events": "Chọn sự kiện để XÓA"
+        }
+      }
     }
   }
 }
