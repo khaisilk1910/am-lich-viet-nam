@@ -1,0 +1,25 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "action": "Chọn loại thiết lập"
+        }
+      },
+      "event_am_lich": {
+        "data": {
+          "event_name": "Tên sự kiện",
+          "event_date": "Ngày diễn ra (ngày/tháng)",
+          "event_details": "Chi tiết (Tuỳ chọn)"
+        }
+      },
+      "event_duong_lich": {
+        "data": {
+          "event_name": "Tên sự kiện",
+          "event_date": "Ngày diễn ra (ngày/tháng)",
+          "event_details": "Chi tiết (Tuỳ chọn)"
+        }
+      }
+    }
+  }
+}
