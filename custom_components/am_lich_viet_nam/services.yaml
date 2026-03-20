@@ -1,3 +1,13 @@
 reload_events:
   name: "Quét lại sự kiện"
-  description: "Quét lại file events.json trong thư mục config/am_lich_viet_nam để cập nhật hoặc thêm cảm biến sự kiện ngay lập tức mà không cần khởi động lại HA."
+  description: "Cập nhật lại danh sách sensor mà không cần khởi động lại HA."
+
+remove_event:
+  name: "Xóa sự kiện"
+  description: "Xóa sự kiện ra khỏi file JSON bằng ID."
+  fields:
+    event_id:
+      name: "Mã sự kiện (ID)"
+      description: "ID duy nhất của sự kiện (có trong events.json)"
+      required: true
+      example: "a1b2c3d4-..."
