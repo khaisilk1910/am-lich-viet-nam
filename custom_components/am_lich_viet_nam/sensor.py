@@ -98,6 +98,7 @@ class AmLichEventSensor(SensorEntity):
         self._entry = entry
         self._event_name = entry.data.get("event_name", "Sự kiện")
         self._event_date = entry.data.get("event_date", "1/1")
+        self._event_details = entry.data.get("event_details", "")
         
         self._attr_name = self._event_name
         self._attr_unique_id = f"amlich_event_{entry.entry_id}"
@@ -157,7 +158,8 @@ class AmLichEventSensor(SensorEntity):
             self._attr_extra_state_attributes = {
                 "ngay_am_lich_su_kien": self._event_date,
                 "ngay_duong_lich_tuong_ung": event_datetime.strftime("%d/%m/%Y"),
-                "thu_trong_tuan": THU[event_datetime.weekday()]
+                "thu_trong_tuan": THU[event_datetime.weekday()],
+                "chi_tiet": self._event_details
             }
         else:
             self._attr_native_value = "Không tính được"
@@ -168,6 +170,7 @@ class DuongLichEventSensor(SensorEntity):
         self._entry = entry
         self._event_name = entry.data.get("event_name", "Sự kiện")
         self._event_date = entry.data.get("event_date", "1/1")
+        self._event_details = entry.data.get("event_details", "")
         
         self._attr_name = self._event_name
         self._attr_unique_id = f"duonglich_event_{entry.entry_id}"
@@ -210,7 +213,7 @@ class DuongLichEventSensor(SensorEntity):
         days_left = (event_date_this_year - today_start).days
         self._attr_native_value = days_left
         
-        # Tính ngày Âm lịch tương ứng (cho ngầu)
+        # Tính ngày Âm lịch tương ứng
         lunar_equiv = get_lunar_date(event_date_this_year.day, event_date_this_year.month, event_date_this_year.year)
         ngay_am_str = f"{lunar_equiv.day}/{lunar_equiv.month}" if lunar_equiv else "Không tính được"
         if lunar_equiv and lunar_equiv.leap == 1:
@@ -219,5 +222,6 @@ class DuongLichEventSensor(SensorEntity):
         self._attr_extra_state_attributes = {
             "ngay_duong_lich_su_kien": self._event_date,
             "ngay_am_lich_tuong_ung": ngay_am_str,
-            "thu_trong_tuan": THU[event_date_this_year.weekday()]
+            "thu_trong_tuan": THU[event_date_this_year.weekday()],
+            "chi_tiet": self._event_details
         }
