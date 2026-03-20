@@ -1,5 +1,6 @@
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.helpers import selector # Thêm thư viện selector để tạo text box nhiều dòng
 from .const import DOMAIN
 
 class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -41,7 +42,8 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "is_main": False,
                     "event_type": "lunar",
                     "event_name": user_input.get("event_name"),
-                    "event_date": user_input.get("event_date")
+                    "event_date": user_input.get("event_date"),
+                    "event_details": user_input.get("event_details", "") # Lưu trường chi tiết
                 }
             )
 
@@ -50,6 +52,9 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema({
                 vol.Required("event_name"): str,
                 vol.Required("event_date", description={"suggested_value": "15/8"}): str,
+                vol.Optional("event_details"): selector.TextSelector(
+                    selector.TextSelectorConfig(multiline=True) # Cấu hình cho phép nhập nhiều dòng
+                ),
             })
         )
 
@@ -61,7 +66,8 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "is_main": False,
                     "event_type": "solar",
                     "event_name": user_input.get("event_name"),
-                    "event_date": user_input.get("event_date")
+                    "event_date": user_input.get("event_date"),
+                    "event_details": user_input.get("event_details", "") # Lưu trường chi tiết
                 }
             )
 
@@ -70,5 +76,8 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema({
                 vol.Required("event_name"): str,
                 vol.Required("event_date", description={"suggested_value": "1/1"}): str,
+                vol.Optional("event_details"): selector.TextSelector(
+                    selector.TextSelectorConfig(multiline=True) # Cấu hình cho phép nhập nhiều dòng
+                ),
             })
         )
