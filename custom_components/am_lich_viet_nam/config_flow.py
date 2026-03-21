@@ -36,39 +36,43 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_event_am_lich(self, user_input=None):
         if user_input is not None:
             return self.async_create_entry(
-                title=user_input.get("event_name"), 
+                title=user_input.get("Tên sự kiện"), 
                 data={
                     "is_main": False,
                     "event_type": "lunar",
-                    "event_name": user_input.get("event_name"),
-                    "event_date": user_input.get("event_date")
+                    "event_name": user_input.get("Tên sự kiện"),
+                    "event_date": user_input.get("Ngày diễn ra"),
+                    "event_description": user_input.get("Chi tiết", "")
                 }
             )
 
         return self.async_show_form(
             step_id="event_am_lich",
             data_schema=vol.Schema({
-                vol.Required("event_name"): str,
-                vol.Required("event_date", description={"suggested_value": "15/8"}): str,
+                vol.Required("Tên sự kiện"): str,
+                vol.Required("Ngày diễn ra", description={"suggested_value": "15/8"}): str,
+                vol.Optional("Chi tiết", default=""): str,
             })
         )
 
     async def async_step_event_duong_lich(self, user_input=None):
         if user_input is not None:
             return self.async_create_entry(
-                title=user_input.get("event_name"), 
+                title=user_input.get("Tên sự kiện"), 
                 data={
                     "is_main": False,
                     "event_type": "solar",
-                    "event_name": user_input.get("event_name"),
-                    "event_date": user_input.get("event_date")
+                    "event_name": user_input.get("Tên sự kiện"),
+                    "event_date": user_input.get("Ngày diễn ra"),
+                    "event_description": user_input.get("Chi tiết", "")
                 }
             )
 
         return self.async_show_form(
             step_id="event_duong_lich",
             data_schema=vol.Schema({
-                vol.Required("event_name"): str,
-                vol.Required("event_date", description={"suggested_value": "1/1"}): str,
+                vol.Required("Tên sự kiện"): str,
+                vol.Required("Ngày diễn ra", description={"suggested_value": "1/1"}): str,
+                vol.Optional("Chi tiết", default=""): str,
             })
         )
