@@ -4,8 +4,9 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import CONF_EVENTS
+from .const import DOMAIN, CONF_EVENTS
 
 from .amlich_core import (
     get_lunar_date, get_year_can_chi, get_month_name, get_lunar_month_length, THU,
@@ -23,7 +24,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     if is_main:
         async_add_entities([AmLichSensor(entry)], True)
     else:
-        # Nhận diện loại sự kiện (mặc định lunar để tương thích ngược với các sự kiện cũ)
+        # Nhận diện loại sự kiện (mặc định lunar để tương thích ngược)
         event_type = entry.data.get("event_type", "lunar")
         if event_type == "solar":
             async_add_entities([DuongLichEventSensor(entry)], True)
@@ -38,6 +39,14 @@ class AmLichSensor(SensorEntity):
         self._attr_icon = "mdi:calendar-today-outline"
         self._attr_native_value = None
         self._attr_extra_state_attributes = {}
+        # Gom nhóm vào Device chung
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, "lich_viet_nam_shared_device")},
+            name="Lịch Việt Nam",
+            manufacturer="Khaisilk1910",
+            model="Vietnamese Lunar Calendar",
+            entry_type=None,
+        )
 
     async def async_update(self):
         now = datetime.now()
@@ -103,6 +112,11 @@ class AmLichEventSensor(SensorEntity):
         self._attr_unique_id = f"amlich_event_{entry.entry_id}"
         self._attr_icon = "mdi:calendar-clock"
         self._attr_native_unit_of_measurement = "ngày"
+        # Gom nhóm vào Device chung
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, "lich_viet_nam_shared_device")},
+            name="Lịch Việt Nam",
+        )
 
     async def async_update(self):
         now = datetime.now()
@@ -173,6 +187,11 @@ class DuongLichEventSensor(SensorEntity):
         self._attr_unique_id = f"duonglich_event_{entry.entry_id}"
         self._attr_icon = "mdi:calendar-star"
         self._attr_native_unit_of_measurement = "ngày"
+        # Gom nhóm vào Device chung
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, "lich_viet_nam_shared_device")},
+            name="Lịch Việt Nam",
+        )
 
     async def async_update(self):
         now = datetime.now()
@@ -191,7 +210,7 @@ class DuongLichEventSensor(SensorEntity):
             event_date_this_year = datetime(target_year, t_month, t_day)
         except ValueError:
             if t_month == 2 and t_day == 29:
-                event_date_this_year = datetime(target_year, 3, 1) # Không nhuận thì dời sang 1/3
+                event_date_this_year = datetime(target_year, 3, 1) # Không nhuận dời sang 1/3
             else:
                 self._attr_native_value = "Ngày không hợp lệ"
                 return
@@ -210,7 +229,7 @@ class DuongLichEventSensor(SensorEntity):
         days_left = (event_date_this_year - today_start).days
         self._attr_native_value = days_left
         
-        # Tính ngày Âm lịch tương ứng (cho ngầu)
+        # Tính ngày Âm lịch tương ứng
         lunar_equiv = get_lunar_date(event_date_this_year.day, event_date_this_year.month, event_date_this_year.year)
         ngay_am_str = f"{lunar_equiv.day}/{lunar_equiv.month}" if lunar_equiv else "Không tính được"
         if lunar_equiv and lunar_equiv.leap == 1:
