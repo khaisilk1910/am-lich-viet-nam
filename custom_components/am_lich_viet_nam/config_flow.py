@@ -41,8 +41,7 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "is_main": False,
                     "event_type": "lunar",
                     "event_name": user_input.get("event_name"),
-                    "event_date": user_input.get("event_date"),
-                    "event_description": user_input.get("event_description", "")
+                    "event_date": user_input.get("event_date")
                 }
             )
 
@@ -50,8 +49,7 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="event_am_lich",
             data_schema=vol.Schema({
                 vol.Required("event_name"): str,
-                vol.Required("event_date"): str,
-                vol.Optional("event_description"): str,
+                vol.Required("event_date", description={"suggested_value": "15/8"}): str,
             })
         )
 
@@ -63,8 +61,7 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "is_main": False,
                     "event_type": "solar",
                     "event_name": user_input.get("event_name"),
-                    "event_date": user_input.get("event_date"),
-                    "event_description": user_input.get("event_description", "")
+                    "event_date": user_input.get("event_date")
                 }
             )
 
@@ -72,7 +69,6 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="event_duong_lich",
             data_schema=vol.Schema({
                 vol.Required("event_name"): str,
-                vol.Required("event_date"): str,
-                vol.Optional("event_description"): str,
+                vol.Required("event_date", description={"suggested_value": "1/1"}): str,
             })
         )
