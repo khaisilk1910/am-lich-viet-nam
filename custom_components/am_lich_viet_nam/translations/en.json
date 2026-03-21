@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Vietnamese Lunar Calendar Configuration",
+        "description": "Select the type of entity you want to add.",
+        "data": {
+          "action": "Calendar/Event Type"
+        }
+      },
+      "event_am_lich": {
+        "title": "Add Lunar Event",
+        "data": {
+          "event_name": "Event Name",
+          "event_date": "Date (Day/Month)",
+          "event_description": "Event Description"
+        }
+      },
+      "event_duong_lich": {
+        "title": "Add Solar Event",
+        "data": {
+          "event_name": "Event Name",
+          "event_date": "Date (Day/Month)",
+          "event_description": "Event Description"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Main calendar is already configured."
+    }
+  }
+}
