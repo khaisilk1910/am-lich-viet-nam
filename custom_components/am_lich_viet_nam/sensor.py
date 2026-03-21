@@ -111,7 +111,6 @@ class AmLichEventSensor(SensorEntity):
         birth_month = self._entry.options.get("birth_month", self._entry.data.get("birth_month"))
         birth_year = self._entry.options.get("birth_year", self._entry.data.get("birth_year"))
 
-        # Tương thích ngược với các record cũ
         if event_day is None or event_month is None:
             old_date = self._entry.options.get("event_date", self._entry.data.get("event_date", "1/1"))
             try:
@@ -122,7 +121,6 @@ class AmLichEventSensor(SensorEntity):
                 event_day = 1
                 event_month = 1
                 
-        # Ép kiểu an toàn
         try:
             t_day = int(event_day)
             t_month = int(event_month)
@@ -152,13 +150,23 @@ class AmLichEventSensor(SensorEntity):
             ngay_am_str = f"{t_day}/{t_month}/{event_year}"
             nam_can_chi_str = f"{get_year_can_chi(event_year)}/{event_year}"
             
-            # Tính ngày dương và thứ tương ứng trong quá khứ
             try:
                 ly_hist = get_year_info(event_year)
-                for m_info in ly_hist:
+                for i in range(len(ly_hist)):
+                    m_info = ly_hist[i]
                     if m_info.month == t_month and m_info.leap == 0:
-                        # Tìm JDN của ngày quá khứ
-                        hist_jd = m_info.jd + t_day - 1
+                        # Giới hạn số ngày nếu rơi vào tháng âm thiếu (29 ngày) ở quá khứ
+                        if i + 1 < len(ly_hist):
+                            m_len = ly_hist[i+1].jd - m_info.jd
+                        else:
+                            try:
+                                next_ly = get_year_info(event_year + 1)
+                                m_len = next_ly[0].jd - m_info.jd
+                            except ValueError:
+                                m_len = 30
+                        
+                        actual_day = min(t_day, m_len)
+                        hist_jd = m_info.jd + actual_day - 1
                         h_d, h_m, h_y = jd_to_date(hist_jd)
                         hist_dt = datetime(h_y, h_m, h_d)
                         
@@ -167,7 +175,6 @@ class AmLichEventSensor(SensorEntity):
                         break
             except Exception:
                 pass
-
 
         # --- 2. TÍNH TOÁN DỮ LIỆU SỰ KIỆN SẮP TỚI TƯƠNG LAI ---
         now = datetime.now()
@@ -213,14 +220,12 @@ class AmLichEventSensor(SensorEntity):
             today_start = datetime(now.year, now.month, now.day)
             event_datetime = today_start + timedelta(days=days_left)
             
-            # Tính toán Số năm
             so_nam = 0
             if birth_year is not None:
                 so_nam = event_occurrence_year - birth_year
             elif event_year is not None:
                 so_nam = event_occurrence_year - event_year
             
-            # Sắp xếp theo trình tự Thời gian thực tế: Lịch sử -> Hiện Tại/Tương lai -> Phụ lục
             attributes = {
                 "ngay_am_lich_su_kien": ngay_am_str,
                 "ngay_duong_lich_su_kien": hist_solar_str,
@@ -339,13 +344,11 @@ class DuongLichEventSensor(SensorEntity):
         if event_year is not None:
             so_nam = target_year - event_year
         
-        # Âm lịch sự kiện tương lai
         lunar_equiv = get_lunar_date(event_date_this_year.day, event_date_this_year.month, event_date_this_year.year)
         ngay_am_tuong_ung = f"{lunar_equiv.day}/{lunar_equiv.month}" if lunar_equiv else "Không tính được"
         if lunar_equiv and lunar_equiv.leap == 1:
             ngay_am_tuong_ung += " (Nhuận)"
 
-        # Sắp xếp theo trình tự Thời gian thực tế
         self._attr_extra_state_attributes = {
             "ngay_duong_lich_su_kien": ngay_duong_str,
             "ngay_am_lich_su_kien": hist_lunar_str,
