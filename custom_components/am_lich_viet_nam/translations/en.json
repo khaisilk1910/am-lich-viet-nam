@@ -2,31 +2,36 @@
   "config": {
     "step": {
       "user": {
-        "title": "Vietnamese Lunar Calendar Configuration",
-        "description": "Select the type of entity you want to add.",
         "data": {
-          "action": "Calendar/Event Type"
+          "action": "Chọn loại thiết lập"
         }
       },
       "event_am_lich": {
-        "title": "Add Lunar Event",
         "data": {
-          "event_name": "Event Name",
-          "event_date": "Date (Day/Month)",
-          "event_description": "Event Description"
+          "event_name": "Tên sự kiện",
+          "event_date": "Ngày diễn ra (ví dụ: 15/8)",
+          "event_description": "Chi tiết sự kiện"
         }
       },
       "event_duong_lich": {
-        "title": "Add Solar Event",
         "data": {
-          "event_name": "Event Name",
-          "event_date": "Date (Day/Month)",
-          "event_description": "Event Description"
+          "event_name": "Tên sự kiện",
+          "event_date": "Ngày diễn ra (ví dụ: 1/1)",
+          "event_description": "Chi tiết sự kiện"
         }
       }
-    },
-    "abort": {
-      "already_configured": "Main calendar is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "thong_bao": "Thông báo từ hệ thống",
+          "event_name": "Tên sự kiện",
+          "event_date": "Ngày diễn ra",
+          "event_description": "Chi tiết sự kiện"
+        }
+      }
     }
   }
 }
