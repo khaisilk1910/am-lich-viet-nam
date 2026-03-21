@@ -12,12 +12,10 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         """Quản lý các tuỳ chọn sửa đổi."""
-        # Kiểm tra đây là lịch chính hay sự kiện
         is_main = self._entry.data.get("is_main")
         if is_main is None:
             is_main = self._entry.data.get("event_name") is None
         
-        # Nếu là lịch chính -> Chỉ hiện thông báo
         if is_main:
             if user_input is not None:
                 return self.async_create_entry(title="", data={})
@@ -28,9 +26,17 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
                 })
             )
 
-        # Xử lý cập nhật cho sự kiện (Âm/Dương lịch)
+        # Xử lý cập nhật cho sự kiện
         if user_input is not None:
-            # FIX: Ép cập nhật lập tức cả Title và Options vào Entry trước khi tải lại
+            # Làm sạch dữ liệu năm
+            if user_input.get("event_year") == "":
+                user_input.pop("event_year", None)
+            elif user_input.get("event_year") is not None:
+                try:
+                    user_input["event_year"] = int(user_input["event_year"])
+                except ValueError:
+                    user_input.pop("event_year", None)
+
             self.hass.config_entries.async_update_entry(
                 self._entry, 
                 title=str(user_input.get("event_name", "Sự kiện")),
@@ -38,16 +44,31 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
             )
             return self.async_create_entry(title="", data=user_input)
 
-        # Nạp dữ liệu cũ để hiện lên Form (Ưu tiên options trước, data sau)
+        # Nạp dữ liệu cũ để hiện lên Form
         cur_name = str(self._entry.options.get("event_name", self._entry.data.get("event_name", self._entry.title or "Sự kiện")))
-        cur_date = str(self._entry.options.get("event_date", self._entry.data.get("event_date", "")))
+        cur_day = self._entry.options.get("event_day", self._entry.data.get("event_day"))
+        cur_month = self._entry.options.get("event_month", self._entry.data.get("event_month"))
+        cur_year = self._entry.options.get("event_year", self._entry.data.get("event_year", ""))
         cur_desc = str(self._entry.options.get("event_description", self._entry.data.get("event_description", "")))
+
+        # Tương thích ngược với các entry cũ sử dụng "event_date"
+        if cur_day is None or cur_month is None:
+            old_date = self._entry.options.get("event_date", self._entry.data.get("event_date", "1/1"))
+            try:
+                parts = old_date.replace("-", "/").split('/')
+                cur_day = int(parts[0])
+                cur_month = int(parts[1])
+            except:
+                cur_day = 1
+                cur_month = 1
 
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
                 vol.Required("event_name", default=cur_name): str,
-                vol.Required("event_date", default=cur_date): str,
+                vol.Required("event_day", default=int(cur_day)): vol.In(list(range(1, 32))),
+                vol.Required("event_month", default=int(cur_month)): vol.In(list(range(1, 13))),
+                vol.Optional("event_year", default=str(cur_year) if cur_year else ""): str,
                 vol.Optional("event_description", default=cur_desc): str,
             })
         )
@@ -88,13 +109,23 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_event_am_lich(self, user_input=None):
         if user_input is not None:
+            if user_input.get("event_year") == "":
+                user_input.pop("event_year", None)
+            elif user_input.get("event_year") is not None:
+                try:
+                    user_input["event_year"] = int(user_input["event_year"])
+                except ValueError:
+                    user_input.pop("event_year", None)
+
             return self.async_create_entry(
                 title=str(user_input.get("event_name", "Sự kiện")), 
                 data={
                     "is_main": False,
                     "event_type": "lunar",
                     "event_name": str(user_input.get("event_name", "")),
-                    "event_date": str(user_input.get("event_date", "")),
+                    "event_day": user_input.get("event_day"),
+                    "event_month": user_input.get("event_month"),
+                    "event_year": user_input.get("event_year"),
                     "event_description": str(user_input.get("event_description", ""))
                 }
             )
@@ -103,20 +134,32 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="event_am_lich",
             data_schema=vol.Schema({
                 vol.Required("event_name"): str,
-                vol.Required("event_date", default="15/8"): str,
+                vol.Required("event_day", default=15): vol.In(list(range(1, 32))),
+                vol.Required("event_month", default=8): vol.In(list(range(1, 13))),
+                vol.Optional("event_year", default=""): str,
                 vol.Optional("event_description", default=""): str,
             })
         )
 
     async def async_step_event_duong_lich(self, user_input=None):
         if user_input is not None:
+            if user_input.get("event_year") == "":
+                user_input.pop("event_year", None)
+            elif user_input.get("event_year") is not None:
+                try:
+                    user_input["event_year"] = int(user_input["event_year"])
+                except ValueError:
+                    user_input.pop("event_year", None)
+
             return self.async_create_entry(
                 title=str(user_input.get("event_name", "Sự kiện")), 
                 data={
                     "is_main": False,
                     "event_type": "solar",
                     "event_name": str(user_input.get("event_name", "")),
-                    "event_date": str(user_input.get("event_date", "")),
+                    "event_day": user_input.get("event_day"),
+                    "event_month": user_input.get("event_month"),
+                    "event_year": user_input.get("event_year"),
                     "event_description": str(user_input.get("event_description", ""))
                 }
             )
@@ -125,7 +168,9 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="event_duong_lich",
             data_schema=vol.Schema({
                 vol.Required("event_name"): str,
-                vol.Required("event_date", default="1/1"): str,
+                vol.Required("event_day", default=1): vol.In(list(range(1, 32))),
+                vol.Required("event_month", default=1): vol.In(list(range(1, 13))),
+                vol.Optional("event_year", default=""): str,
                 vol.Optional("event_description", default=""): str,
             })
         )
