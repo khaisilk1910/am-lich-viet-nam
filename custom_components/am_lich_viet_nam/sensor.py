@@ -225,6 +225,11 @@ class AmLichEventSensor(SensorEntity):
                 so_nam = event_occurrence_year - birth_year
             elif event_year is not None:
                 so_nam = event_occurrence_year - event_year
+
+            # Tính số tuổi = năm sự kiện (nếu có) - năm sinh (nếu có)
+            so_tuoi = 0
+            if event_year is not None and birth_year is not None:
+                so_tuoi = event_year - birth_year
             
             attributes = {
                 "ngay_am_lich_su_kien": ngay_am_str,
@@ -232,9 +237,10 @@ class AmLichEventSensor(SensorEntity):
                 "thu_su_kien": hist_weekday,
                 "nam_can_chi_su_kien": nam_can_chi_str,
                 
-                "ngay_duong_lich_tuong_ung": event_datetime.strftime("%d/%m/%Y"),
-                "thu_trong_tuan": THU[event_datetime.weekday()],
+                "ngay_duong_lich_hien_tai": event_datetime.strftime("%d/%m/%Y"),
+                "thu_hien_tai": THU[event_datetime.weekday()],
                 "so_nam": so_nam,
+                "so_tuoi": so_tuoi,
                 
                 "chi_tiet": event_description
             }
@@ -345,9 +351,14 @@ class DuongLichEventSensor(SensorEntity):
             so_nam = target_year - event_year
         
         lunar_equiv = get_lunar_date(event_date_this_year.day, event_date_this_year.month, event_date_this_year.year)
-        ngay_am_tuong_ung = f"{lunar_equiv.day}/{lunar_equiv.month}" if lunar_equiv else "Không tính được"
-        if lunar_equiv and lunar_equiv.leap == 1:
-            ngay_am_tuong_ung += " (Nhuận)"
+        
+        # Thêm can chi năm cho ngày âm lịch hiện tại
+        ngay_am_hien_tai = "Không tính được"
+        if lunar_equiv:
+            ngay_am_hien_tai = f"{lunar_equiv.day}/{lunar_equiv.month}"
+            if lunar_equiv.leap == 1:
+                ngay_am_hien_tai += " (Nhuận)"
+            ngay_am_hien_tai += f"/{get_year_can_chi(lunar_equiv.year)}"
 
         self._attr_extra_state_attributes = {
             "ngay_duong_lich_su_kien": ngay_duong_str,
@@ -355,8 +366,8 @@ class DuongLichEventSensor(SensorEntity):
             "thu_su_kien": hist_weekday,
             "nam_can_chi_su_kien": nam_can_chi_str,
             
-            "ngay_am_lich_tuong_ung": ngay_am_tuong_ung,
-            "thu_trong_tuan": THU[event_date_this_year.weekday()],
+            "ngay_am_lich_hien_tai": ngay_am_hien_tai,
+            "thu_hien_tai": THU[event_date_this_year.weekday()],
             "so_nam": so_nam,
             
             "chi_tiet": event_description
