@@ -1,3 +1,0 @@
-reload_events:
-  name: "Quét lại sự kiện"
-  description: "Quét lại file events.json trong thư mục config/am_lich_viet_nam để cập nhật hoặc thêm cảm biến sự kiện ngay lập tức mà không cần khởi động lại HA."
