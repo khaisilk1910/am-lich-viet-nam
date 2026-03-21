@@ -98,15 +98,31 @@ class AmLichEventSensor(SensorEntity):
         self._attr_unique_id = f"amlich_event_{entry.entry_id}"
         self._attr_icon = "mdi:calendar-clock"
         self._attr_native_unit_of_measurement = "ngày"
-        # Chỉ đặt tên tạm lúc khởi tạo
         self._attr_name = entry.options.get("event_name", entry.data.get("event_name", "Sự kiện"))
 
     async def async_update(self):
-        # FIX: Lấy dữ liệu ĐỘNG thẳng từ entry.options mỗi khi update, thay vì bắt chết biến ở __init__
         event_name = self._entry.options.get("event_name", self._entry.data.get("event_name", "Sự kiện"))
-        event_date = self._entry.options.get("event_date", self._entry.data.get("event_date", "1/1"))
+        event_day = self._entry.options.get("event_day", self._entry.data.get("event_day"))
+        event_month = self._entry.options.get("event_month", self._entry.data.get("event_month"))
+        event_year = self._entry.options.get("event_year", self._entry.data.get("event_year"))
         event_description = self._entry.options.get("event_description", self._entry.data.get("event_description", ""))
         
+        # Tương thích ngược với các record cũ
+        if event_day is None or event_month is None:
+            old_date = self._entry.options.get("event_date", self._entry.data.get("event_date", "1/1"))
+            try:
+                parts = old_date.replace("-", "/").split('/')
+                event_day = int(parts[0])
+                event_month = int(parts[1])
+            except:
+                event_day = 1
+                event_month = 1
+                
+        try:
+            event_year = int(event_year) if event_year else None
+        except ValueError:
+            event_year = None
+
         self._attr_name = event_name
 
         now = datetime.now()
@@ -115,17 +131,14 @@ class AmLichEventSensor(SensorEntity):
             self._attr_native_value = "Lỗi"
             return
 
-        try:
-            parts = event_date.replace("-", "/").split('/')
-            t_day = int(parts[0])
-            t_month = int(parts[1])
-        except (ValueError, IndexError):
-            self._attr_native_value = "Sai định dạng ngày"
-            return
+        t_day = event_day
+        t_month = event_month
 
         cur_jd = lunar.jd
         ev_jd = None
+        event_occurrence_year = None
 
+        # Tìm JDN của ngày sự kiện sắp tới
         for year_offset in range(3):
             try:
                 ly = get_year_info(lunar.year + year_offset)
@@ -146,6 +159,7 @@ class AmLichEventSensor(SensorEntity):
                         
                         if temp_jd >= cur_jd:
                             ev_jd = temp_jd
+                            event_occurrence_year = lunar.year + year_offset
                             break
                 if ev_jd is not None:
                     break
@@ -158,10 +172,19 @@ class AmLichEventSensor(SensorEntity):
             today_start = datetime(now.year, now.month, now.day)
             event_datetime = today_start + timedelta(days=days_left)
             
+            # Tính toán Số năm & Năm Can Chi
+            so_nam = 0
+            nam_can_chi = 0
+            if event_year:
+                so_nam = event_occurrence_year - event_year
+                nam_can_chi = get_year_can_chi(event_year)
+            
             self._attr_extra_state_attributes = {
-                "ngay_am_lich_su_kien": event_date,
+                "ngay_am_lich_su_kien": f"{t_day}/{t_month}",
                 "ngay_duong_lich_tuong_ung": event_datetime.strftime("%d/%m/%Y"),
                 "thu_trong_tuan": THU[event_datetime.weekday()],
+                "so_nam": so_nam,
+                "nam_can_chi": nam_can_chi,
                 "chi_tiet": event_description
             }
         else:
@@ -177,21 +200,33 @@ class DuongLichEventSensor(SensorEntity):
         self._attr_name = entry.options.get("event_name", entry.data.get("event_name", "Sự kiện"))
 
     async def async_update(self):
-        # FIX TƯƠNG TỰ
         event_name = self._entry.options.get("event_name", self._entry.data.get("event_name", "Sự kiện"))
-        event_date = self._entry.options.get("event_date", self._entry.data.get("event_date", "1/1"))
+        event_day = self._entry.options.get("event_day", self._entry.data.get("event_day"))
+        event_month = self._entry.options.get("event_month", self._entry.data.get("event_month"))
+        event_year = self._entry.options.get("event_year", self._entry.data.get("event_year"))
         event_description = self._entry.options.get("event_description", self._entry.data.get("event_description", ""))
+        
+        # Tương thích ngược
+        if event_day is None or event_month is None:
+            old_date = self._entry.options.get("event_date", self._entry.data.get("event_date", "1/1"))
+            try:
+                parts = old_date.replace("-", "/").split('/')
+                event_day = int(parts[0])
+                event_month = int(parts[1])
+            except:
+                event_day = 1
+                event_month = 1
+                
+        try:
+            event_year = int(event_year) if event_year else None
+        except ValueError:
+            event_year = None
         
         self._attr_name = event_name
 
         now = datetime.now()
-        try:
-            parts = event_date.replace("-", "/").split('/')
-            t_day = int(parts[0])
-            t_month = int(parts[1])
-        except (ValueError, IndexError):
-            self._attr_native_value = "Sai định dạng ngày"
-            return
+        t_day = event_day
+        t_month = event_month
 
         target_year = now.year
         
@@ -217,14 +252,24 @@ class DuongLichEventSensor(SensorEntity):
         days_left = (event_date_this_year - today_start).days
         self._attr_native_value = days_left
         
+        # Tính toán Số năm & Năm Can Chi
+        so_nam = 0
+        nam_can_chi = 0
+        if event_year:
+            # Tính tới năm diễn ra sự kiện tiếp theo (target_year)
+            so_nam = target_year - event_year
+            nam_can_chi = get_year_can_chi(event_year)
+        
         lunar_equiv = get_lunar_date(event_date_this_year.day, event_date_this_year.month, event_date_this_year.year)
         ngay_am_str = f"{lunar_equiv.day}/{lunar_equiv.month}" if lunar_equiv else "Không tính được"
         if lunar_equiv and lunar_equiv.leap == 1:
             ngay_am_str += " (Nhuận)"
 
         self._attr_extra_state_attributes = {
-            "ngay_duong_lich_su_kien": event_date,
+            "ngay_duong_lich_su_kien": f"{t_day}/{t_month}",
             "ngay_am_lich_tuong_ung": ngay_am_str,
             "thu_trong_tuan": THU[event_date_this_year.weekday()],
+            "so_nam": so_nam,
+            "nam_can_chi": nam_can_chi,
             "chi_tiet": event_description
         }
