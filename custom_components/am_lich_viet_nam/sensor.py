@@ -11,7 +11,7 @@ from .amlich_core import (
     get_lunar_date, get_year_can_chi, get_month_name, get_lunar_month_length, THU,
     get_can_chi_day_month_year, get_can_hour_0, get_tiet_khi, get_gio_hoang_dao,
     get_gio_hac_dao, get_huong_xuat_hanh, get_thap_nhi_truc, get_nhi_thap_bat_tu,
-    NGAY_THONG_TIN, NGAY_LE_DL, NGAY_LE_AL, get_year_info
+    NGAY_THONG_TIN, NGAY_LE_DL, NGAY_LE_AL, get_year_info, jd_to_date
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -122,7 +122,7 @@ class AmLichEventSensor(SensorEntity):
                 event_day = 1
                 event_month = 1
                 
-        # Ép kiểu an toàn (Safe cast)
+        # Ép kiểu an toàn
         try:
             t_day = int(event_day)
             t_month = int(event_month)
@@ -142,6 +142,34 @@ class AmLichEventSensor(SensorEntity):
 
         self._attr_name = event_name
 
+        # --- 1. TÍNH TOÁN DỮ LIỆU SỰ KIỆN GỐC (TRONG QUÁ KHỨ) ---
+        ngay_am_str = f"{t_day}/{t_month}"
+        hist_solar_str = "Không rõ"
+        hist_weekday = "Không rõ"
+        nam_can_chi_str = "Không rõ"
+
+        if event_year is not None:
+            ngay_am_str = f"{t_day}/{t_month}/{event_year}"
+            nam_can_chi_str = f"{get_year_can_chi(event_year)}/{event_year}"
+            
+            # Tính ngày dương và thứ tương ứng trong quá khứ
+            try:
+                ly_hist = get_year_info(event_year)
+                for m_info in ly_hist:
+                    if m_info.month == t_month and m_info.leap == 0:
+                        # Tìm JDN của ngày quá khứ
+                        hist_jd = m_info.jd + t_day - 1
+                        h_d, h_m, h_y = jd_to_date(hist_jd)
+                        hist_dt = datetime(h_y, h_m, h_d)
+                        
+                        hist_solar_str = hist_dt.strftime("%d/%m/%Y")
+                        hist_weekday = THU[hist_dt.weekday()]
+                        break
+            except Exception:
+                pass
+
+
+        # --- 2. TÍNH TOÁN DỮ LIỆU SỰ KIỆN SẮP TỚI TƯƠNG LAI ---
         now = datetime.now()
         lunar = get_lunar_date(now.day, now.month, now.year)
         if not lunar:
@@ -152,7 +180,6 @@ class AmLichEventSensor(SensorEntity):
         ev_jd = None
         event_occurrence_year = None
 
-        # Tìm JDN của ngày sự kiện sắp tới
         for year_offset in range(3):
             try:
                 ly = get_year_info(lunar.year + year_offset)
@@ -186,25 +213,27 @@ class AmLichEventSensor(SensorEntity):
             today_start = datetime(now.year, now.month, now.day)
             event_datetime = today_start + timedelta(days=days_left)
             
-            # Tính toán Số năm & Năm Can Chi
+            # Tính toán Số năm
             so_nam = 0
             if birth_year is not None:
                 so_nam = event_occurrence_year - birth_year
-                
-            nam_can_chi = 0
-            if event_year is not None:
-                nam_can_chi = get_year_can_chi(event_year)
+            elif event_year is not None:
+                so_nam = event_occurrence_year - event_year
             
+            # Sắp xếp theo trình tự Thời gian thực tế: Lịch sử -> Hiện Tại/Tương lai -> Phụ lục
             attributes = {
-                "ngay_am_lich_su_kien": f"{t_day}/{t_month}",
+                "ngay_am_lich_su_kien": ngay_am_str,
+                "ngay_duong_lich_su_kien": hist_solar_str,
+                "thu_su_kien": hist_weekday,
+                "nam_can_chi_su_kien": nam_can_chi_str,
+                
                 "ngay_duong_lich_tuong_ung": event_datetime.strftime("%d/%m/%Y"),
                 "thu_trong_tuan": THU[event_datetime.weekday()],
                 "so_nam": so_nam,
-                "nam_can_chi": nam_can_chi,
+                
                 "chi_tiet": event_description
             }
             
-            # Khởi tạo chuỗi hiển thị Ngày Sinh
             if birth_day or birth_month or birth_year:
                 bd_str = f"{birth_day}/" if birth_day else ""
                 bm_str = f"{birth_month}/" if birth_month else ""
@@ -231,7 +260,6 @@ class DuongLichEventSensor(SensorEntity):
         event_year = self._entry.options.get("event_year", self._entry.data.get("event_year"))
         event_description = self._entry.options.get("event_description", self._entry.data.get("event_description", ""))
         
-        # Tương thích ngược
         if event_day is None or event_month is None:
             old_date = self._entry.options.get("event_date", self._entry.data.get("event_date", "1/1"))
             try:
@@ -242,7 +270,6 @@ class DuongLichEventSensor(SensorEntity):
                 event_day = 1
                 event_month = 1
                 
-        # Ép kiểu an toàn (Safe cast)
         try:
             t_day = int(event_day)
             t_month = int(event_month)
@@ -257,6 +284,32 @@ class DuongLichEventSensor(SensorEntity):
         
         self._attr_name = event_name
 
+        # --- 1. TÍNH TOÁN DỮ LIỆU SỰ KIỆN GỐC (TRONG QUÁ KHỨ) ---
+        ngay_duong_str = f"{t_day}/{t_month}"
+        hist_lunar_str = "Không rõ"
+        hist_weekday = "Không rõ"
+        nam_can_chi_str = "Không rõ"
+
+        if event_year is not None:
+            ngay_duong_str = f"{t_day}/{t_month}/{event_year}"
+            nam_can_chi_str = f"{get_year_can_chi(event_year)}/{event_year}"
+            
+            try:
+                hist_dt = datetime(event_year, t_month, t_day)
+                hist_weekday = THU[hist_dt.weekday()]
+                
+                # Chuyển đổi Ngày Dương sang Âm lịch ở thời điểm quá khứ
+                hist_lunar = get_lunar_date(t_day, t_month, event_year)
+                if hist_lunar:
+                    hist_lunar_str = f"{hist_lunar.day}/{hist_lunar.month}/{hist_lunar.year}"
+                    if hist_lunar.leap == 1:
+                        hist_lunar_str += " (Nhuận)"
+                        
+            except ValueError:
+                if t_month == 2 and t_day == 29:
+                    pass
+
+        # --- 2. TÍNH TOÁN DỮ LIỆU SỰ KIỆN SẮP TỚI TƯƠNG LAI ---
         now = datetime.now()
         target_year = now.year
         
@@ -282,23 +335,26 @@ class DuongLichEventSensor(SensorEntity):
         days_left = (event_date_this_year - today_start).days
         self._attr_native_value = days_left
         
-        # Tính toán Số năm & Năm Can Chi
         so_nam = 0
-        nam_can_chi = 0
         if event_year is not None:
             so_nam = target_year - event_year
-            nam_can_chi = get_year_can_chi(event_year)
         
+        # Âm lịch sự kiện tương lai
         lunar_equiv = get_lunar_date(event_date_this_year.day, event_date_this_year.month, event_date_this_year.year)
-        ngay_am_str = f"{lunar_equiv.day}/{lunar_equiv.month}" if lunar_equiv else "Không tính được"
+        ngay_am_tuong_ung = f"{lunar_equiv.day}/{lunar_equiv.month}" if lunar_equiv else "Không tính được"
         if lunar_equiv and lunar_equiv.leap == 1:
-            ngay_am_str += " (Nhuận)"
+            ngay_am_tuong_ung += " (Nhuận)"
 
+        # Sắp xếp theo trình tự Thời gian thực tế
         self._attr_extra_state_attributes = {
-            "ngay_duong_lich_su_kien": f"{t_day}/{t_month}",
-            "ngay_am_lich_tuong_ung": ngay_am_str,
+            "ngay_duong_lich_su_kien": ngay_duong_str,
+            "ngay_am_lich_su_kien": hist_lunar_str,
+            "thu_su_kien": hist_weekday,
+            "nam_can_chi_su_kien": nam_can_chi_str,
+            
+            "ngay_am_lich_tuong_ung": ngay_am_tuong_ung,
             "thu_trong_tuan": THU[event_date_this_year.weekday()],
             "so_nam": so_nam,
-            "nam_can_chi": nam_can_chi,
+            
             "chi_tiet": event_description
         }
