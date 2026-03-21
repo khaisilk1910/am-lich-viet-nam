@@ -9,14 +9,21 @@
       "event_am_lich": {
         "data": {
           "event_name": "Tên sự kiện",
-          "event_date": "Ngày diễn ra (ví dụ: 15/8)",
+          "event_day": "Ngày diễn ra",
+          "event_month": "Tháng diễn ra",
+          "event_year": "Năm diễn ra (Tùy chọn)",
+          "birth_day": "Ngày sinh (Tùy chọn)",
+          "birth_month": "Tháng sinh (Tùy chọn)",
+          "birth_year": "Năm sinh (Tùy chọn)",
           "event_description": "Chi tiết sự kiện"
         }
       },
       "event_duong_lich": {
         "data": {
           "event_name": "Tên sự kiện",
-          "event_date": "Ngày diễn ra (ví dụ: 1/1)",
+          "event_day": "Ngày diễn ra",
+          "event_month": "Tháng diễn ra",
+          "event_year": "Năm diễn ra (Tùy chọn)",
           "event_description": "Chi tiết sự kiện"
         }
       }
@@ -28,7 +35,12 @@
         "data": {
           "thong_bao": "Thông báo từ hệ thống",
           "event_name": "Tên sự kiện",
-          "event_date": "Ngày diễn ra",
+          "event_day": "Ngày diễn ra",
+          "event_month": "Tháng diễn ra",
+          "event_year": "Năm diễn ra (Tùy chọn)",
+          "birth_day": "Ngày sinh (Tùy chọn)",
+          "birth_month": "Tháng sinh (Tùy chọn)",
+          "birth_year": "Năm sinh (Tùy chọn)",
           "event_description": "Chi tiết sự kiện"
         }
       }
