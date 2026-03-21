@@ -10,28 +10,30 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         """Quản lý các tuỳ chọn sửa đổi."""
-        is_main = self.config_entry.data.get("is_main", self.config_entry.data.get("event_name") is None)
+        # Kiểm tra đây là lịch chính hay sự kiện
+        is_main = self.config_entry.data.get("is_main")
+        if is_main is None:
+            is_main = self.config_entry.data.get("event_name") is None
         
-        # Xử lý cho cảm biến chính
+        # Nếu là lịch chính -> Chỉ hiện thông báo
         if is_main:
             if user_input is not None:
                 return self.async_create_entry(title="", data={})
             return self.async_show_form(
                 step_id="init", 
                 data_schema=vol.Schema({
-                    vol.Optional("thong_bao", default="Đây là cảm biến ngày tháng chính, không có thông số nào cần chỉnh sửa. Bấm SUBMIT/LƯU để đóng."): str
+                    vol.Optional("thong_bao", default="Cảm biến chính không cần cấu hình thêm. Bấm SUBMIT/LƯU để đóng."): str
                 })
             )
 
-        # Xử lý cho cảm biến sự kiện khi có dữ liệu mới nhập vào
+        # Xử lý cập nhật cho sự kiện (Âm/Dương lịch)
         if user_input is not None:
             new_data = dict(self.config_entry.data)
-            # Lấy data dựa trên key chuẩn (không dấu)
             new_data["event_name"] = user_input.get("event_name")
             new_data["event_date"] = user_input.get("event_date")
             new_data["event_description"] = user_input.get("event_description", "")
             
-            # Ghi đè lại data của config_entry thay vì lưu vào options
+            # Ghi đè vào config_entry gốc để lưu trữ dài hạn
             self.hass.config_entries.async_update_entry(
                 self.config_entry, 
                 title=new_data["event_name"], 
@@ -39,12 +41,12 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
             )
             return self.async_create_entry(title="", data={})
 
-        # Nạp dữ liệu cũ để hiển thị ra form
-        cur_name = str(self.config_entry.data.get("event_name", self.config_entry.title) or "Sự kiện")
-        cur_date = str(self.config_entry.data.get("event_date", "") or "")
-        cur_desc = str(self.config_entry.data.get("event_description", "") or "")
+        # Nạp dữ liệu cũ để hiện lên Form
+        cur_name = str(self.config_entry.data.get("event_name") or self.config_entry.title or "Sự kiện")
+        cur_date = str(self.config_entry.data.get("event_date") or "")
+        cur_desc = str(self.config_entry.data.get("event_description") or "")
 
-        # SỬA LỖI 500 Ở ĐÂY: Sử dụng keys là biến chuẩn tiếng Anh (không khoảng trắng, không dấu)
+        # Trả về form với các keys tiếng Anh chuẩn (Tuyệt đối không có dấu)
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
@@ -53,7 +55,6 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Optional("event_description", default=cur_desc): str,
             })
         )
-
 
 class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
@@ -78,37 +79,37 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     data={"is_main": True}
                 )
 
-        actions_dict = {
-            "main": "Lịch Âm Chính (Thông tin hằng ngày)",
-            "su_kien_am_lich": "Sự kiện Âm lịch (Giỗ, Lễ Âm lịch...)",
-            "su_kien_duong_lich": "Sự kiện Dương lịch (Sinh nhật, Kỷ niệm...)"
-        }
-
+        # Đã lược bỏ các ký tự có thể gây lỗi dịch thuật
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema({
-                vol.Required("action", default="su_kien_am_lich"): vol.In(actions_dict)
+                vol.Required("action", default="su_kien_am_lich"): vol.In({
+                    "main": "Lịch Âm Chính",
+                    "su_kien_am_lich": "Sự kiện Âm lịch",
+                    "su_kien_duong_lich": "Sự kiện Dương lịch"
+                })
             })
         )
 
     async def async_step_event_am_lich(self, user_input=None):
         if user_input is not None:
             return self.async_create_entry(
-                title=user_input.get("event_name"), 
+                title=str(user_input.get("event_name", "Sự kiện")), 
                 data={
                     "is_main": False,
                     "event_type": "lunar",
-                    "event_name": str(user_input.get("event_name") or ""),
-                    "event_date": str(user_input.get("event_date") or ""),
-                    "event_description": str(user_input.get("event_description") or "")
+                    "event_name": str(user_input.get("event_name", "")),
+                    "event_date": str(user_input.get("event_date", "")),
+                    "event_description": str(user_input.get("event_description", ""))
                 }
             )
 
+        # Dùng `default` thay vì `description={"suggested_value"...}` để chống lỗi 500
         return self.async_show_form(
             step_id="event_am_lich",
             data_schema=vol.Schema({
                 vol.Required("event_name"): str,
-                vol.Required("event_date", description={"suggested_value": "15/8"}): str,
+                vol.Required("event_date", default="15/8"): str,
                 vol.Optional("event_description", default=""): str,
             })
         )
@@ -116,13 +117,13 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_event_duong_lich(self, user_input=None):
         if user_input is not None:
             return self.async_create_entry(
-                title=user_input.get("event_name"), 
+                title=str(user_input.get("event_name", "Sự kiện")), 
                 data={
                     "is_main": False,
                     "event_type": "solar",
-                    "event_name": str(user_input.get("event_name") or ""),
-                    "event_date": str(user_input.get("event_date") or ""),
-                    "event_description": str(user_input.get("event_description") or "")
+                    "event_name": str(user_input.get("event_name", "")),
+                    "event_date": str(user_input.get("event_date", "")),
+                    "event_description": str(user_input.get("event_description", ""))
                 }
             )
 
@@ -130,7 +131,7 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="event_duong_lich",
             data_schema=vol.Schema({
                 vol.Required("event_name"): str,
-                vol.Required("event_date", description={"suggested_value": "1/1"}): str,
+                vol.Required("event_date", default="1/1"): str,
                 vol.Optional("event_description", default=""): str,
             })
         )
