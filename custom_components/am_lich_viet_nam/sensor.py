@@ -23,7 +23,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     if is_main:
         async_add_entities([AmLichSensor(entry)], True)
     else:
-        # Nhận diện loại sự kiện (mặc định lunar để tương thích ngược)
         event_type = entry.data.get("event_type", "lunar")
         if event_type == "solar":
             async_add_entities([DuongLichEventSensor(entry)], True)
@@ -96,18 +95,20 @@ class AmLichSensor(SensorEntity):
 class AmLichEventSensor(SensorEntity):
     def __init__(self, entry: ConfigEntry):
         self._entry = entry
-        
-        # SỬA LỖI Ở ĐÂY: Ưu tiên đọc từ options (khi sửa) trước, data (khi tạo) sau
-        self._event_name = entry.options.get("event_name", entry.data.get("event_name", "Sự kiện"))
-        self._event_date = entry.options.get("event_date", entry.data.get("event_date", "1/1"))
-        self._event_description = entry.options.get("event_description", entry.data.get("event_description", ""))
-        
-        self._attr_name = self._event_name
         self._attr_unique_id = f"amlich_event_{entry.entry_id}"
         self._attr_icon = "mdi:calendar-clock"
         self._attr_native_unit_of_measurement = "ngày"
+        # Chỉ đặt tên tạm lúc khởi tạo
+        self._attr_name = entry.options.get("event_name", entry.data.get("event_name", "Sự kiện"))
 
     async def async_update(self):
+        # FIX: Lấy dữ liệu ĐỘNG thẳng từ entry.options mỗi khi update, thay vì bắt chết biến ở __init__
+        event_name = self._entry.options.get("event_name", self._entry.data.get("event_name", "Sự kiện"))
+        event_date = self._entry.options.get("event_date", self._entry.data.get("event_date", "1/1"))
+        event_description = self._entry.options.get("event_description", self._entry.data.get("event_description", ""))
+        
+        self._attr_name = event_name
+
         now = datetime.now()
         lunar = get_lunar_date(now.day, now.month, now.year)
         if not lunar:
@@ -115,7 +116,7 @@ class AmLichEventSensor(SensorEntity):
             return
 
         try:
-            parts = self._event_date.replace("-", "/").split('/')
+            parts = event_date.replace("-", "/").split('/')
             t_day = int(parts[0])
             t_month = int(parts[1])
         except (ValueError, IndexError):
@@ -158,10 +159,10 @@ class AmLichEventSensor(SensorEntity):
             event_datetime = today_start + timedelta(days=days_left)
             
             self._attr_extra_state_attributes = {
-                "ngay_am_lich_su_kien": self._event_date,
+                "ngay_am_lich_su_kien": event_date,
                 "ngay_duong_lich_tuong_ung": event_datetime.strftime("%d/%m/%Y"),
                 "thu_trong_tuan": THU[event_datetime.weekday()],
-                "chi_tiet": self._event_description
+                "chi_tiet": event_description
             }
         else:
             self._attr_native_value = "Không tính được"
@@ -170,21 +171,22 @@ class AmLichEventSensor(SensorEntity):
 class DuongLichEventSensor(SensorEntity):
     def __init__(self, entry: ConfigEntry):
         self._entry = entry
-        
-        # SỬA LỖI Ở ĐÂY TƯƠNG TỰ
-        self._event_name = entry.options.get("event_name", entry.data.get("event_name", "Sự kiện"))
-        self._event_date = entry.options.get("event_date", entry.data.get("event_date", "1/1"))
-        self._event_description = entry.options.get("event_description", entry.data.get("event_description", ""))
-        
-        self._attr_name = self._event_name
         self._attr_unique_id = f"duonglich_event_{entry.entry_id}"
         self._attr_icon = "mdi:calendar-star"
         self._attr_native_unit_of_measurement = "ngày"
+        self._attr_name = entry.options.get("event_name", entry.data.get("event_name", "Sự kiện"))
 
     async def async_update(self):
+        # FIX TƯƠNG TỰ
+        event_name = self._entry.options.get("event_name", self._entry.data.get("event_name", "Sự kiện"))
+        event_date = self._entry.options.get("event_date", self._entry.data.get("event_date", "1/1"))
+        event_description = self._entry.options.get("event_description", self._entry.data.get("event_description", ""))
+        
+        self._attr_name = event_name
+
         now = datetime.now()
         try:
-            parts = self._event_date.replace("-", "/").split('/')
+            parts = event_date.replace("-", "/").split('/')
             t_day = int(parts[0])
             t_month = int(parts[1])
         except (ValueError, IndexError):
@@ -221,8 +223,8 @@ class DuongLichEventSensor(SensorEntity):
             ngay_am_str += " (Nhuận)"
 
         self._attr_extra_state_attributes = {
-            "ngay_duong_lich_su_kien": self._event_date,
+            "ngay_duong_lich_su_kien": event_date,
             "ngay_am_lich_tuong_ung": ngay_am_str,
             "thu_trong_tuan": THU[event_date_this_year.weekday()],
-            "chi_tiet": self._event_description
+            "chi_tiet": event_description
         }
