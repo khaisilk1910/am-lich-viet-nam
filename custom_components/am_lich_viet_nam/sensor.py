@@ -107,6 +107,11 @@ class AmLichEventSensor(SensorEntity):
         event_year = self._entry.options.get("event_year", self._entry.data.get("event_year"))
         event_description = self._entry.options.get("event_description", self._entry.data.get("event_description", ""))
         
+        # Dữ liệu ngày tháng năm sinh (Âm Lịch)
+        birth_day = self._entry.options.get("birth_day", self._entry.data.get("birth_day"))
+        birth_month = self._entry.options.get("birth_month", self._entry.data.get("birth_month"))
+        birth_year = self._entry.options.get("birth_year", self._entry.data.get("birth_year"))
+
         # Tương thích ngược với các record cũ
         if event_day is None or event_month is None:
             old_date = self._entry.options.get("event_date", self._entry.data.get("event_date", "1/1"))
@@ -122,6 +127,11 @@ class AmLichEventSensor(SensorEntity):
             event_year = int(event_year) if event_year else None
         except ValueError:
             event_year = None
+            
+        try:
+            birth_year = int(birth_year) if birth_year else None
+        except ValueError:
+            birth_year = None
 
         self._attr_name = event_name
 
@@ -172,14 +182,16 @@ class AmLichEventSensor(SensorEntity):
             today_start = datetime(now.year, now.month, now.day)
             event_datetime = today_start + timedelta(days=days_left)
             
-            # Tính toán Số năm & Năm Can Chi
+            # Tính toán Số năm (từ năm sinh) & Năm Can Chi (từ năm sự kiện)
             so_nam = 0
+            if birth_year is not None:
+                so_nam = event_occurrence_year - birth_year
+                
             nam_can_chi = 0
-            if event_year:
-                so_nam = event_occurrence_year - event_year
+            if event_year is not None:
                 nam_can_chi = get_year_can_chi(event_year)
             
-            self._attr_extra_state_attributes = {
+            attributes = {
                 "ngay_am_lich_su_kien": f"{t_day}/{t_month}",
                 "ngay_duong_lich_tuong_ung": event_datetime.strftime("%d/%m/%Y"),
                 "thu_trong_tuan": THU[event_datetime.weekday()],
@@ -187,6 +199,15 @@ class AmLichEventSensor(SensorEntity):
                 "nam_can_chi": nam_can_chi,
                 "chi_tiet": event_description
             }
+            
+            # Trả về thông tin "Ngày tháng năm sinh" nếu có ít nhất 1 dữ liệu được điền
+            if birth_day or birth_month or birth_year:
+                bd_str = f"{birth_day}/" if birth_day else ""
+                bm_str = f"{birth_month}/" if birth_month else ""
+                by_str = f"{birth_year}" if birth_year else ""
+                attributes["ngay_thang_nam_sinh"] = f"{bd_str}{bm_str}{by_str}".strip("/")
+                
+            self._attr_extra_state_attributes = attributes
         else:
             self._attr_native_value = "Không tính được"
             self._attr_extra_state_attributes = {}
@@ -255,8 +276,7 @@ class DuongLichEventSensor(SensorEntity):
         # Tính toán Số năm & Năm Can Chi
         so_nam = 0
         nam_can_chi = 0
-        if event_year:
-            # Tính tới năm diễn ra sự kiện tiếp theo (target_year)
+        if event_year is not None:
             so_nam = target_year - event_year
             nam_can_chi = get_year_can_chi(event_year)
         
