@@ -3,6 +3,16 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 from .const import DOMAIN
 
+# Tạo danh sách các tùy chọn Dropdown
+DAY_OPTIONS_OPTIONAL = {"none": "Không chọn"}
+DAY_OPTIONS_OPTIONAL.update({str(i): str(i) for i in range(1, 32)})
+
+MONTH_OPTIONS_OPTIONAL = {"none": "Không chọn"}
+MONTH_OPTIONS_OPTIONAL.update({str(i): str(i) for i in range(1, 13)})
+
+YEAR_OPTIONS = {"none": "Không chọn"}
+YEAR_OPTIONS.update({str(y): str(y) for y in range(1900, 2200)})
+
 class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
     """Xử lý cấu hình lại (sửa chữa) các Entry đã tạo."""
     
@@ -28,14 +38,15 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
 
         # Xử lý cập nhật cho sự kiện
         if user_input is not None:
-            # Làm sạch dữ liệu năm
-            if user_input.get("event_year") == "":
-                user_input.pop("event_year", None)
-            elif user_input.get("event_year") is not None:
-                try:
-                    user_input["event_year"] = int(user_input["event_year"])
-                except ValueError:
-                    user_input.pop("event_year", None)
+            # Làm sạch dữ liệu năm/tháng/ngày từ dropdown
+            for key in ["event_year", "birth_day", "birth_month", "birth_year"]:
+                if user_input.get(key) == "none" or user_input.get(key) == "":
+                    user_input.pop(key, None)
+                elif user_input.get(key) is not None:
+                    try:
+                        user_input[key] = int(user_input[key])
+                    except ValueError:
+                        user_input.pop(key, None)
 
             self.hass.config_entries.async_update_entry(
                 self._entry, 
@@ -45,10 +56,15 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=user_input)
 
         # Nạp dữ liệu cũ để hiện lên Form
+        is_lunar = self._entry.options.get("event_type", self._entry.data.get("event_type", "lunar")) == "lunar"
+        
         cur_name = str(self._entry.options.get("event_name", self._entry.data.get("event_name", self._entry.title or "Sự kiện")))
         cur_day = self._entry.options.get("event_day", self._entry.data.get("event_day"))
         cur_month = self._entry.options.get("event_month", self._entry.data.get("event_month"))
-        cur_year = self._entry.options.get("event_year", self._entry.data.get("event_year", ""))
+        
+        cur_year_raw = self._entry.options.get("event_year", self._entry.data.get("event_year"))
+        cur_year = str(cur_year_raw) if cur_year_raw else "none"
+
         cur_desc = str(self._entry.options.get("event_description", self._entry.data.get("event_description", "")))
 
         # Tương thích ngược với các entry cũ sử dụng "event_date"
@@ -62,15 +78,34 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
                 cur_day = 1
                 cur_month = 1
 
+        schema_dict = {
+            vol.Required("event_name", default=cur_name): str,
+            vol.Required("event_day", default=int(cur_day)): vol.In(list(range(1, 32))),
+            vol.Required("event_month", default=int(cur_month)): vol.In(list(range(1, 13))),
+            vol.Optional("event_year", default=cur_year): vol.In(YEAR_OPTIONS),
+        }
+
+        # Nếu là sự kiện Âm Lịch thì hiển thị thêm các trường Năm sinh
+        if is_lunar:
+            b_day = self._entry.options.get("birth_day", self._entry.data.get("birth_day"))
+            b_month = self._entry.options.get("birth_month", self._entry.data.get("birth_month"))
+            b_year = self._entry.options.get("birth_year", self._entry.data.get("birth_year"))
+            
+            cur_bday = str(b_day) if b_day else "none"
+            cur_bmonth = str(b_month) if b_month else "none"
+            cur_byear = str(b_year) if b_year else "none"
+            
+            schema_dict.update({
+                vol.Optional("birth_day", default=cur_bday): vol.In(DAY_OPTIONS_OPTIONAL),
+                vol.Optional("birth_month", default=cur_bmonth): vol.In(MONTH_OPTIONS_OPTIONAL),
+                vol.Optional("birth_year", default=cur_byear): vol.In(YEAR_OPTIONS),
+            })
+
+        schema_dict[vol.Optional("event_description", default=cur_desc)] = str
+
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema({
-                vol.Required("event_name", default=cur_name): str,
-                vol.Required("event_day", default=int(cur_day)): vol.In(list(range(1, 32))),
-                vol.Required("event_month", default=int(cur_month)): vol.In(list(range(1, 13))),
-                vol.Optional("event_year", default=str(cur_year) if cur_year else ""): str,
-                vol.Optional("event_description", default=cur_desc): str,
-            })
+            data_schema=vol.Schema(schema_dict)
         )
 
 class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -109,13 +144,14 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_event_am_lich(self, user_input=None):
         if user_input is not None:
-            if user_input.get("event_year") == "":
-                user_input.pop("event_year", None)
-            elif user_input.get("event_year") is not None:
-                try:
-                    user_input["event_year"] = int(user_input["event_year"])
-                except ValueError:
-                    user_input.pop("event_year", None)
+            for key in ["event_year", "birth_day", "birth_month", "birth_year"]:
+                if user_input.get(key) == "none" or user_input.get(key) == "":
+                    user_input.pop(key, None)
+                elif user_input.get(key) is not None:
+                    try:
+                        user_input[key] = int(user_input[key])
+                    except ValueError:
+                        user_input.pop(key, None)
 
             return self.async_create_entry(
                 title=str(user_input.get("event_name", "Sự kiện")), 
@@ -126,6 +162,9 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "event_day": user_input.get("event_day"),
                     "event_month": user_input.get("event_month"),
                     "event_year": user_input.get("event_year"),
+                    "birth_day": user_input.get("birth_day"),
+                    "birth_month": user_input.get("birth_month"),
+                    "birth_year": user_input.get("birth_year"),
                     "event_description": str(user_input.get("event_description", ""))
                 }
             )
@@ -136,14 +175,17 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required("event_name"): str,
                 vol.Required("event_day", default=15): vol.In(list(range(1, 32))),
                 vol.Required("event_month", default=8): vol.In(list(range(1, 13))),
-                vol.Optional("event_year", default=""): str,
+                vol.Optional("event_year", default="none"): vol.In(YEAR_OPTIONS),
+                vol.Optional("birth_day", default="none"): vol.In(DAY_OPTIONS_OPTIONAL),
+                vol.Optional("birth_month", default="none"): vol.In(MONTH_OPTIONS_OPTIONAL),
+                vol.Optional("birth_year", default="none"): vol.In(YEAR_OPTIONS),
                 vol.Optional("event_description", default=""): str,
             })
         )
 
     async def async_step_event_duong_lich(self, user_input=None):
         if user_input is not None:
-            if user_input.get("event_year") == "":
+            if user_input.get("event_year") == "none" or user_input.get("event_year") == "":
                 user_input.pop("event_year", None)
             elif user_input.get("event_year") is not None:
                 try:
@@ -170,7 +212,7 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required("event_name"): str,
                 vol.Required("event_day", default=1): vol.In(list(range(1, 32))),
                 vol.Required("event_month", default=1): vol.In(list(range(1, 13))),
-                vol.Optional("event_year", default=""): str,
+                vol.Optional("event_year", default="none"): vol.In(YEAR_OPTIONS),
                 vol.Optional("event_description", default=""): str,
             })
         )
