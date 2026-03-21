@@ -30,12 +30,12 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
 
         # Xử lý cập nhật cho sự kiện (Âm/Dương lịch)
         if user_input is not None:
-            # Cập nhật lại tên hiển thị của Entry ở trang Quản lý Tích hợp
+            # FIX: Ép cập nhật lập tức cả Title và Options vào Entry trước khi tải lại
             self.hass.config_entries.async_update_entry(
                 self._entry, 
-                title=str(user_input.get("event_name", "Sự kiện"))
+                title=str(user_input.get("event_name", "Sự kiện")),
+                options=user_input
             )
-            # Quan trọng: Trả về data ở đây để HA lưu chuẩn vào entry.options
             return self.async_create_entry(title="", data=user_input)
 
         # Nạp dữ liệu cũ để hiện lên Form (Ưu tiên options trước, data sau)
