@@ -1,21 +1,24 @@
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
+from datetime import datetime
 from .const import DOMAIN
 
 # Bắt buộc cho ngày/tháng sự kiện (không có lựa chọn "Không chọn")
 DAY_OPTIONS = {str(i): str(i) for i in range(1, 32)}
 MONTH_OPTIONS = {str(i): str(i) for i in range(1, 13)}
 
-# Tuỳ chọn cho năm sự kiện và ngày/tháng/năm sinh
+# Tuỳ chọn cho ngày/tháng sinh
 DAY_OPTIONS_OPTIONAL = {"none": "Không chọn"}
 DAY_OPTIONS_OPTIONAL.update({str(i): str(i) for i in range(1, 32)})
 
 MONTH_OPTIONS_OPTIONAL = {"none": "Không chọn"}
 MONTH_OPTIONS_OPTIONAL.update({str(i): str(i) for i in range(1, 13)})
 
-YEAR_OPTIONS = {"none": "Không chọn"}
-YEAR_OPTIONS.update({str(y): str(y) for y in range(1900, 2200)})
+# Tuỳ chọn cho năm: Lấy từ năm hiện tại lùi về 1800
+current_year = datetime.now().year
+YEAR_OPTIONS = {"none": "Không Biết"}
+YEAR_OPTIONS.update({str(y): str(y) for y in range(current_year, 1799, -1)})
 
 class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
     """Xử lý cấu hình lại (sửa chữa) các Entry đã tạo."""
