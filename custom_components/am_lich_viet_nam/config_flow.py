@@ -8,8 +8,6 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
     
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Khởi tạo options flow."""
-        # QUAN TRỌNG: Dùng _entry thay vì config_entry để tránh lỗi đụng độ 
-        # property read-only của HA bản mới (nguyên nhân cốt lõi gây lỗi 500)
         self._entry = config_entry
 
     async def async_step_init(self, user_input=None):
@@ -32,23 +30,18 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
 
         # Xử lý cập nhật cho sự kiện (Âm/Dương lịch)
         if user_input is not None:
-            new_data = dict(self._entry.data)
-            new_data["event_name"] = user_input.get("event_name")
-            new_data["event_date"] = user_input.get("event_date")
-            new_data["event_description"] = user_input.get("event_description", "")
-            
-            # Ghi đè vào config_entry gốc để lưu trữ dài hạn
+            # Cập nhật lại tên hiển thị của Entry ở trang Quản lý Tích hợp
             self.hass.config_entries.async_update_entry(
                 self._entry, 
-                title=new_data["event_name"], 
-                data=new_data
+                title=str(user_input.get("event_name", "Sự kiện"))
             )
-            return self.async_create_entry(title="", data={})
+            # Quan trọng: Trả về data ở đây để HA lưu chuẩn vào entry.options
+            return self.async_create_entry(title="", data=user_input)
 
-        # Nạp dữ liệu cũ để hiện lên Form
-        cur_name = str(self._entry.data.get("event_name") or self._entry.title or "Sự kiện")
-        cur_date = str(self._entry.data.get("event_date") or "")
-        cur_desc = str(self._entry.data.get("event_description") or "")
+        # Nạp dữ liệu cũ để hiện lên Form (Ưu tiên options trước, data sau)
+        cur_name = str(self._entry.options.get("event_name", self._entry.data.get("event_name", self._entry.title or "Sự kiện")))
+        cur_date = str(self._entry.options.get("event_date", self._entry.data.get("event_date", "")))
+        cur_desc = str(self._entry.options.get("event_description", self._entry.data.get("event_description", "")))
 
         return self.async_show_form(
             step_id="init",
