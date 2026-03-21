@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Cấu hình Âm lịch Việt Nam",
+        "description": "Chọn loại thực thể bạn muốn thêm.",
+        "data": {
+          "action": "Loại lịch/Sự kiện"
+        }
+      },
+      "event_am_lich": {
+        "title": "Thêm sự kiện Âm lịch",
+        "data": {
+          "event_name": "Tên sự kiện",
+          "event_date": "Ngày diễn ra (Ngày/Tháng)",
+          "event_description": "Chi tiết sự kiện"
+        }
+      },
+      "event_duong_lich": {
+        "title": "Thêm sự kiện Dương lịch",
+        "data": {
+          "event_name": "Tên sự kiện",
+          "event_date": "Ngày diễn ra (Ngày/Tháng)",
+          "event_description": "Chi tiết sự kiện"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Lịch chính đã được cấu hình rồi."
+    }
+  }
+}
