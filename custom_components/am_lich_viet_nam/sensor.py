@@ -107,7 +107,6 @@ class AmLichEventSensor(SensorEntity):
         event_year = self._entry.options.get("event_year", self._entry.data.get("event_year"))
         event_description = self._entry.options.get("event_description", self._entry.data.get("event_description", ""))
         
-        # Dữ liệu ngày tháng năm sinh (Âm Lịch)
         birth_day = self._entry.options.get("birth_day", self._entry.data.get("birth_day"))
         birth_month = self._entry.options.get("birth_month", self._entry.data.get("birth_month"))
         birth_year = self._entry.options.get("birth_year", self._entry.data.get("birth_year"))
@@ -123,6 +122,14 @@ class AmLichEventSensor(SensorEntity):
                 event_day = 1
                 event_month = 1
                 
+        # Ép kiểu an toàn (Safe cast)
+        try:
+            t_day = int(event_day)
+            t_month = int(event_month)
+        except ValueError:
+            t_day = 1
+            t_month = 1
+
         try:
             event_year = int(event_year) if event_year else None
         except ValueError:
@@ -140,9 +147,6 @@ class AmLichEventSensor(SensorEntity):
         if not lunar:
             self._attr_native_value = "Lỗi"
             return
-
-        t_day = event_day
-        t_month = event_month
 
         cur_jd = lunar.jd
         ev_jd = None
@@ -182,7 +186,7 @@ class AmLichEventSensor(SensorEntity):
             today_start = datetime(now.year, now.month, now.day)
             event_datetime = today_start + timedelta(days=days_left)
             
-            # Tính toán Số năm (từ năm sinh) & Năm Can Chi (từ năm sự kiện)
+            # Tính toán Số năm & Năm Can Chi
             so_nam = 0
             if birth_year is not None:
                 so_nam = event_occurrence_year - birth_year
@@ -200,7 +204,7 @@ class AmLichEventSensor(SensorEntity):
                 "chi_tiet": event_description
             }
             
-            # Trả về thông tin "Ngày tháng năm sinh" nếu có ít nhất 1 dữ liệu được điền
+            # Khởi tạo chuỗi hiển thị Ngày Sinh
             if birth_day or birth_month or birth_year:
                 bd_str = f"{birth_day}/" if birth_day else ""
                 bm_str = f"{birth_month}/" if birth_month else ""
@@ -238,6 +242,14 @@ class DuongLichEventSensor(SensorEntity):
                 event_day = 1
                 event_month = 1
                 
+        # Ép kiểu an toàn (Safe cast)
+        try:
+            t_day = int(event_day)
+            t_month = int(event_month)
+        except ValueError:
+            t_day = 1
+            t_month = 1
+
         try:
             event_year = int(event_year) if event_year else None
         except ValueError:
@@ -246,9 +258,6 @@ class DuongLichEventSensor(SensorEntity):
         self._attr_name = event_name
 
         now = datetime.now()
-        t_day = event_day
-        t_month = event_month
-
         target_year = now.year
         
         try:
