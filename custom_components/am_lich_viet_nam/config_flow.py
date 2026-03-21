@@ -1,11 +1,15 @@
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
+from homeassistant.helpers import selector
 from .const import DOMAIN
 
 class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
     """Xử lý cấu hình lại (sửa chữa) các Entry đã tạo."""
+    
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Khởi tạo options flow."""
+        super().__init__() # Bắt buộc phải có để HA không bị lỗi 500
         self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
@@ -22,7 +26,9 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
             return self.async_show_form(
                 step_id="init", 
                 data_schema=vol.Schema({
-                    vol.Optional("thong_bao", default="Cảm biến chính không cần cấu hình thêm. Bấm SUBMIT/LƯU để đóng."): str
+                    vol.Optional("thong_bao", default="Cảm biến chính không cần cấu hình thêm. Bấm LƯU/SUBMIT để đóng."): selector.TextSelector(
+                        selector.TextSelectorConfig(multiline=True)
+                    )
                 })
             )
 
@@ -46,13 +52,15 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
         cur_date = str(self.config_entry.data.get("event_date") or "")
         cur_desc = str(self.config_entry.data.get("event_description") or "")
 
-        # Trả về form với các keys tiếng Anh chuẩn (Tuyệt đối không có dấu)
+        # Trả về form với native selector của HA thay vì str thuần túy
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
-                vol.Required("event_name", default=cur_name): str,
-                vol.Required("event_date", default=cur_date): str,
-                vol.Optional("event_description", default=cur_desc): str,
+                vol.Required("event_name", default=cur_name): selector.TextSelector(),
+                vol.Required("event_date", default=cur_date): selector.TextSelector(),
+                vol.Optional("event_description", default=cur_desc): selector.TextSelector(
+                    selector.TextSelectorConfig(multiline=True)
+                ),
             })
         )
 
@@ -79,7 +87,6 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     data={"is_main": True}
                 )
 
-        # Đã lược bỏ các ký tự có thể gây lỗi dịch thuật
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema({
@@ -104,13 +111,14 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
             )
 
-        # Dùng `default` thay vì `description={"suggested_value"...}` để chống lỗi 500
         return self.async_show_form(
             step_id="event_am_lich",
             data_schema=vol.Schema({
-                vol.Required("event_name"): str,
-                vol.Required("event_date", default="15/8"): str,
-                vol.Optional("event_description", default=""): str,
+                vol.Required("event_name"): selector.TextSelector(),
+                vol.Required("event_date", default="15/8"): selector.TextSelector(),
+                vol.Optional("event_description", default=""): selector.TextSelector(
+                    selector.TextSelectorConfig(multiline=True)
+                ),
             })
         )
 
@@ -130,8 +138,10 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="event_duong_lich",
             data_schema=vol.Schema({
-                vol.Required("event_name"): str,
-                vol.Required("event_date", default="1/1"): str,
-                vol.Optional("event_description", default=""): str,
+                vol.Required("event_name"): selector.TextSelector(),
+                vol.Required("event_date", default="1/1"): selector.TextSelector(),
+                vol.Optional("event_description", default=""): selector.TextSelector(
+                    selector.TextSelectorConfig(multiline=True)
+                ),
             })
         )
