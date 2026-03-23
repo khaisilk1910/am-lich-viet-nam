@@ -27,7 +27,9 @@ Custom integration hiển thị thông tin âm lịch hằng ngày, thêm sự k
 
 
 
-## Automation để thông báo khi 1 Tuần Sau sẽ có sự kiện ( các bạn có thể tùy biến theo khả năng dựa vào các sensor)
+## Automation để thông báo khi 30 ngày Sau sẽ có sự kiện ( các bạn có thể tùy biến theo khả năng dựa vào các sensor)
+<img width="648" height="778" alt="image" src="https://github.com/user-attachments/assets/86b4c3af-fd9a-4336-8eb3-5f261d219110" />
+
 ```
 alias: "Thông báo Sự kiện Âm và Dương lịch (Trước 7 ngày)"
 description: "Gửi thông báo sự kiện đếm ngược còn 7 ngày"
