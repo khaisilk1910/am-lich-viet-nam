@@ -37,23 +37,49 @@ trigger:
     at: "08:00:00"
 variables:
   su_kien_sap_toi: >
-    {% set ns = namespace(events=[]) %}
-    
+    {% set ns = namespace(output="") %}
+    {# Bộ từ điển ánh xạ tên attribute sang Emoji #}
+    {% set emoji_map = {
+      'ngay_duong_lich_su_kien': '📅 Ngày DL sự kiện',
+      'ngay_am_lich_su_kien': '🌙 Ngày AL sự kiện',
+      'thu_su_kien': '📆 Thứ sự kiện',
+      'nam_can_chi_su_kien': '🐉 Năm can chi',
+      'ngay_am_lich_hien_tai': '🏮 Ngày AL năm nay',
+      'ngay_duong_lich_hien_tai': '🗓️ Ngày DL năm nay',
+      'thu_hien_tai': '📅 Thứ năm nay',
+      'so_nam': '⏳ Kỷ niệm (năm)',
+      'so_tuoi': '🎂 Tuổi',
+      'chi_tiet': '📝 Chi tiết'
+    } %}
     {# Quét sự kiện Âm lịch #}
-    {% for state in states.sensor | selectattr('attributes.ngay_am_lich_su_kien', 'defined') %}
-      {% if state.state == '7' %}
-        {% set ns.events = ns.events + ['- ' ~ state.name ~ ' (Âm lịch: ' ~ state.attributes.ngay_am_lich_su_kien ~ ' | Dương lịch: ' ~ state.attributes.thu_trong_tuan ~ ', ' ~ state.attributes.ngay_duong_lich_tuong_ung ~ ')'] %}
+    {% for state in states.sensor | selectattr('attributes.ngay_duong_lich_hien_tai', 'defined') %}
+      {% if state.state | is_number and state.state | int <= 30 %}
+       {% set ns.output = ns.output ~ '🏮 **' ~ state.name ~ '** (Âm lịch - Còn ' ~ state.state ~ ' ngày)\n' %}
+       {% for key, value in state.attributes.items() %}
+        {# Lọc bỏ các giá trị rỗng, không rõ hoặc không cần thiết #}
+        {% if value | string != "" and value | string != "Không rõ" and key not in ['icon', 'friendly_name', 'unit_of_measurement'] %}
+          {% set label = emoji_map.get(key, '🔹 ' ~ key) %}
+          {% set ns.output = ns.output ~ '  - ' ~ label ~ ': ' ~ value ~ '\n' %}
+        {% endif %}
+       {% endfor %}
+       {% set ns.output = ns.output ~ '\n' %}
       {% endif %}
     {% endfor %}
-
     {# Quét sự kiện Dương lịch #}
-    {% for state in states.sensor | selectattr('attributes.ngay_duong_lich_su_kien', 'defined') %}
-      {% if state.state == '7' %}
-        {% set ns.events = ns.events + ['- ' ~ state.name ~ ' (Dương lịch: ' ~ state.attributes.ngay_duong_lich_su_kien ~ ' | Âm lịch quy đổi: ' ~ state.attributes.ngay_am_lich_tuong_ung ~ ')'] %}
+    {% for state in states.sensor | selectattr('attributes.ngay_am_lich_hien_tai', 'defined') %}
+      {% if state.state | is_number and state.state | int <= 30 %}
+       {% set ns.output = ns.output ~ '🎂 **' ~ state.name ~ '** (Dương lịch - Còn ' ~ state.state ~ ' ngày)\n' %}
+       {% for key, value in state.attributes.items() %}
+        {% if value | string != "" and value | string != "Không rõ" and key not in ['icon', 'friendly_name', 'unit_of_measurement'] %}
+          {% set label = emoji_map.get(key, '🔹 ' ~ key) %}
+          {% set ns.output = ns.output ~ '  - ' ~ label ~ ': ' ~ value ~ '\n' %}
+        {% endif %}
+       {% endfor %}
+       {% set ns.output = ns.output ~ '\n' %}
       {% endif %}
     {% endfor %}
-    
-    {{ ns.events | join('\n') }}
+    {# Hiển thị kết quả #}
+    {{ ns.output if ns.output | length > 0 else 'Không có sự kiện nào diễn ra trong vòng 30 ngày tới.' }}
 condition:
   - condition: template
     value_template: "{{ su_kien_sap_toi | length > 0 }}"
