@@ -88,7 +88,7 @@ action:
     data:
       title: "📅 Sắp đến sự kiện quan trọng!"
       message: >
-        Chỉ còn 1 tuần nữa là đến các sự kiện sau:
+        Trong vòng 30 ngày nữa là đến các sự kiện sau:
         
         {{ su_kien_sap_toi }}
         
