@@ -220,7 +220,6 @@ class AmLichEventSensor(SensorEntity):
             today_start = datetime(now.year, now.month, now.day)
             event_datetime = today_start + timedelta(days=days_left)
             
-            # Sửa lỗi: Chỉ lấy năm sự kiện diễn ra hiện tại trừ đi năm xảy ra sự kiện gốc
             so_nam = 0
             if event_year is not None:
                 so_nam = event_occurrence_year - event_year
@@ -230,6 +229,7 @@ class AmLichEventSensor(SensorEntity):
             if event_year is not None and birth_year is not None:
                 so_tuoi = event_year - birth_year
             
+            # Thay đổi thứ tự gán thuộc tính ở đây
             attributes = {
                 "ngay_am_lich_su_kien": ngay_am_str,
                 "ngay_duong_lich_su_kien": hist_solar_str,
@@ -239,8 +239,6 @@ class AmLichEventSensor(SensorEntity):
                 "ngay_duong_lich_hien_tai": event_datetime.strftime("%d/%m/%Y"),
                 "thu_hien_tai": THU[event_datetime.weekday()],
                 "so_nam": so_nam,
-                "so_tuoi": so_tuoi,
-                
                 "chi_tiet": event_description
             }
             
@@ -249,6 +247,9 @@ class AmLichEventSensor(SensorEntity):
                 bm_str = f"{birth_month}/" if birth_month else ""
                 by_str = f"{birth_year}" if birth_year else ""
                 attributes["ngay_thang_nam_sinh"] = f"{bd_str}{bm_str}{by_str}".strip("/")
+            
+            # Gán 'so_tuoi' sau khi đã gán 'ngay_thang_nam_sinh' để nó nằm dưới
+            attributes["so_tuoi"] = so_tuoi
                 
             self._attr_extra_state_attributes = attributes
         else:
