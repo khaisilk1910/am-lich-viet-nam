@@ -86,7 +86,7 @@ content: |
   <div class="scroll-area">
     <table border="0" cellpadding="2" cellspacing="4" width="100%" style="margin-top: -10px;">
       {%- set ns = namespace(events=[]) -%}
-      {%- set so_ngay = states('input_number.su_kien_am_duong_sap_toi')| int(365) -%}
+      {%- set so_ngay = 30 -%}
       
       {# Định nghĩa nhãn cho các thuộc tính hiển thị #}
       {%- set attr_labels = {
