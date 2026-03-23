@@ -5,7 +5,7 @@ Custom integration hiển thị thông tin âm lịch hằng ngày, thêm sự k
 <img width="504" height="492" alt="image" src="https://github.com/user-attachments/assets/4389f498-668b-4791-ba81-e4bead1c0c35" />
 
 
-<img width="586" height="780" alt="image" src="https://github.com/user-attachments/assets/8d418b9f-0b07-4b58-8348-f2f008c89d58" /><img width="582" height="718" alt="image" src="https://github.com/user-attachments/assets/27d45333-d0d3-4efb-8e2a-14fa234a86eb" />
+<img width="506" height="700" alt="image" src="https://github.com/user-attachments/assets/8d418b9f-0b07-4b58-8348-f2f008c89d58" /><img width="506" height="700" alt="image" src="https://github.com/user-attachments/assets/27d45333-d0d3-4efb-8e2a-14fa234a86eb" />
 
 
 
@@ -78,144 +78,261 @@ action:
 
 ## Thẻ hiển thị
 
+<img width="508" height="493" alt="image" src="https://github.com/user-attachments/assets/ff77525c-3ebf-494d-a08e-371327045110" />
 
 - Cài thêm: [Home-Assistant-Lovelace-HTML-Jinja2-Template-card](https://github.com/PiotrMachowski/Home-Assistant-Lovelace-HTML-Jinja2-Template-card) và [lovelace-card-mod](https://github.com/thomasloven/lovelace-card-mod)
 
 ```
-type: vertical-stack
-cards:
-  - type: custom:html-template-card
-    title: ⏰ Sự kiện sắp đến
-    ignore_line_breaks: true
-    content: |
-      <div class="scroll-area">
-        <table border="0" cellpadding="2" cellspacing="4" width="100%" style="margin-top: -10px;">
-          {%- set ns = namespace(events=[]) -%}
-          {%- set so_ngay = 365 -%}
-          
-          {# 1. Lấy danh sách sự kiện ÂM LỊCH #}
-          {%- for state in states.sensor | selectattr('attributes.ngay_am_lich_su_kien', 'defined') -%}
-            {%- if 0 <= state.state | int(-1) <= so_ngay -%}
-              {%- set ns.events = ns.events + [{
-                'thu': state.attributes.thu_trong_tuan, 
-                'duong': state.attributes.ngay_duong_lich_tuong_ung[:5], 
-                'name': state.name,
-                'am': state.attributes.ngay_am_lich_su_kien, 
-                'days': state.state | int
-              }] -%}
-            {%- endif -%}
-          {%- endfor -%}
+type: custom:html-template-card
+title: ⏰ Sự kiện sắp đến
+ignore_line_breaks: true
+content: |
+  <div class="scroll-area">
+    <table border="0" cellpadding="2" cellspacing="4" width="100%" style="margin-top: -10px;">
+      {%- set ns = namespace(events=[]) -%}
+      {%- set so_ngay = states('input_number.su_kien_am_duong_sap_toi')| int(365) -%}
+      
+      {# Định nghĩa nhãn cho các thuộc tính hiển thị #}
+      {%- set attr_labels = {
+        'ngay_am_lich_su_kien': 'Ngày Âm Lịch',
+        'ngay_duong_lich_su_kien': 'Ngày Dương Lịch',
+        'thu_su_kien': 'Thứ',
+        'nam_can_chi_su_kien': 'Năm Can Chi',
+        'so_nam': 'Số Năm kỷ niệm',
+        'so_tuoi': 'Số Tuổi',
+        'chi_tiet': 'Chi Tiết'
+      } -%}
 
-          {# 2. Lấy danh sách sự kiện DƯƠNG LỊCH #}
-          {%- for state in states.sensor | selectattr('attributes.ngay_duong_lich_su_kien', 'defined') -%}
-            {%- if 0 <= state.state | int(-1) <= so_ngay -%}
-              {%- set ns.events = ns.events + [{
-                'thu': state.attributes.thu_trong_tuan, 
-                'duong': state.attributes.ngay_duong_lich_su_kien[:5], 
-                'name': state.name,
-                'am': state.attributes.ngay_am_lich_tuong_ung, 
-                'days': state.state | int
-              }] -%}
-            {%- endif -%}
-          {%- endfor -%}
-          
-          {# 3. Hiển thị danh sách tổng #}
-          {%- if ns.events | count > 0 -%}
-            {%- for ev in ns.events | sort(attribute='days') -%}
-                
-            {%- set mau_td = "blue" -%}
-            {%- if ev.days <= 2 -%}
-              {%- set mau_td = "red" -%}
-            {%- elif ev.days <= 7 -%}
-              {%- set mau_td = "orange" -%}
-            {%- elif 7 < ev.days <= 15  -%}
-              {%- set mau_td = "yellow" -%}
-            {%- endif -%}
+      {# 1. Lấy danh sách sự kiện ÂM LỊCH #}
+      {%- for state in states.sensor | selectattr('attributes.ngay_am_lich_su_kien', 'defined') | selectattr('attributes.ngay_duong_lich_hien_tai', 'defined') -%}
+        {%- if 0 <= state.state | int(-1) <= so_ngay -%}
+          {%- set am_split = state.attributes.ngay_am_lich_su_kien.split('/') -%}
+          {%- set am_short = am_split[0] ~ '/' ~ am_split[1] if am_split | length >= 2 else state.attributes.ngay_am_lich_su_kien -%}
+          {%- set ns.events = ns.events + [{
+            'entity_id': state.entity_id,
+            'thu': state.attributes.thu_hien_tai, 
+            'duong': state.attributes.ngay_duong_lich_hien_tai[:5], 
+            'name': state.attributes.friendly_name | default(state.name),
+            'am': am_short, 
+            'days': state.state | int
+          }] -%}
+        {%- endif -%}
+      {%- endfor -%}
 
-            {# 4. Logic tìm từ khóa và chèn Emoji #}
-            {%- set ten_su_kien = ev.name | lower -%}
-            {%- set icon = "📌" -%} 
-            {%- if "sinh nhật" in ten_su_kien -%}
-              {%- set icon = "🥳🎂" -%}
-            {%- elif "giỗ" in ten_su_kien -%}
-              {%- set icon = "🕯️" -%}
-            {%- elif "cưới" in ten_su_kien -%}
-              {%- set icon = "🎉💍" -%}
-            {%- endif -%}
+      {# 2. Lấy danh sách sự kiện DƯƠNG LỊCH #}
+      {%- for state in states.sensor | selectattr('attributes.ngay_duong_lich_su_kien', 'defined') | selectattr('attributes.ngay_am_lich_hien_tai', 'defined') -%}
+        {%- if 0 <= state.state | int(-1) <= so_ngay -%}
+          {%- set am_split = state.attributes.ngay_am_lich_hien_tai.split('/') -%}
+          {%- set am_short = am_split[0] ~ '/' ~ am_split[1] if am_split | length >= 2 else state.attributes.ngay_am_lich_hien_tai -%}
+          {%- set ns.events = ns.events + [{
+            'entity_id': state.entity_id,
+            'thu': state.attributes.thu_hien_tai, 
+            'duong': state.attributes.ngay_duong_lich_su_kien[:5], 
+            'name': state.attributes.friendly_name | default(state.name),
+            'am': am_short, 
+            'days': state.state | int
+          }] -%}
+        {%- endif -%}
+      {%- endfor -%}
+      
+      {# 3. Hiển thị danh sách tổng #}
+      {%- if ns.events | count > 0 -%}
+        {%- for ev in ns.events | sort(attribute='days') -%}
             
-            <tr>
-              <td align="center" width="20%" style="border-bottom: solid 1px gray; vertical-align: middle;">
-                <div style="color:orange; margin-bottom: -8px;">
-                  {{ ev.thu }}
-                </div>
-                <div style="color:white; font-size:25px; font-weight:bold;">
-                  {{ ev.duong }}
-                </div>
-                <div style="color:orange; margin-top: -8px;">
-                  {{ ev.am }}
-                </div>
-              </td>
-              
-              <td align="center" style="background:{{mau_td}}; vertical-align: middle; margin-bottom: 5px; padding-bottom: 5px;"></td>
-              
-              <td align="center" width="80%" style="border-bottom: solid 1px gray;">
-                <div style="color:white; text-align: left; padding-left: 4px; display: flex; align-items: center;">
-                  <span style="font-size: 2em; margin-right: 4px;">{{ icon }}</span>
-                  <span>{{ev.name}}</span>
-                </div>
-                <div style="color:orange; text-align: right; padding-right: 10px;">
-                  <span style="font-style: italic;">
-                    {{ ev.days }} ngày
-                  </span>
-                  <span class="flip-emoji" style="font-size:18px;">⏳</span>
-                </div>
-              </td>
-            </tr>
-            {%- endfor -%}
-          {%- else -%}
-            <tr cellpadding="2" cellspacing="4">
-              <td colspan="3" align="left">
-                Không có sự kiện nào trong <span style="color:red; font-size:25px; font-weight:bold;">{{ so_ngay }}</span> ngày tới
-              </td>
-            </tr>
-          {%- endif -%}
-        </table>
-      </div>
-    card_mod:
-      style: |
-        ha-card {
-          background: rgba(0,0,0,0.3) !important;
-        }
+        {%- set mau_td = "blue" -%}
+        {%- if ev.days <= 2 -%}
+          {%- set mau_td = "red" -%}
+        {%- elif ev.days <= 7 -%}
+          {%- set mau_td = "orange" -%}
+        {%- elif 7 < ev.days <= 15  -%}
+          {%- set mau_td = "yellow" -%}
+        {%- endif -%}
 
-        .scroll-area {
-          max-height: 230px; 
-          overflow-y: auto;
-          overflow-x: hidden;
-          padding-right: 5px;
-        }
+        {%- set ten_su_kien = ev.name | lower -%}
+        {%- set icon = "📌" -%} 
+        {%- if "sinh nhật" in ten_su_kien -%}
+          {%- set icon = "🥳🎂" -%}
+        {%- elif "giỗ" in ten_su_kien -%}
+          {%- set icon = "🕯️" -%}
+        {%- elif "cưới" in ten_su_kien -%}
+          {%- set icon = "🎉💍" -%}
+        {%- endif -%}
+        
+        {# DÒNG CHÍNH GIỮ NGUYÊN BỐ CỤC #}
+        <tr class="event-row" onclick="const d = this.nextElementSibling; const i = this.querySelector('.toggle-icon'); if(d.style.display==='none' || d.style.display===''){ d.style.display='table-row'; i.style.transform='rotate(180deg)'; } else { d.style.display='none'; i.style.transform='rotate(0deg)'; }">
+          <td align="center" width="20%" style="border-bottom: solid 1px gray; vertical-align: middle;">
+            <div style="color:orange; margin-bottom: -8px;">
+              {{ ev.thu }}
+            </div>
+            <div style="color:white; font-size:25px; font-weight:bold;">
+              {{ ev.duong }}
+            </div>
+            <div style="color:orange; margin-top: -8px;">
+              {{ ev.am }}
+            </div>
+          </td>
+          
+          <td align="center" style="background:{{mau_td}}; width: 4px; border-radius: 2px; vertical-align: middle; margin-bottom: 5px; padding-bottom: 5px;"></td>
+          
+          <td align="center" width="80%" style="border-bottom: solid 1px gray;">
+            <div style="color:white; text-align: left; padding-left: 4px; display: flex; align-items: center;">
+              <span style="font-size: 2em; margin-right: 4px;">{{ icon }}</span>
+              <span>{{ev.name}}</span>
+            </div>
+            <div style="color:orange; text-align: right; padding-right: 10px;">
+              <span style="font-style: italic;">
+                {{ ev.days }} ngày
+              </span>
+              <span class="flip-emoji" style="font-size:18px;">⏳</span>
+              <span class="toggle-icon" style="font-size: 14px; color: #888; margin-left: 8px; display: inline-block; transition: transform 0.3s;">▼</span>
+            </div>
+          </td>
+        </tr>
 
-        .scroll-area::-webkit-scrollbar {
-          width: 4px;
-        }
-        .scroll-area::-webkit-scrollbar-track {
-          background: rgba(0,0,0,0.1); 
-        }
-        .scroll-area::-webkit-scrollbar-thumb {
-          background: rgba(255, 165, 0, 0.6); 
-          border-radius: 4px;
-        }
+        {# DÒNG CHI TIẾT SỰ KIỆN (Ẩn mặc định) #}
+        {%- set state_obj = states[ev.entity_id] -%}
+        <tr style="display: none;" class="detail-row">
+          <td colspan="3" style="border-bottom: solid 1px gray; padding: 0 5px 10px 5px;">
+            <div class="detail-content">
+              {%- for key, label in attr_labels.items() -%}
+                {%- if state_obj.attributes[key] is defined and state_obj.attributes[key] | string | length > 0 -%}
+                  {%- if key == 'chi_tiet' -%}
+                    <div class="attr-box">
+                      <div class="attr-label">{{ label }}:</div>
+                      <div class="attr-value-full">{{ state_obj.attributes[key] }}</div>
+                    </div>
+                  {%- else -%}
+                    <div class="attr-row">
+                      <span class="attr-label">{{ label }}:</span>
+                      <span class="attr-value">{{ state_obj.attributes[key] }}</span>
+                    </div>
+                  {%- endif -%}
+                {%- endif -%}
+              {%- endfor -%}
+            </div>
+          </td>
+        </tr>
+        {%- endfor -%}
+      {%- else -%}
+        <tr cellpadding="2" cellspacing="4">
+          <td colspan="3" align="left">
+            Không có sự kiện nào trong <span style="color:red; font-size:25px; font-weight:bold;">{{ so_ngay }}</span> ngày tới
+          </td>
+        </tr>
+      {%- endif -%}
+    </table>
+  </div>
+card_mod:
+  style: >
+    ha-card {
+      background: rgba(0,0,0,0.3) !important;
+    }
 
-        .flip-emoji {
-          display: inline-block;
-          animation: flip-hourglass 6s ease-in-out infinite;
-        }
-        @keyframes flip-hourglass {
-          0% { transform: rotate(0deg); }
-          12.5% { transform: rotate(180deg); }
-          50% { transform: rotate(180deg); }
-          62.5% { transform: rotate(0deg); }
-          100% { transform: rotate(0deg); }
-        }
+
+    .scroll-area {
+      max-height: 400px; 
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 5px;
+    }
+
+
+    .scroll-area::-webkit-scrollbar { width: 4px; }
+
+    .scroll-area::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+
+    .scroll-area::-webkit-scrollbar-thumb { background: rgba(255, 165, 0, 0.6);
+    border-radius: 4px; }
+
+
+    .flip-emoji {
+      display: inline-block;
+      animation: flip-hourglass 6s ease-in-out infinite;
+    }
+
+
+    @keyframes flip-hourglass {
+      0% { transform: rotate(0deg); }
+      12.5% { transform: rotate(180deg); }
+      50% { transform: rotate(180deg); }
+      62.5% { transform: rotate(0deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+
+    tr.event-row {
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+
+    tr.event-row:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+
+    /* CSS cho hộp chi tiết xổ xuống */
+
+    .detail-content {
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 8px;
+      margin-top: 5px;
+      padding: 12px 15px;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.05);
+      animation: expandIn 0.3s ease-out;
+    }
+
+
+    @keyframes expandIn {
+      0% { opacity: 0; transform: translateY(-5px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+
+    .attr-row {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px dashed rgba(255,255,255,0.15);
+      padding: 6px 0;
+    }
+
+    .attr-row:last-child {
+      border-bottom: none;
+    }
+
+
+    .attr-box {
+      background: rgba(255,255,255,0.05);
+      padding: 10px 12px;
+      border-radius: 6px;
+      margin-top: 8px;
+      border-left: 3px solid orange;
+    }
+
+
+    .attr-label {
+      color: #aaa;
+      font-size: 0.9em;
+    }
+
+
+    .attr-value {
+      color: white;
+      font-weight: 500;
+      text-align: right;
+    }
+
+
+    .attr-value-full {
+      color: white;
+      font-weight: normal;
+      font-style: italic;
+      margin-top: 4px;
+      line-height: 1.4;
+      font-size: 0.95em;
+    }
+
 ```
 
 
