@@ -220,10 +220,9 @@ class AmLichEventSensor(SensorEntity):
             today_start = datetime(now.year, now.month, now.day)
             event_datetime = today_start + timedelta(days=days_left)
             
+            # Sửa lỗi: Chỉ lấy năm sự kiện diễn ra hiện tại trừ đi năm xảy ra sự kiện gốc
             so_nam = 0
-            if birth_year is not None:
-                so_nam = event_occurrence_year - birth_year
-            elif event_year is not None:
+            if event_year is not None:
                 so_nam = event_occurrence_year - event_year
 
             # Tính số tuổi = năm sự kiện (nếu có) - năm sinh (nếu có)
