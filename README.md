@@ -28,7 +28,8 @@ Custom integration hiển thị thông tin âm lịch hằng ngày, thêm sự k
 
 
 ## Automation để thông báo khi 30 ngày Sau sẽ có sự kiện ( các bạn có thể tùy biến theo khả năng dựa vào các sensor)
-<img width="648" height="778" alt="image" src="https://github.com/user-attachments/assets/86b4c3af-fd9a-4336-8eb3-5f261d219110" />
+<img width="648" height="643" alt="image" src="https://github.com/user-attachments/assets/643d2a26-a3e0-4c0c-b2a9-af555f71a930" />
+
 
 ```
 alias: "Thông báo Sự kiện Âm và Dương lịch (Trước 7 ngày)"
@@ -39,49 +40,71 @@ trigger:
     at: "08:00:00"
 variables:
   su_kien_sap_toi: >
-    {% set ns = namespace(output="") %}
-    {# Bộ từ điển ánh xạ tên attribute sang Emoji #}
-    {% set emoji_map = {
-      'ngay_duong_lich_su_kien': '📅 Ngày DL sự kiện',
-      'ngay_am_lich_su_kien': '🌙 Ngày AL sự kiện',
-      'thu_su_kien': '📆 Thứ sự kiện',
-      'nam_can_chi_su_kien': '🐉 Năm can chi',
-      'ngay_am_lich_hien_tai': '🏮 Ngày AL năm nay',
-      'ngay_duong_lich_hien_tai': '🗓️ Ngày DL năm nay',
-      'thu_hien_tai': '📅 Thứ năm nay',
-      'so_nam': '⏳ Kỷ niệm (năm)',
-      'so_tuoi': '🎂 Tuổi',
-      'chi_tiet': '📝 Chi tiết'
-    } %}
-    {# Quét sự kiện Âm lịch #}
-    {% for state in states.sensor | selectattr('attributes.ngay_duong_lich_hien_tai', 'defined') %}
-      {% if state.state | is_number and state.state | int <= 30 %}
-       {% set ns.output = ns.output ~ '🏮 **' ~ state.name ~ '** (Âm lịch - Còn ' ~ state.state ~ ' ngày)\n' %}
+   {% set ns = namespace(output="") %}
+   {# Bộ từ điển ánh xạ tên attribute sang Emoji #}
+   {% set emoji_map = {
+     'ngay_duong_lich_su_kien': '📅 Ngày DL sự kiện',
+     'ngay_am_lich_su_kien': '🌙 Ngày AL sự kiện',
+     'thu_su_kien': '📆 Thứ sự kiện',
+     'nam_can_chi_su_kien': '🐉 Năm can chi',
+     'ngay_am_lich_hien_tai': '🏮 Ngày AL năm nay',
+     'ngay_duong_lich_hien_tai': '🗓️ Ngày DL năm nay',
+     'thu_hien_tai': '📅 Thứ năm nay',
+     'so_nam': '⏳ Kỷ niệm (năm)',
+     'so_tuoi': '🎂 Tuổi',
+     'chi_tiet': '📝 Chi tiết'
+   } %}
+   {# Quét sự kiện Âm lịch #}
+   {% for state in states.sensor | selectattr('attributes.ngay_duong_lich_hien_tai', 'defined') %}
+     {% if state.state | is_number and state.state | int <= 30 %}
+       {# Xác định emoji tiêu đề dựa trên từ khóa trong tên sự kiện #}
+       {% set name_lower = state.name | lower %}
+       {% if 'giỗ' in name_lower %}
+         {% set title_emoji = '🕯️' %}
+       {% elif 'sinh nhật' in name_lower %}
+         {% set title_emoji = '🥳🎂' %}
+       {% elif 'cưới' in name_lower %}
+         {% set title_emoji = '🎉💍' %}
+       {% else %}
+         {% set title_emoji = '📌' %}
+       {% endif %}
+       {% set ns.output = ns.output ~ title_emoji ~ ' ' ~ state.name ~ ' (Âm lịch - Còn ' ~ state.state ~ ' ngày)\n' %}
        {% for key, value in state.attributes.items() %}
-        {# Lọc bỏ các giá trị rỗng, không rõ hoặc không cần thiết #}
-        {% if value | string != "" and value | string != "Không rõ" and key not in ['icon', 'friendly_name', 'unit_of_measurement'] %}
-          {% set label = emoji_map.get(key, '🔹 ' ~ key) %}
-          {% set ns.output = ns.output ~ '  - ' ~ label ~ ': ' ~ value ~ '\n' %}
-        {% endif %}
+         {# Lọc bỏ các giá trị rỗng, không rõ hoặc không cần thiết #}
+         {% if value | string != "" and value | string != "0" and value | string != "Không rõ" and key not in ['icon', 'friendly_name', 'unit_of_measurement'] %}
+           {% set label = emoji_map.get(key, '🔹 ' ~ key) %}
+           {% set ns.output = ns.output ~ '  - ' ~ label ~ ': ' ~ value ~ '\n' %}
+         {% endif %}
        {% endfor %}
        {% set ns.output = ns.output ~ '\n' %}
-      {% endif %}
-    {% endfor %}
-    {# Quét sự kiện Dương lịch #}
-    {% for state in states.sensor | selectattr('attributes.ngay_am_lich_hien_tai', 'defined') %}
-      {% if state.state | is_number and state.state | int <= 30 %}
-       {% set ns.output = ns.output ~ '🎂 **' ~ state.name ~ '** (Dương lịch - Còn ' ~ state.state ~ ' ngày)\n' %}
+     {% endif %}
+   {% endfor %}
+   {# Quét sự kiện Dương lịch #}
+   {% for state in states.sensor | selectattr('attributes.ngay_am_lich_hien_tai', 'defined') %}
+     {% if state.state | is_number and state.state | int <= 30 %}
+       {# Xác định emoji tiêu đề dựa trên từ khóa trong tên sự kiện #}
+       {% set name_lower = state.name | lower %}
+       {% if 'giỗ' in name_lower %}
+         {% set title_emoji = '🕯️' %}
+       {% elif 'sinh nhật' in name_lower %}
+         {% set title_emoji = '🥳🎂' %}
+       {% elif 'cưới' in name_lower %}
+         {% set title_emoji = '🎉💍' %}
+       {% else %}
+         {% set title_emoji = '📌' %}
+       {% endif %}
+       {% set ns.output = ns.output ~ title_emoji ~ '' ~ state.name ~ ' (Dương lịch - Còn ' ~ state.state ~ ' ngày)\n' %}
        {% for key, value in state.attributes.items() %}
-        {% if value | string != "" and value | string != "Không rõ" and key not in ['icon', 'friendly_name', 'unit_of_measurement'] %}
-          {% set label = emoji_map.get(key, '🔹 ' ~ key) %}
-          {% set ns.output = ns.output ~ '  - ' ~ label ~ ': ' ~ value ~ '\n' %}
-        {% endif %}
+         {% if value | string != "" and value | string != "0" and value | string != "Không rõ" and key not in ['icon', 'friendly_name', 'unit_of_measurement'] %}
+           {% set label = emoji_map.get(key, '🔹 ' ~ key) %}
+           {% set ns.output = ns.output ~ '  - ' ~ label ~ ': ' ~ value ~ '\n' %}
+         {% endif %}
        {% endfor %}
        {% set ns.output = ns.output ~ '\n' %}
-      {% endif %}
-    {% endfor %}
-    {# Hiển thị kết quả #}
-    {{ ns.output if ns.output | length > 0 else 'Không có sự kiện nào diễn ra trong vòng 30 ngày tới.' }}
+     {% endif %}
+   {% endfor %}
+   {# Hiển thị kết quả #}
+   {{ ns.output if ns.output | length > 0 else 'Không có sự kiện nào diễn ra trong vòng 30 ngày tới.' }}    
 condition:
   - condition: template
     value_template: "{{ su_kien_sap_toi | length > 0 }}"
@@ -96,7 +119,6 @@ action:
         
         Bạn hãy chuẩn bị nhé!
 ```
-
 
 
 
