@@ -124,7 +124,7 @@ action:
 
 ## Thẻ hiển thị
 
-<img width="508" height="493" alt="image" src="https://github.com/user-attachments/assets/ff77525c-3ebf-494d-a08e-371327045110" />
+<img width="504" height="702" alt="image" src="https://github.com/user-attachments/assets/d2ae1555-320a-47b0-9039-3c717d1d03a2" />
 
 - Cài thêm: [Home-Assistant-Lovelace-HTML-Jinja2-Template-card](https://github.com/PiotrMachowski/Home-Assistant-Lovelace-HTML-Jinja2-Template-card) và [lovelace-card-mod](https://github.com/thomasloven/lovelace-card-mod)
 
@@ -268,34 +268,110 @@ content: |
       {%- endif -%}
     </table>
   </div>
+
+  <div class="conv-wrapper" style="margin-top: 10px;">
+    
+    <div class="conv-header" onclick="const b = this.nextElementSibling; const i = this.querySelector('.conv-icon'); if(b.style.display==='none' || b.style.display===''){b.style.display='block'; i.style.transform='rotate(180deg)';}else{b.style.display='none'; i.style.transform='rotate(0deg)';}">
+      <h3 style="margin: 0; font-size: 1.1em; color: orange; display: flex; align-items: center; gap: 8px;">
+        <span>🔄</span> Tra cứu / Quy đổi ngày nhanh
+      </h3>
+      <span class="conv-icon" style="transition: transform 0.3s; color: gray;">▼</span>
+    </div>
+
+    <div class="conv-body" style="display: none; margin-top: 15px;">
+      <select class="conv-type conv-input" style="width: 100%; margin-bottom: 10px; text-align: left; padding-left: 10px;">
+        <option value="solar_to_lunar">☀️ Dương lịch ➡️ 🌙 Âm lịch</option>
+        <option value="lunar_to_solar">🌙 Âm lịch ➡️ ☀️ Dương lịch</option>
+      </select>
+
+      <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+        <input type="number" class="conv-day conv-input" placeholder="Ngày" min="1" max="31" style="flex: 1;">
+        <input type="number" class="conv-month conv-input" placeholder="Tháng" min="1" max="12" style="flex: 1;">
+        <input type="number" class="conv-year conv-input" placeholder="Năm" min="1800" max="2199" style="flex: 1.2;">
+      </div>
+
+      <button class="conv-btn" onclick="(async (btn) => { 
+        const body = btn.parentElement; 
+        const resDiv = body.querySelector('.conv-result'); 
+        const type = body.querySelector('.conv-type').value; 
+        const d = body.querySelector('.conv-day').value; 
+        const m = body.querySelector('.conv-month').value; 
+        const y = body.querySelector('.conv-year').value; 
+        
+        if(!d || !m || !y) { 
+          resDiv.style.display = 'block'; 
+          resDiv.innerHTML = '<span style=\'color:#ff6b6b;\'>⚠️ Vui lòng nhập đầy đủ Ngày, Tháng, Năm!</span>'; 
+          return; 
+        } 
+        
+        btn.innerText = '⏳ ĐANG TÍNH...'; 
+        btn.style.opacity = '0.7'; 
+        
+        try { 
+          const ha = document.querySelector('home-assistant'); 
+          const response = await ha.hass.callWS({ 
+            type: 'call_service', 
+            domain: 'am_lich_viet_nam', 
+            service: 'convert_date', 
+            service_data: { conversion_type: type, day: parseInt(d), month: parseInt(m), year: parseInt(y) }, 
+            return_response: true 
+          }); 
+          
+          const data = response.response; 
+          
+          if(data.error) { 
+            resDiv.innerHTML = '<span style=\'color:#ff6b6b;\'>❌ Lỗi: ' + data.error + '</span>'; 
+          } else { 
+            let html = '<div style=\'margin-bottom: 8px; color: white;\'>☀️ Ngày Dương Lịch: <b style=\'color:#4dabf7; font-size: 1.2em;\'>' + data.ngay_duong_lich + '</b></div>'; 
+            html += '<div style=\'margin-bottom: 8px; color: white;\'>🌙 Ngày Âm Lịch: <b style=\'color:#ffd43b; font-size: 1.2em;\'>' + data.ngay_am_lich + '</b></div>'; 
+            html += '<div style=\'margin-bottom: 8px; color: white;\'>🐲 Năm Can Chi: <b style=\'color:#ffffff; font-size: 1.2em;\'>' + data.nam_can_chi + '</b></div>'; 
+            html += '<div style=\'margin-top: 10px; font-style: italic; color: #adb5bd; font-size: 0.9em; line-height: 1.4;\'>ℹ️ ' + data.thong_bao_nhuan + '</div>'; 
+            
+            if(data.ngay_duong_thang_thuong || data.ngay_duong_thang_nhuan) { 
+              html += '<div style=\'margin-top: 10px; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 10px;\'>'; 
+              html += '<div style=\'color:orange; margin-bottom: 5px; font-size:0.9em;\'>📌 Chi tiết mốc ngày Dương lịch:</div>'; 
+              if(data.ngay_duong_thang_thuong) html += '<div style=\'color: #adb5bd; font-size: 0.9em; margin-bottom: 4px;\'>🔹 Tính là tháng thường: <b style=\'color:white\'>' + data.ngay_duong_thang_thuong + '</b></div>'; 
+              if(data.ngay_duong_thang_nhuan) html += '<div style=\'color: #adb5bd; font-size: 0.9em;\'>🔹 Tính là tháng nhuận: <b style=\'color:white\'>' + data.ngay_duong_thang_nhuan + '</b></div>'; 
+              html += '</div>'; 
+            } 
+            resDiv.innerHTML = html; 
+          } 
+          resDiv.style.display = 'block'; 
+        } catch(e) { 
+          console.error(e); 
+          resDiv.style.display = 'block'; 
+          resDiv.innerHTML = '<span style=\'color:#ff6b6b;\'>❌ Lỗi kết nối hệ thống. Hãy kiểm tra lại.</span>'; 
+        } finally { 
+          btn.innerText = 'TÍNH TOÁN QUY ĐỔI'; 
+          btn.style.opacity = '1'; 
+        } 
+      })(this)">TÍNH TOÁN QUY ĐỔI</button>
+
+      <div class="conv-result" style="display: none; margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.5); border-radius: 8px; border-left: 4px solid orange; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); color: white;"></div>
+    </div>
+  </div>
 card_mod:
   style: >
     ha-card {
       background: rgba(0,0,0,0.3) !important;
     }
 
-
     .scroll-area {
-      max-height: 400px; 
+      max-height: 250px; 
       overflow-y: auto;
       overflow-x: hidden;
       padding-right: 5px;
     }
 
-
     .scroll-area::-webkit-scrollbar { width: 4px; }
-
     .scroll-area::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
-
     .scroll-area::-webkit-scrollbar-thumb { background: rgba(255, 165, 0, 0.6);
     border-radius: 4px; }
-
 
     .flip-emoji {
       display: inline-block;
       animation: flip-hourglass 6s ease-in-out infinite;
     }
-
 
     @keyframes flip-hourglass {
       0% { transform: rotate(0deg); }
@@ -305,21 +381,16 @@ card_mod:
       100% { transform: rotate(0deg); }
     }
 
-
     tr.event-row {
       cursor: pointer;
       transition: background-color 0.2s;
     }
 
-
     tr.event-row:hover {
       background-color: rgba(255, 255, 255, 0.05);
     }
 
-
-    /* CSS cho hộp chi tiết xổ xuống */
-
-    .detail-content {
+    /* CSS cho hộp chi tiết sự kiện */ .detail-content {
       background: rgba(0, 0, 0, 0.4);
       border-radius: 8px;
       margin-top: 5px;
@@ -329,12 +400,10 @@ card_mod:
       animation: expandIn 0.3s ease-out;
     }
 
-
     @keyframes expandIn {
       0% { opacity: 0; transform: translateY(-5px); }
       100% { opacity: 1; transform: translateY(0); }
     }
-
 
     .attr-row {
       display: flex;
@@ -347,7 +416,6 @@ card_mod:
       border-bottom: none;
     }
 
-
     .attr-box {
       background: rgba(255,255,255,0.05);
       padding: 10px 12px;
@@ -356,19 +424,16 @@ card_mod:
       border-left: 3px solid orange;
     }
 
-
     .attr-label {
       color: #aaa;
       font-size: 0.9em;
     }
-
 
     .attr-value {
       color: white;
       font-weight: 500;
       text-align: right;
     }
-
 
     .attr-value-full {
       color: white;
@@ -378,6 +443,27 @@ card_mod:
       line-height: 1.4;
       font-size: 0.95em;
     }
+
+    /* CSS CHO CỤC QUY ĐỔI MỚI THÊM */ .conv-header {
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      cursor: pointer; 
+      padding: 5px 20px 5px 5px; 
+      border-radius: 6px; 
+      transition: background 0.2s;
+    } .conv-header:hover {
+      background: rgba(255,255,255,0.05);
+    } .conv-input {
+      background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px; border-radius: 6px; outline: none; text-align: center; font-size: 1em;
+    } .conv-input:focus {
+      border-color: orange;
+    } .conv-btn {
+      width: 100%; background: rgba(255, 165, 0, 0.8); color: black; font-weight: bold; border-radius: 6px; padding: 10px; border: none; cursor: pointer; transition: background 0.2s; font-size: 1em;
+    } .conv-btn:hover {
+      background: rgba(255, 165, 0, 1);
+    }
+
 
 ```
 
