@@ -1,7 +1,10 @@
 # Âm lịch Việt Nam cho Home Assistant
 
-Custom integration hiển thị thông tin âm lịch hằng ngày.
+**Custom integration:**
+- Cung cấp thông tin âm lịch hằng ngày vào sensor
 - Thêm sự kiện âm lịch(giỗ, lễ,..), thêm sự kiện dương lịch(sinh nhật, ngày cưới,...)
+- Chỉnh sửa sự kiện trên UI của tích hợp dễ dàng.
+- Tra cứu, qui đổi ngày âm dương dễ dàng
 
 
 <img width="506" height="700" alt="image" src="https://github.com/user-attachments/assets/8d418b9f-0b07-4b58-8348-f2f008c89d58" /><img width="506" height="700" alt="image" src="https://github.com/user-attachments/assets/27d45333-d0d3-4efb-8e2a-14fa234a86eb" />
