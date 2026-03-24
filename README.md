@@ -128,7 +128,8 @@ action:
 
 ## Thẻ hiển thị
 
-<img width="504" height="702" alt="image" src="https://github.com/user-attachments/assets/d2ae1555-320a-47b0-9039-3c717d1d03a2" />
+<img width="494" height="802" alt="su_kien_tra_cuu_am_duong yaml" src="https://github.com/user-attachments/assets/f7b6a413-b5da-43ac-9e59-3d370ff99749" />
+
 
 - Cài thêm: [Home-Assistant-Lovelace-HTML-Jinja2-Template-card](https://github.com/PiotrMachowski/Home-Assistant-Lovelace-HTML-Jinja2-Template-card) và [lovelace-card-mod](https://github.com/thomasloven/lovelace-card-mod)
 
