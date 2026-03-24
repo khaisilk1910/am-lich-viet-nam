@@ -1,0 +1,52 @@
+convert_date:
+  name: Quy đổi ngày (Âm lịch / Dương lịch)
+  description: Chuyển đổi ngày tháng năm qua lại giữa Âm lịch và Dương lịch một cách chính xác. Có tính toán cả trường hợp tháng nhuận, năm nhuận. Service trả về dữ liệu (Response).
+  fields:
+    conversion_type:
+      name: Kiểu chuyển đổi
+      description: Chọn hướng chuyển đổi bạn muốn thực hiện.
+      required: true
+      selector:
+        select:
+          options:
+            - label: Dương lịch sang Âm lịch
+              value: solar_to_lunar
+            - label: Âm lịch sang Dương lịch
+              value: lunar_to_solar
+    day:
+      name: Ngày
+      description: Ngày cần chuyển đổi (1-31).
+      required: true
+      example: 15
+      selector:
+        number:
+          min: 1
+          max: 31
+          mode: box
+    month:
+      name: Tháng
+      description: Tháng cần chuyển đổi (1-12).
+      required: true
+      example: 8
+      selector:
+        number:
+          min: 1
+          max: 12
+          mode: box
+    year:
+      name: Năm
+      description: Năm cần chuyển đổi (1800-2199).
+      required: true
+      example: 2024
+      selector:
+        number:
+          min: 1800
+          max: 2199
+          mode: box
+    is_leap_month:
+      name: Là tháng Nhuận? (Chỉ dùng cho Âm -> Dương)
+      description: Bật lên NẾU bạn đang đổi từ Âm sang Dương VÀ tháng âm đó là tháng nhuận. Bỏ qua trong các trường hợp khác.
+      required: false
+      default: false
+      selector:
+        boolean:
