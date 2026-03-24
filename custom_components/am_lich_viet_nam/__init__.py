@@ -28,6 +28,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         try:
             if conv_type == "solar_to_lunar":
+                # Đổi Dương sang Âm
                 try:
                     datetime.datetime(y, m, d)
                 except ValueError:
@@ -45,7 +46,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     "thang": lunar.month,
                     "nam": lunar.year,
                     "nam_can_chi": can_chi,
-                    "ngay_dinh_dang": f"{lunar.day}/{lunar.month}/{lunar.year}" + (" (Nhuận)" if lunar.leap == 1 else "")
+                    "ngay_duong_lich": f"{int(d)}/{int(m)}/{int(y)}",
+                    "ngay_am_lich": f"{int(lunar.day)}/{int(lunar.month)}/{int(lunar.year)}" + (" (Nhuận)" if lunar.leap == 1 else "")
                 }
                 
                 if leap_month_of_year > 0:
@@ -55,12 +57,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                         both_solar, _ = await hass.async_add_executor_job(lunar_to_solar_extended, lunar.day, lunar.month, lunar.year)
                         if lunar.leap == 1:
                             if "regular" in both_solar:
-                                response["ngay_duong_thang_thuong"] = both_solar["regular"]["ngay_dinh_dang"]
-                            response["ngay_duong_thang_nhuan"] = f"{d}/{m}/{y}"
+                                response["ngay_duong_thang_thuong"] = both_solar["regular"]["ngay_duong_lich"]
+                            response["ngay_duong_thang_nhuan"] = f"{int(d)}/{int(m)}/{int(y)}"
                         else:
-                            response["ngay_duong_thang_thuong"] = f"{d}/{m}/{y}"
+                            response["ngay_duong_thang_thuong"] = f"{int(d)}/{int(m)}/{int(y)}"
                             if "leap" in both_solar:
-                                response["ngay_duong_thang_nhuan"] = both_solar["leap"]["ngay_dinh_dang"]
+                                response["ngay_duong_thang_nhuan"] = both_solar["leap"]["ngay_duong_lich"]
                     response["thong_bao_nhuan"] = msg
                 else:
                     response["thong_bao_nhuan"] = f"Năm âm lịch {can_chi} ({lunar.year}) không có tháng nhuận."
@@ -68,7 +70,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 return response
                 
             else:
-                # Kịch bản 2: Âm sang Dương
+                # Đổi Âm sang Dương
                 both_solar, leap_month_of_year = await hass.async_add_executor_job(lunar_to_solar_extended, d, m, y)
                 can_chi = get_year_can_chi(y)
                 
@@ -82,7 +84,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     "thang": default_res["thang"],
                     "nam": default_res["nam"],
                     "nam_can_chi": can_chi,
-                    "ngay_dinh_dang": default_res["ngay_dinh_dang"]
+                    "ngay_am_lich": f"{int(d)}/{int(m)}/{int(y)}",
+                    "ngay_duong_lich": default_res["ngay_duong_lich"]
                 }
                 
                 if leap_month_of_year > 0:
@@ -90,9 +93,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     if m == leap_month_of_year:
                         msg += " Tháng bạn đang quy đổi chính là tháng nhuận! Dưới đây là 2 kết quả:"
                         if "regular" in both_solar:
-                            response["ngay_duong_thang_thuong"] = both_solar["regular"]["ngay_dinh_dang"]
+                            response["ngay_duong_thang_thuong"] = both_solar["regular"]["ngay_duong_lich"]
                         if "leap" in both_solar:
-                            response["ngay_duong_thang_nhuan"] = both_solar["leap"]["ngay_dinh_dang"]
+                            response["ngay_duong_thang_nhuan"] = both_solar["leap"]["ngay_duong_lich"]
                     response["thong_bao_nhuan"] = msg
                 else:
                     response["thong_bao_nhuan"] = f"Năm âm lịch {can_chi} ({y}) không có tháng nhuận."
