@@ -137,7 +137,7 @@ content: |
   <div class="scroll-area">
     <table border="0" cellpadding="2" cellspacing="4" width="100%" style="margin-top: -10px;">
       {%- set ns = namespace(events=[]) -%}
-      {%- set so_ngay = 30 -%}
+      {%- set so_ngay = states('input_number.su_kien_am_duong_sap_toi')| int(365) -%}
       
       {%- set attr_labels = {
         'ngay_am_lich_su_kien': 'Ngày Âm Lịch',
@@ -228,17 +228,20 @@ content: |
           <td colspan="3" style="border-bottom: solid 1px gray; padding: 0 5px 10px 5px;">
             <div class="detail-content">
               {%- for key, label in attr_labels.items() -%}
-                {%- if state_obj.attributes[key] is defined and state_obj.attributes[key] | string | length > 0 -%}
-                  {%- if key == 'chi_tiet' -%}
-                    <div class="attr-box">
-                      <div class="attr-label">{{ label }}:</div>
-                      <div class="attr-value-full">{{ state_obj.attributes[key] }}</div>
-                    </div>
-                  {%- else -%}
-                    <div class="attr-row">
-                      <span class="attr-label">{{ label }}:</span>
-                      <span class="attr-value">{{ state_obj.attributes[key] }}</span>
-                    </div>
+                {%- if state_obj.attributes[key] is defined -%}
+                  {%- set attr_val = state_obj.attributes[key] | string | trim -%}
+                  {%- if attr_val | length > 0 and attr_val != 'Không rõ' and attr_val != '0' and attr_val != 'None' -%}
+                    {%- if key == 'chi_tiet' -%}
+                      <div class="attr-box">
+                        <div class="attr-label">{{ label }}:</div>
+                        <div class="attr-value-full">{{ attr_val }}</div>
+                      </div>
+                    {%- else -%}
+                      <div class="attr-row">
+                        <span class="attr-label">{{ label }}:</span>
+                        <span class="attr-value">{{ attr_val }}</span>
+                      </div>
+                    {%- endif -%}
                   {%- endif -%}
                 {%- endif -%}
               {%- endfor -%}
@@ -494,6 +497,7 @@ card_mod:
     .btn-detail::marker { content: '▶ '; color: orange; font-size: 0.9em; }
     details[open] > .btn-detail::marker { content: '▼ '; color: orange;
     font-size: 0.9em; }
+
 
 ```
 
