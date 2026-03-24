@@ -139,7 +139,6 @@ content: |
       {%- set ns = namespace(events=[]) -%}
       {%- set so_ngay = 30 -%}
       
-      {# Định nghĩa nhãn cho các thuộc tính hiển thị #}
       {%- set attr_labels = {
         'ngay_am_lich_su_kien': 'Ngày Âm Lịch',
         'ngay_duong_lich_su_kien': 'Ngày Dương Lịch',
@@ -150,7 +149,6 @@ content: |
         'chi_tiet': 'Chi Tiết'
       } -%}
 
-      {# 1. Lấy danh sách sự kiện ÂM LỊCH #}
       {%- for state in states.sensor | selectattr('attributes.ngay_am_lich_su_kien', 'defined') | selectattr('attributes.ngay_duong_lich_hien_tai', 'defined') -%}
         {%- if 0 <= state.state | int(-1) <= so_ngay -%}
           {%- set am_split = state.attributes.ngay_am_lich_su_kien.split('/') -%}
@@ -166,7 +164,6 @@ content: |
         {%- endif -%}
       {%- endfor -%}
 
-      {# 2. Lấy danh sách sự kiện DƯƠNG LỊCH #}
       {%- for state in states.sensor | selectattr('attributes.ngay_duong_lich_su_kien', 'defined') | selectattr('attributes.ngay_am_lich_hien_tai', 'defined') -%}
         {%- if 0 <= state.state | int(-1) <= so_ngay -%}
           {%- set am_split = state.attributes.ngay_am_lich_hien_tai.split('/') -%}
@@ -182,7 +179,6 @@ content: |
         {%- endif -%}
       {%- endfor -%}
       
-      {# 3. Hiển thị danh sách tổng #}
       {%- if ns.events | count > 0 -%}
         {%- for ev in ns.events | sort(attribute='days') -%}
             
@@ -205,18 +201,11 @@ content: |
           {%- set icon = "🎉💍" -%}
         {%- endif -%}
         
-        {# DÒNG CHÍNH GIỮ NGUYÊN BỐ CỤC #}
         <tr class="event-row" onclick="const d = this.nextElementSibling; const i = this.querySelector('.toggle-icon'); if(d.style.display==='none' || d.style.display===''){ d.style.display='table-row'; i.style.transform='rotate(180deg)'; } else { d.style.display='none'; i.style.transform='rotate(0deg)'; }">
           <td align="center" width="20%" style="border-bottom: solid 1px gray; vertical-align: middle;">
-            <div style="color:orange; margin-bottom: -8px;">
-              {{ ev.thu }}
-            </div>
-            <div style="color:white; font-size:25px; font-weight:bold;">
-              {{ ev.duong }}
-            </div>
-            <div style="color:orange; margin-top: -8px;">
-              {{ ev.am }}
-            </div>
+            <div style="color:orange; margin-bottom: -8px;">{{ ev.thu }}</div>
+            <div style="color:white; font-size:25px; font-weight:bold;">{{ ev.duong }}</div>
+            <div style="color:orange; margin-top: -8px;">{{ ev.am }}</div>
           </td>
           
           <td align="center" style="background:{{mau_td}}; width: 4px; border-radius: 2px; vertical-align: middle; margin-bottom: 5px; padding-bottom: 5px;"></td>
@@ -227,16 +216,13 @@ content: |
               <span>{{ev.name}}</span>
             </div>
             <div style="color:orange; text-align: right; padding-right: 10px;">
-              <span style="font-style: italic;">
-                {{ ev.days }} ngày
-              </span>
+              <span style="font-style: italic;">{{ ev.days }} ngày</span>
               <span class="flip-emoji" style="font-size:18px;">⏳</span>
               <span class="toggle-icon" style="font-size: 14px; color: #888; margin-left: 8px; display: inline-block; transition: transform 0.3s;">▼</span>
             </div>
           </td>
         </tr>
 
-        {# DÒNG CHI TIẾT SỰ KIỆN (Ẩn mặc định) #}
         {%- set state_obj = states[ev.entity_id] -%}
         <tr style="display: none;" class="detail-row">
           <td colspan="3" style="border-bottom: solid 1px gray; padding: 0 5px 10px 5px;">
@@ -334,7 +320,51 @@ content: |
               if(data.ngay_duong_thang_thuong) html += '<div style=\'color: #adb5bd; font-size: 0.9em; margin-bottom: 4px;\'>🔹 Tính là tháng thường: <b style=\'color:white\'>' + data.ngay_duong_thang_thuong + '</b></div>'; 
               if(data.ngay_duong_thang_nhuan) html += '<div style=\'color: #adb5bd; font-size: 0.9em;\'>🔹 Tính là tháng nhuận: <b style=\'color:white\'>' + data.ngay_duong_thang_nhuan + '</b></div>'; 
               html += '</div>'; 
-            } 
+            }
+
+            if(data.details) {
+              let det = data.details;
+              html += '<details class=\'lunar-details\' style=\'margin-top:15px;\'>';
+              html += '<summary class=\'btn-detail\' title=\'Nhấn để xem hoặc ẩn\'>Chi tiết lịch âm</summary>';
+              html += '<div class=\'details-content\'>';
+              html += '<table class=\'info-table\' style=\'width:100%; border-collapse:collapse; margin-bottom:10px;\'>';
+              html += '<tr><td style=\'padding:4px 0; width:30%; color:#aaa;\'>Âm lịch:</td><td style=\'color:white;\'>' + det.lunar_day + ' ' + det.month_name + ' ' + det.can_chi_year + '</td></tr>';
+              html += '<tr><td style=\'padding:4px 0; color:#aaa;\'>Ngày:</td><td style=\'color:white;\'>' + det.can_chi_day + '</td></tr>';
+              html += '<tr><td style=\'padding:4px 0; color:#aaa;\'>Tháng:</td><td style=\'color:white;\'>' + det.can_chi_month + '</td></tr>';
+              html += '<tr><td style=\'padding:4px 0; color:#aaa;\'>Năm:</td><td style=\'color:white;\'>' + det.can_chi_year + '</td></tr>';
+              html += '<tr><td style=\'padding:4px 0; color:#aaa;\'>Tiết khí:</td><td style=\'color:white;\'>' + det.tiet_khi + '</td></tr>';
+              html += '</table>';
+              
+              html += '<div style=\'margin-top:10px;\'><div style=\'color:orange; font-weight:bold; margin-bottom:5px;\'>✨ Giờ hoàng đạo:</div>';
+              html += '<div style=\'margin-bottom:10px; font-size:0.85em; color:white;\'>' + det.gio_hoang_dao + '</div>';
+              html += '<div style=\'color:orange; font-weight:bold; margin-bottom:5px;\'>🔮 Giờ hắc đạo:</div>';
+              html += '<div style=\'color:#ff6b6b; font-size:0.85em;\'>' + det.gio_hac_dao + '</div></div>';
+              
+              html += '<hr style=\'border:0; border-top:1px dashed rgba(255,255,255,0.2); margin:12px 0;\'>';
+              html += '<div><div style=\'color:orange; font-weight:bold; margin-bottom:5px;\'>🧭 Hướng xuất hành:</div>';
+              html += '<div style=\'color:white;\'>Hỷ Thần: <span style=\'color:#51cf66;\'>' + det.huong_xuat_hanh['Hỷ Thần'] + '</span> - Tài Thần: <span style=\'color:#51cf66;\'>' + det.huong_xuat_hanh['Tài Thần'] + '</span></div>';
+              html += '<div style=\'color:white; margin-top:3px;\'>Tránh: <span style=\'color:#ff6b6b;\'>' + det.huong_xuat_hanh['Hạc Thần'] + '</span></div></div>';
+              
+              html += '<hr style=\'border:0; border-top:1px dashed rgba(255,255,255,0.2); margin:12px 0;\'>';
+              html += '<div><div style=\'color:orange; font-weight:bold; margin-bottom:8px;\'>🔥 Trực: <span style=\'background:#2b8a3e; color:white; padding:2px 6px; border-radius:4px; font-size:0.8em; font-weight:normal;\'>' + det.thap_nhi_truc.name + '</span></div>';
+              html += '<div style=\'color:white;\'>✅ <strong>Tốt:</strong> ' + det.thap_nhi_truc.details.tot + '</div>';
+              html += '<div style=\'margin-top:5px; color:white;\'>❌ <strong>Xấu:</strong> <span style=\'color:#ff6b6b;\'>' + det.thap_nhi_truc.details.xau + '</span></div></div>';
+              
+              html += '<hr style=\'border:0; border-top:1px dashed rgba(255,255,255,0.2); margin:12px 0;\'>';
+              html += '<div><div style=\'color:orange; font-weight:bold; margin-bottom:5px;\'>🌟 Ngũ hành: <span style=\'font-weight:normal; font-size:0.9em; color:white;\'>' + det.ngay_mo_ta + '</span></div>';
+              det.ngay_chi_tiet.forEach(function(detail) { html += '<div style=\'margin-top:4px; color:white;\'>' + detail + '</div>'; });
+              html += '</div>';
+              
+              html += '<hr style=\'border:0; border-top:1px dashed rgba(255,255,255,0.2); margin:12px 0;\'>';
+              html += '<div><div style=\'color:orange; font-weight:bold; margin-bottom:5px;\'>💫 Nhị Thập Bát Tú: <span style=\'background:#2b8a3e; color:white; padding:2px 6px; border-radius:4px; font-size:0.8em; font-weight:normal;\'>' + det.nhi_thap_bat_tu.name + '</span></div>';
+              html += '<div style=\'font-style:italic; color:#FFD700; font-size:0.85em; margin-bottom:4px;\'>(' + det.nhi_thap_bat_tu.details.tenNgay + ')</div>';
+              html += '<div style=\'font-style:italic; margin-bottom:8px; color:white;\'>' + det.nhi_thap_bat_tu.details.danhGia + '</div>';
+              html += '<div style=\'color:white;\'>👍 <strong>Nên làm:</strong> ' + det.nhi_thap_bat_tu.details.nenLam + '</div>';
+              html += '<div style=\'margin-top:5px; color:white;\'>👎 <strong>Kiêng cữ:</strong> <span style=\'color:#ff6b6b;\'>' + det.nhi_thap_bat_tu.details.kiengCu + '</span></div></div>';
+              
+              html += '</div></details>';
+            }
+
             resDiv.innerHTML = html; 
           } 
           resDiv.style.display = 'block'; 
@@ -351,6 +381,7 @@ content: |
       <div class="conv-result" style="display: none; margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.5); border-radius: 8px; border-left: 4px solid orange; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); color: white;"></div>
     </div>
   </div>
+
 card_mod:
   style: >
     ha-card {
@@ -366,8 +397,7 @@ card_mod:
 
     .scroll-area::-webkit-scrollbar { width: 4px; }
     .scroll-area::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
-    .scroll-area::-webkit-scrollbar-thumb { background: rgba(255, 165, 0, 0.6);
-    border-radius: 4px; }
+    .scroll-area::-webkit-scrollbar-thumb { background: rgba(255, 165, 0, 0.6); border-radius: 4px; }
 
     .flip-emoji {
       display: inline-block;
@@ -391,7 +421,7 @@ card_mod:
       background-color: rgba(255, 255, 255, 0.05);
     }
 
-    /* CSS cho hộp chi tiết sự kiện */ .detail-content {
+    .detail-content {
       background: rgba(0, 0, 0, 0.4);
       border-radius: 8px;
       margin-top: 5px;
@@ -412,10 +442,7 @@ card_mod:
       border-bottom: 1px dashed rgba(255,255,255,0.15);
       padding: 6px 0;
     }
-
-    .attr-row:last-child {
-      border-bottom: none;
-    }
+    .attr-row:last-child { border-bottom: none; }
 
     .attr-box {
       background: rgba(255,255,255,0.05);
@@ -424,28 +451,11 @@ card_mod:
       margin-top: 8px;
       border-left: 3px solid orange;
     }
+    .attr-label { color: #aaa; font-size: 0.9em; }
+    .attr-value { color: white; font-weight: 500; text-align: right; }
+    .attr-value-full { color: white; font-weight: normal; font-style: italic; margin-top: 4px; line-height: 1.4; font-size: 0.95em; }
 
-    .attr-label {
-      color: #aaa;
-      font-size: 0.9em;
-    }
-
-    .attr-value {
-      color: white;
-      font-weight: 500;
-      text-align: right;
-    }
-
-    .attr-value-full {
-      color: white;
-      font-weight: normal;
-      font-style: italic;
-      margin-top: 4px;
-      line-height: 1.4;
-      font-size: 0.95em;
-    }
-
-    /* CSS CHO CỤC QUY ĐỔI MỚI THÊM */ .conv-header {
+    .conv-header {
       display: flex; 
       justify-content: space-between; 
       align-items: center; 
@@ -453,19 +463,32 @@ card_mod:
       padding: 5px 20px 5px 5px; 
       border-radius: 6px; 
       transition: background 0.2s;
-    } .conv-header:hover {
-      background: rgba(255,255,255,0.05);
-    } .conv-input {
-      background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px; border-radius: 6px; outline: none; text-align: center; font-size: 1em;
-    } .conv-input:focus {
-      border-color: orange;
-    } .conv-btn {
-      width: 100%; background: rgba(255, 165, 0, 0.8); color: black; font-weight: bold; border-radius: 6px; padding: 10px; border: none; cursor: pointer; transition: background 0.2s; font-size: 1em;
-    } .conv-btn:hover {
-      background: rgba(255, 165, 0, 1);
     }
+    .conv-header:hover { background: rgba(255,255,255,0.05); }
+    .conv-input {
+      background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px; border-radius: 6px; outline: none; text-align: center; font-size: 1em;
+    }
+    .conv-input:focus { border-color: orange; }
+    .conv-btn {
+      width: 100%; background: rgba(255, 165, 0, 0.8); color: black; font-weight: bold; border-radius: 6px; padding: 10px; border: none; cursor: pointer; transition: background 0.2s; font-size: 1em;
+    }
+    .conv-btn:hover { background: rgba(255, 165, 0, 1); }
 
-
+    /* CSS CHO NÚT CHI TIẾT LỊCH ÂM XỔ XUỐNG */
+    .btn-detail {
+      cursor: pointer;
+      background: rgba(255,255,255,0.1);
+      padding: 6px 12px;
+      border-radius: 6px;
+      color: #4dabf7;
+      font-weight: bold;
+      user-select: none;
+      display: inline-block;
+      transition: background 0.2s;
+    }
+    .btn-detail:hover { background: rgba(255,255,255,0.2); }
+    .btn-detail::marker { content: '▶ '; color: orange; font-size: 0.9em; }
+    details[open] > .btn-detail::marker { content: '▼ '; color: orange; font-size: 0.9em; }
 ```
 
 
