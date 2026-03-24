@@ -469,7 +469,7 @@ def get_lunar_leap_info(yyyy):
 def lunar_to_solar_extended(dd, mm, yyyy):
     """
     Trả về dictionary chứa các ngày dương lịch tương ứng với ngày âm lịch.
-    Vì 1 ngày âm có thể ra 1 hoặc 2 ngày dương (nếu rơi vào tháng nhuận).
+    Mỗi kết quả là một dict chứa ngay, thang, nam, ngay_dinh_dang.
     """
     try:
         ly = get_year_info(yyyy)
@@ -482,7 +482,7 @@ def lunar_to_solar_extended(dd, mm, yyyy):
                 leap_month = m_info.month
                 
             if m_info.month == mm:
-                # Tính toán độ dài của tháng âm lịch này (xem là tháng đủ hay thiếu)
+                # Tính độ dài của tháng
                 if i + 1 < len(ly):
                     m_len = ly[i+1].jd - m_info.jd
                 else:
@@ -492,12 +492,17 @@ def lunar_to_solar_extended(dd, mm, yyyy):
                     except ValueError:
                         m_len = 30 # Dự phòng
                         
-                # Chỉ lưu kết quả nếu ngày đầu vào hợp lệ (<= độ dài tháng)
                 if 1 <= dd <= m_len:
                     target_jd = m_info.jd + dd - 1
                     d, m, y = jd_to_date(target_jd)
                     key = "leap" if m_info.leap == 1 else "regular"
-                    results[key] = f"{int(d)}/{int(m)}/{int(y)}"
+                    
+                    results[key] = {
+                        "ngay": int(d),
+                        "thang": int(m),
+                        "nam": int(y),
+                        "ngay_dinh_dang": f"{int(d)}/{int(m)}/{int(y)}"
+                    }
                     
         return results, leap_month
     except Exception as e:
