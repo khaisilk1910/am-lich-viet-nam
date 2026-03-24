@@ -5,7 +5,7 @@ content: |
   <div class="scroll-area">
     <table border="0" cellpadding="2" cellspacing="4" width="100%" style="margin-top: -10px;">
       {%- set ns = namespace(events=[]) -%}
-      {%- set so_ngay = 30 -%}
+      {%- set so_ngay = states('input_number.su_kien_am_duong_sap_toi')| int(365) -%}
       
       {%- set attr_labels = {
         'ngay_am_lich_su_kien': 'Ngày Âm Lịch',
@@ -127,8 +127,7 @@ content: |
     </table>
   </div>
 
-  <div class="conv-wrapper" style="margin-top: 10px;">
-    
+  <div class="conv-wrapper">
     <div class="conv-header" onclick="const b = this.nextElementSibling; const i = this.querySelector('.conv-icon'); if(b.style.display==='none' || b.style.display===''){b.style.display='block'; i.style.transform='rotate(180deg)';}else{b.style.display='none'; i.style.transform='rotate(0deg)';}">
       <h3 style="margin: 0; font-size: 1.1em; color: orange; display: flex; align-items: center; gap: 8px;">
         <span>🔄</span> Tra cứu / Quy đổi ngày nhanh
@@ -158,12 +157,12 @@ content: |
         
         if(!d || !m || !y) { 
           resDiv.style.display = 'block'; 
-          resDiv.innerHTML = '<span style=\'color:#ff6b6b;\'>⚠️ Vui lòng nhập đầy đủ Ngày, Tháng, Năm!</span>'; 
+          resDiv.innerHTML = '<div class=\'alert-error\'>⚠️ Vui lòng nhập đầy đủ Ngày, Tháng, Năm!</div>'; 
           return; 
         } 
         
+        btn.classList.add('loading');
         btn.innerText = '⏳ ĐANG TÍNH...'; 
-        btn.style.opacity = '0.7'; 
         
         try { 
           const ha = document.querySelector('home-assistant'); 
@@ -178,78 +177,77 @@ content: |
           const data = response.response; 
           
           if(data.error) { 
-            resDiv.innerHTML = '<span style=\'color:#ff6b6b;\'>❌ Lỗi: ' + data.error + '</span>'; 
+            resDiv.innerHTML = '<div class=\'alert-error\'>❌ Lỗi: ' + data.error + '</div>'; 
           } else { 
-            let html = '<div style=\'margin-bottom: 8px; color: white;\'>☀️ Ngày Dương Lịch: <b style=\'color:#4dabf7; font-size: 1.2em;\'>' + data.ngay_duong_lich + '</b></div>'; 
-            html += '<div style=\'margin-bottom: 8px; color: white;\'>🌙 Ngày Âm Lịch: <b style=\'color:#ffd43b; font-size: 1.2em;\'>' + data.ngay_am_lich + '</b></div>'; 
-            html += '<div style=\'margin-bottom: 8px; color: white;\'>🐲 Năm Can Chi: <b style=\'color:#ffffff; font-size: 1.2em;\'>' + data.nam_can_chi + '</b></div>'; 
-            html += '<div style=\'margin-top: 10px; font-style: italic; color: #adb5bd; font-size: 0.9em; line-height: 1.4;\'>ℹ️ ' + data.thong_bao_nhuan + '</div>'; 
+            let html = '<div class=\'res-card glass-panel\'>' +
+              '<div class=\'res-grid\'>' +
+                '<div class=\'res-row\'><span class=\'res-label\'>☀️ Dương Lịch:</span> <span class=\'res-val highlight-blue\'>' + data.ngay_duong_lich + '</span></div>' +
+                '<div class=\'res-row\'><span class=\'res-label\'>🌙 Âm Lịch:</span> <span class=\'res-val highlight-yellow\'>' + data.ngay_am_lich + '</span></div>' +
+                '<div class=\'res-row full-width\'><span class=\'res-label\'>🐲 Năm Can Chi:</span> <span class=\'res-val highlight-white\'>' + data.nam_can_chi + '</span></div>' +
+              '</div>' +
+              '<div class=\'res-note\'>ℹ️ ' + data.thong_bao_nhuan + '</div>';
             
             if(data.ngay_duong_thang_thuong || data.ngay_duong_thang_nhuan) { 
-              html += '<div style=\'margin-top: 10px; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 10px;\'>'; 
-              html += '<div style=\'color:orange; margin-bottom: 5px; font-size:0.9em;\'>📌 Chi tiết mốc ngày Dương lịch:</div>'; 
-              if(data.ngay_duong_thang_thuong) html += '<div style=\'color: #adb5bd; font-size: 0.9em; margin-bottom: 4px;\'>🔹 Tính là tháng thường: <b style=\'color:white\'>' + data.ngay_duong_thang_thuong + '</b></div>'; 
-              if(data.ngay_duong_thang_nhuan) html += '<div style=\'color: #adb5bd; font-size: 0.9em;\'>🔹 Tính là tháng nhuận: <b style=\'color:white\'>' + data.ngay_duong_thang_nhuan + '</b></div>'; 
+              html += '<div class=\'res-leap-box\'>' +
+                '<div class=\'res-leap-title\'>📌 Chi tiết mốc ngày Dương lịch:</div>';
+                if(data.ngay_duong_thang_thuong) html += '<div class=\'res-leap-item\'>🔹 Tháng thường: <span class=\'highlight-white\'>' + data.ngay_duong_thang_thuong + '</span></div>';
+                if(data.ngay_duong_thang_nhuan) html += '<div class=\'res-leap-item\'>🔹 Tháng nhuận: <span class=\'highlight-white\'>' + data.ngay_duong_thang_nhuan + '</span></div>';
               html += '</div>'; 
             }
 
             if(data.details) {
               let det = data.details;
-              html += '<details class=\'lunar-details\' style=\'margin-top:15px;\'>';
-              html += '<summary class=\'btn-detail\' title=\'Nhấn để xem hoặc ẩn\'>Chi tiết lịch âm</summary>';
-              html += '<div class=\'details-content\'>';
-              html += '<table class=\'info-table\' style=\'width:100%; border-collapse:collapse; margin-bottom:10px;\'>';
-              html += '<tr><td style=\'padding:4px 0; width:30%; color:#aaa;\'>Âm lịch:</td><td style=\'color:white;\'>' + det.lunar_day + ' ' + det.month_name + ' ' + det.can_chi_year + '</td></tr>';
-              html += '<tr><td style=\'padding:4px 0; color:#aaa;\'>Ngày:</td><td style=\'color:white;\'>' + det.can_chi_day + '</td></tr>';
-              html += '<tr><td style=\'padding:4px 0; color:#aaa;\'>Tháng:</td><td style=\'color:white;\'>' + det.can_chi_month + '</td></tr>';
-              html += '<tr><td style=\'padding:4px 0; color:#aaa;\'>Năm:</td><td style=\'color:white;\'>' + det.can_chi_year + '</td></tr>';
-              html += '<tr><td style=\'padding:4px 0; color:#aaa;\'>Tiết khí:</td><td style=\'color:white;\'>' + det.tiet_khi + '</td></tr>';
-              html += '</table>';
-              
-              html += '<div style=\'margin-top:10px;\'><div style=\'color:orange; font-weight:bold; margin-bottom:5px;\'>✨ Giờ hoàng đạo:</div>';
-              html += '<div style=\'margin-bottom:10px; font-size:0.85em; color:white;\'>' + det.gio_hoang_dao + '</div>';
-              html += '<div style=\'color:orange; font-weight:bold; margin-bottom:5px;\'>🔮 Giờ hắc đạo:</div>';
-              html += '<div style=\'color:#ff6b6b; font-size:0.85em;\'>' + det.gio_hac_dao + '</div></div>';
-              
-              html += '<hr style=\'border:0; border-top:1px dashed rgba(255,255,255,0.2); margin:12px 0;\'>';
-              html += '<div><div style=\'color:orange; font-weight:bold; margin-bottom:5px;\'>🧭 Hướng xuất hành:</div>';
-              html += '<div style=\'color:white;\'>Hỷ Thần: <span style=\'color:#51cf66;\'>' + det.huong_xuat_hanh['Hỷ Thần'] + '</span> - Tài Thần: <span style=\'color:#51cf66;\'>' + det.huong_xuat_hanh['Tài Thần'] + '</span></div>';
-              html += '<div style=\'color:white; margin-top:3px;\'>Tránh: <span style=\'color:#ff6b6b;\'>' + det.huong_xuat_hanh['Hạc Thần'] + '</span></div></div>';
-              
-              html += '<hr style=\'border:0; border-top:1px dashed rgba(255,255,255,0.2); margin:12px 0;\'>';
-              html += '<div><div style=\'color:orange; font-weight:bold; margin-bottom:8px;\'>🔥 Trực: <span style=\'background:#2b8a3e; color:white; padding:2px 6px; border-radius:4px; font-size:0.8em; font-weight:normal;\'>' + det.thap_nhi_truc.name + '</span></div>';
-              html += '<div style=\'color:white;\'>✅ <strong>Tốt:</strong> ' + det.thap_nhi_truc.details.tot + '</div>';
-              html += '<div style=\'margin-top:5px; color:white;\'>❌ <strong>Xấu:</strong> <span style=\'color:#ff6b6b;\'>' + det.thap_nhi_truc.details.xau + '</span></div></div>';
-              
-              html += '<hr style=\'border:0; border-top:1px dashed rgba(255,255,255,0.2); margin:12px 0;\'>';
-              html += '<div><div style=\'color:orange; font-weight:bold; margin-bottom:5px;\'>🌟 Ngũ hành: <span style=\'font-weight:normal; font-size:0.9em; color:white;\'>' + det.ngay_mo_ta + '</span></div>';
-              det.ngay_chi_tiet.forEach(function(detail) { html += '<div style=\'margin-top:4px; color:white;\'>' + detail + '</div>'; });
-              html += '</div>';
-              
-              html += '<hr style=\'border:0; border-top:1px dashed rgba(255,255,255,0.2); margin:12px 0;\'>';
-              html += '<div><div style=\'color:orange; font-weight:bold; margin-bottom:5px;\'>💫 Nhị Thập Bát Tú: <span style=\'background:#2b8a3e; color:white; padding:2px 6px; border-radius:4px; font-size:0.8em; font-weight:normal;\'>' + det.nhi_thap_bat_tu.name + '</span></div>';
-              html += '<div style=\'font-style:italic; color:#FFD700; font-size:0.85em; margin-bottom:4px;\'>(' + det.nhi_thap_bat_tu.details.tenNgay + ')</div>';
-              html += '<div style=\'font-style:italic; margin-bottom:8px; color:white;\'>' + det.nhi_thap_bat_tu.details.danhGia + '</div>';
-              html += '<div style=\'color:white;\'>👍 <strong>Nên làm:</strong> ' + det.nhi_thap_bat_tu.details.nenLam + '</div>';
-              html += '<div style=\'margin-top:5px; color:white;\'>👎 <strong>Kiêng cữ:</strong> <span style=\'color:#ff6b6b;\'>' + det.nhi_thap_bat_tu.details.kiengCu + '</span></div></div>';
-              
-              html += '</div></details>';
+              html += '<details class=\'lunar-details\'>' +
+                '<summary class=\'btn-detail\' title=\'Nhấn để xem hoặc ẩn\'>Chi tiết phong thủy</summary>' +
+                '<div class=\'details-content glass-panel-inner\'>' +
+                  '<div class=\'tu-vi-grid\'>' +
+                    '<div class=\'tv-grid-item\'><span class=\'tv-label\'>Tiết khí:</span> <span class=\'tv-val\'>' + det.tiet_khi + '</span></div>' +
+                    '<div class=\'tv-grid-item\'><span class=\'tv-label\'>Âm lịch:</span> <span class=\'tv-val\'>' + det.lunar_day + ' ' + det.month_name + ' ' + det.can_chi_year + '</span></div>' +
+                    '<div class=\'tv-grid-item\'><span class=\'tv-label\'>Can chi:</span> <span class=\'tv-val\'>Ngày ' + det.can_chi_day + ', Tháng ' + det.can_chi_month + '</span></div>' +
+                  '</div>' +
+                  
+                  '<div class=\'tv-section\'>' +
+                    '<div class=\'tv-title\'>✨ Giờ Hoàng/Hắc Đạo</div>' +
+                    '<div class=\'tv-good\'>' + det.gio_hoang_dao + '</div>' +
+                    '<div class=\'tv-bad\' style=\'margin-top:4px;\'>' + det.gio_hac_dao + '</div>' +
+                  '</div>' +
+                  
+                  '<div class=\'tv-section\'>' +
+                    '<div class=\'tv-title\'>🧭 Hướng xuất hành</div>' +
+                    '<div class=\'tv-text\'>Hỷ Thần: <span class=\'badge badge-good\'>' + det.huong_xuat_hanh['Hỷ Thần'] + '</span> | Tài Thần: <span class=\'badge badge-good\'>' + det.huong_xuat_hanh['Tài Thần'] + '</span></div>' +
+                    '<div class=\'tv-text mt-sm\'>Tránh: <span class=\'badge badge-bad\'>' + det.huong_xuat_hanh['Hạc Thần'] + '</span></div>' +
+                  '</div>' +
+                  
+                  '<div class=\'tv-section\'>' +
+                    '<div class=\'tv-title\'>🔥 Trực: <span class=\'badge badge-neutral\'>' + det.thap_nhi_truc.name + '</span></div>' +
+                    '<div class=\'tv-text\'><span class=\'text-green\'>Nên:</span> ' + det.thap_nhi_truc.details.tot + '</div>' +
+                    '<div class=\'tv-text mt-sm\'><span class=\'text-red\'>Kiêng:</span> ' + det.thap_nhi_truc.details.xau + '</div>' +
+                  '</div>' +
+                  
+                  '<div class=\'tv-section\'>' +
+                    '<div class=\'tv-title\'>💫 Nhị Thập Bát Tú: <span class=\'badge badge-neutral\'>' + det.nhi_thap_bat_tu.name + '</span> <span class=\'tv-tu-name\'>(' + det.nhi_thap_bat_tu.details.tenNgay + ')</span></div>' +
+                    '<div class=\'tv-text tv-tu-desc\'>' + det.nhi_thap_bat_tu.details.danhGia + '</div>' +
+                    '<div class=\'tv-text\'><span class=\'text-green\'>Nên:</span> ' + det.nhi_thap_bat_tu.details.nenLam + '</div>' +
+                    '<div class=\'tv-text mt-sm\'><span class=\'text-red\'>Kiêng:</span> ' + det.nhi_thap_bat_tu.details.kiengCu + '</div>' +
+                  '</div>' +
+                '</div>' +
+              '</details>';
             }
-
+            html += '</div>';
             resDiv.innerHTML = html; 
           } 
           resDiv.style.display = 'block'; 
         } catch(e) { 
           console.error(e); 
           resDiv.style.display = 'block'; 
-          resDiv.innerHTML = '<span style=\'color:#ff6b6b;\'>❌ Lỗi kết nối hệ thống. Hãy kiểm tra lại.</span>'; 
+          resDiv.innerHTML = '<div class=\'alert-error\'>❌ Lỗi kết nối hệ thống. Hãy kiểm tra lại.</div>'; 
         } finally { 
+          btn.classList.remove('loading');
           btn.innerText = 'TÍNH TOÁN QUY ĐỔI'; 
-          btn.style.opacity = '1'; 
         } 
       })(this)">TÍNH TOÁN QUY ĐỔI</button>
 
-      <div class="conv-result" style="display: none; margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.5); border-radius: 8px; border-left: 4px solid orange; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); color: white;"></div>
+      <div class="conv-result" style="display: none; margin-top: 15px;"></div>
     </div>
   </div>
 card_mod:
@@ -258,110 +256,206 @@ card_mod:
       background: rgba(0,0,0,0.3) !important;
     }
 
-    .scroll-area {
+    /* --- PHẦN 1: CSS SỰ KIỆN SẮP ĐẾN CHUẨN GỐC --- */  .scroll-area {
       max-height: 250px; 
       overflow-y: auto;
       overflow-x: hidden;
       padding-right: 5px;
-    }
-
-    .scroll-area::-webkit-scrollbar { width: 4px; }
+    } .scroll-area::-webkit-scrollbar { width: 4px; }
     .scroll-area::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
     .scroll-area::-webkit-scrollbar-thumb { background: rgba(255, 165, 0, 0.6);
     border-radius: 4px; }
 
-    .flip-emoji {
-      display: inline-block;
-      animation: flip-hourglass 6s ease-in-out infinite;
-    }
+    .flip-emoji { display: inline-block; animation: flip-hourglass 6s
+    ease-in-out infinite; } @keyframes flip-hourglass { 0% { transform:
+    rotate(0deg); } 12.5% { transform: rotate(180deg); } 50% { transform:
+    rotate(180deg); } 62.5% { transform: rotate(0deg); } 100% { transform:
+    rotate(0deg); } }
 
-    @keyframes flip-hourglass {
-      0% { transform: rotate(0deg); }
-      12.5% { transform: rotate(180deg); }
-      50% { transform: rotate(180deg); }
-      62.5% { transform: rotate(0deg); }
-      100% { transform: rotate(0deg); }
-    }
+    tr.event-row { cursor: pointer; transition: background-color 0.2s; }
+    tr.event-row:hover { background: rgba(255, 255, 255, 0.05); }
 
-    tr.event-row {
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
+    .detail-content { background: rgba(0, 0, 0, 0.4); border-radius: 8px;
+    margin-top: 5px; padding: 12px 15px; box-shadow: inset 0 2px 8px
+    rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); animation:
+    expandIn 0.3s ease-out; } @keyframes expandIn { 0% { opacity: 0; transform:
+    translateY(-5px); } 100% { opacity: 1; transform: translateY(0); } }
 
-    tr.event-row:hover {
-      background-color: rgba(255, 255, 255, 0.05);
-    }
+    .attr-row { display: flex; justify-content: space-between; border-bottom:
+    1px dashed rgba(255,255,255,0.15); padding: 6px 0; } .attr-row:last-child {
+    border-bottom: none; } .attr-box { background: rgba(255,255,255,0.05);
+    padding: 10px 12px; border-radius: 6px; margin-top: 8px; border-left: 3px
+    solid orange; } .attr-label { color: #aaa; font-size: 0.9em; } .attr-value {
+    color: white; font-weight: 500; text-align: right; } .attr-value-full {
+    color: white; font-weight: normal; font-style: italic; margin-top: 4px;
+    line-height: 1.4; font-size: 0.95em; }
 
-    .detail-content {
-      background: rgba(0, 0, 0, 0.4);
-      border-radius: 8px;
-      margin-top: 5px;
-      padding: 12px 15px;
-      box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);
-      border: 1px solid rgba(255,255,255,0.05);
-      animation: expandIn 0.3s ease-out;
-    }
+    /* --- PHẦN 2: CSS KHUNG QUY ĐỔI --- */  .conv-wrapper { margin-top: 10px; }
+    .conv-header { display: flex; justify-content: space-between; align-items:
+    center; cursor: pointer; padding: 5px 20px 5px 5px; border-radius: 6px;
+    transition: background 0.2s; } .conv-header:hover { background:
+    rgba(255,255,255,0.05); }
 
-    @keyframes expandIn {
-      0% { opacity: 0; transform: translateY(-5px); }
-      100% { opacity: 1; transform: translateY(0); }
-    }
-
-    .attr-row {
-      display: flex;
-      justify-content: space-between;
-      border-bottom: 1px dashed rgba(255,255,255,0.15);
-      padding: 6px 0;
-    } .attr-row:last-child { border-bottom: none; }
-
-    .attr-box {
-      background: rgba(255,255,255,0.05);
-      padding: 10px 12px;
-      border-radius: 6px;
-      margin-top: 8px;
-      border-left: 3px solid orange;
-    } .attr-label { color: #aaa; font-size: 0.9em; } .attr-value { color: white;
-    font-weight: 500; text-align: right; } .attr-value-full { color: white;
-    font-weight: normal; font-style: italic; margin-top: 4px; line-height: 1.4;
-    font-size: 0.95em; }
-
-    .conv-header {
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center; 
-      cursor: pointer; 
-      padding: 5px 20px 5px 5px; 
-      border-radius: 6px; 
-      transition: background 0.2s;
-    } .conv-header:hover { background: rgba(255,255,255,0.05); }
-
-    .conv-body {
-      max-height: 350px;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding-right: 5px;
-    } .conv-body::-webkit-scrollbar { width: 4px; }
+    .conv-body { max-height: 350px; overflow-y: auto; overflow-x: hidden;
+    padding-right: 5px; } .conv-body::-webkit-scrollbar { width: 4px; }
     .conv-body::-webkit-scrollbar-track { background: rgba(0,0,0,0.1);
     border-radius: 4px; } .conv-body::-webkit-scrollbar-thumb { background:
     rgba(255, 165, 0, 0.6); border-radius: 4px; }
 
-    .conv-input {
-      background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px; border-radius: 6px; outline: none; text-align: center; font-size: 1em;
-    } .conv-input:focus { border-color: orange; } .conv-btn {
-      width: 100%; background: rgba(255, 165, 0, 0.8); color: black; font-weight: bold; border-radius: 6px; padding: 10px; border: none; cursor: pointer; transition: background 0.2s; font-size: 1em;
-    } .conv-btn:hover { background: rgba(255, 165, 0, 1); }
+    .conv-input { background: rgba(0,0,0,0.4); border: 1px solid
+    rgba(255,255,255,0.2); color: white; padding: 8px; border-radius: 6px;
+    outline: none; text-align: center; font-size: 1em; transition: border-color
+    0.2s; } .conv-input:focus { border-color: orange; }
 
-    /* CSS CHO NÚT CHI TIẾT LỊCH ÂM XỔ XUỐNG */ .btn-detail {
-      cursor: pointer;
-      background: rgba(255,255,255,0.1);
-      padding: 6px 12px;
-      border-radius: 6px;
-      color: #4dabf7;
-      font-weight: bold;
-      user-select: none;
-      display: inline-block;
-      transition: background 0.2s;
-    } .btn-detail:hover { background: rgba(255,255,255,0.2); }
-    .btn-detail::marker { content: '▶ '; color: orange; font-size: 0.9em; }
-    details[open] > .btn-detail::marker { content: '▼ '; color: orange;
-    font-size: 0.9em; }
+    .conv-btn { width: 100%; background: rgba(255, 165, 0, 0.8); color: black;
+    font-weight: bold; border-radius: 6px; padding: 10px; border: none; cursor:
+    pointer; transition: background 0.2s; font-size: 1em; } .conv-btn:hover {
+    background: rgba(255, 165, 0, 1); } .conv-btn.loading { opacity: 0.7;
+    cursor: not-allowed; }
+
+    /* --- PHẦN 3: CSS HIỂN THỊ KẾT QUẢ QUY ĐỔI --- */   .glass-panel {
+      background: rgba(0,0,0,0.6); 
+      border-radius: 10px; 
+      border-left: 4px solid #ff9800; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
+      padding: 18px;
+      animation: expandIn 0.3s ease-out; 
+    } 
+
+    .glass-panel-inner { 
+      background: rgba(0,0,0,0.4); 
+      border-radius: 8px; 
+      padding: 12px; 
+      margin-top: 12px;
+      border: 1px solid rgba(255,255,255,0.08); 
+    }
+
+    .alert-error { 
+      background: rgba(255, 107, 107, 0.15); 
+      border: 1px solid rgba(255, 107, 107, 0.4); 
+      color: #ffc9c9; 
+      padding: 12px; 
+      border-radius: 8px;
+      text-align: center; 
+      margin-top:15px; 
+      font-weight: 500;
+    } 
+
+    /* Lưới co dãn tự động (Responsive) */  .res-grid { 
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); 
+      gap: 15px; 
+      margin-bottom: 15px; 
+    } 
+
+    /* Box hiển thị ngày */ .res-row {
+      background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%); 
+      padding: 12px 15px; 
+      border-radius: 8px; 
+      display: flex;
+      flex-direction: column; 
+      align-items: center; /* Căn giữa các phần tử theo chiều ngang */
+      text-align: center;  /* Đảm bảo chữ được căn giữa */
+      gap: 6px; 
+      border: 1px solid rgba(255,255,255,0.05);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+
+    /* Box Năm Can Chi làm nổi bật riêng */ .res-row.full-width { 
+      grid-column: 1 / -1; 
+      flex-direction: row; 
+      justify-content: space-between; 
+      align-items: center; 
+      background: linear-gradient(145deg, rgba(255, 165, 0, 0.15) 0%, rgba(0,0,0,0.3) 100%);
+      border: 1px solid rgba(255, 165, 0, 0.3);
+    }   .res-label { 
+      font-size: 1em;
+      color: #ced4da; 
+      font-weight: 500;
+    } 
+
+    /* Chữ số kết quả to và rõ */ .res-val { 
+      font-size: 1.5em; 
+      font-weight: 700; 
+      letter-spacing: 0.5px;
+    }
+
+    /* Màu sắc phát sáng nhẹ trên nền tối */  .highlight-blue { color: #66d9ef;
+    text-shadow: 0 0 10px rgba(102, 217, 239, 0.3); }   .highlight-yellow {
+    color: #fcc419; text-shadow: 0 0 10px rgba(252, 196, 25, 0.3); }  
+    .highlight-white { color: #ffffff; text-shadow: 0 0 10px rgba(255, 255, 255,
+    0.4); font-size: 1.1em;}  .text-green { color: #51cf66; }  .text-red {
+    color: #ff6b6b; }
+
+    /* Box thông báo tháng nhuận */  .res-note { 
+      font-size: 1em; 
+      color: #a5d8ff; 
+      line-height: 1.5; 
+      padding: 10px 15px; 
+      background: rgba(24, 100, 171, 0.2); 
+      border-left: 3px solid #339af0;
+      border-radius: 6px; 
+      margin-top: 10px;
+    } 
+
+    .res-leap-box { 
+      margin-top: 15px; 
+      padding-top: 15px;
+      border-top: 1px dashed rgba(255,255,255,0.15); 
+      color: #ced4da; 
+      font-size: 0.95em; 
+    } 
+
+    .res-leap-title { color: #ffa94d; margin-bottom: 8px; font-weight: bold;} 
+    .res-leap-item { margin-bottom: 6px; }
+
+    .lunar-details { margin-top: 18px; }  .btn-detail { 
+      display: inline-flex;
+      align-items: center; 
+      padding: 8px 15px; 
+      background: rgba(255,255,255,0.08);
+      color: #66d9ef; 
+      border-radius: 6px; 
+      font-weight: bold; 
+      font-size: 0.95em;
+      cursor: pointer; 
+      user-select: none; 
+      transition: all 0.2s; 
+      border: 1px solid rgba(102, 217, 239, 0.2);
+    }  .btn-detail:hover { background: rgba(102, 217, 239, 0.15); } 
+    .btn-detail::marker { content: '▶ '; color: #ff9800;}  details[open] >
+    .btn-detail::marker { content: '▼ '; color: #ff9800;}
+
+    .tu-vi-grid { 
+      display: grid; 
+      grid-template-columns: 1fr; 
+      gap: 8px;
+      margin-bottom: 15px; 
+      padding-bottom: 15px; 
+      border-bottom: 1px dashed rgba(255,255,255,0.15); 
+    } 
+
+    .tv-grid-item { display: flex; align-items: flex-start; }  .tv-label {
+    color: #adb5bd; font-size: 0.95em; width: 75px; flex-shrink: 0; }  .tv-val {
+    color: white; font-weight: 500; font-size: 1em; }
+
+    .tv-section { margin-bottom: 18px; }  .tv-section:last-child {
+    margin-bottom: 0; }  .tv-title { color: #ffa94d; font-weight: 600;
+    font-size: 1em; margin-bottom: 8px; display: flex; align-items: center; gap:
+    6px; } .tv-tu-name { font-size: 0.9em; color: #fcc419; font-weight: normal;
+    } .tv-tu-desc { font-style: italic; color: #ced4da; margin-bottom: 8px;
+    line-height: 1.4; }
+
+    .tv-good { color: white; font-size: 0.95em; line-height: 1.5; padding-left:
+    10px; border-left: 3px solid #51cf66; margin-bottom: 8px;}  .tv-bad { color:
+    #ffc9c9; font-size: 0.95em; line-height: 1.5; padding-left: 10px;
+    border-left: 3px solid #ff6b6b; }  .tv-text { color: white; font-size:
+    0.95em; line-height: 1.5; margin-bottom: 6px; }  .mt-sm { margin-top: 6px; }
+
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 4px;
+    font-size: 0.9em; font-weight: 600; margin: 0 2px; }  .badge-good {
+    background: rgba(43, 138, 62, 0.2); color: #51cf66; border: 1px solid
+    rgba(43, 138, 62, 0.5); }  .badge-bad { background: rgba(201, 42, 42, 0.2);
+    color: #ff6b6b; border: 1px solid rgba(201, 42, 42, 0.5); }   .badge-neutral
+    { background: rgba(77, 171, 247, 0.2); color: #66d9ef; border: 1px solid
+    rgba(77, 171, 247, 0.5); }
