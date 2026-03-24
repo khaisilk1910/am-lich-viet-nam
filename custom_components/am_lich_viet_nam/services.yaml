@@ -1,6 +1,6 @@
 convert_date:
   name: Quy đổi ngày (Âm lịch / Dương lịch)
-  description: Chuyển đổi ngày tháng năm qua lại giữa Âm lịch và Dương lịch một cách chính xác. Có tính toán cả trường hợp tháng nhuận, năm nhuận. Service trả về dữ liệu (Response).
+  description: Chuyển đổi ngày tháng năm qua lại giữa Âm lịch và Dương lịch một cách tự động. Hệ thống sẽ tự phát hiện tháng nhuận, năm nhuận và trả về thông tin chi tiết.
   fields:
     conversion_type:
       name: Kiểu chuyển đổi
@@ -43,10 +43,3 @@ convert_date:
           min: 1800
           max: 2199
           mode: box
-    is_leap_month:
-      name: Là tháng Nhuận? (Chỉ dùng cho Âm -> Dương)
-      description: Bật lên NẾU bạn đang đổi từ Âm sang Dương VÀ tháng âm đó là tháng nhuận. Bỏ qua trong các trường hợp khác.
-      required: false
-      default: false
-      selector:
-        boolean:
