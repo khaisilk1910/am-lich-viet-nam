@@ -6,7 +6,12 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN
-from .amlich_core import get_lunar_date, lunar_to_solar_extended, get_year_can_chi, get_lunar_leap_info
+from .amlich_core import (
+    get_lunar_date, lunar_to_solar_extended, get_year_can_chi, get_lunar_leap_info,
+    get_can_chi_day_month_year, get_month_name, get_tiet_khi, get_gio_hoang_dao,
+    get_gio_hac_dao, get_huong_xuat_hanh, get_thap_nhi_truc, get_nhi_thap_bat_tu,
+    NGAY_THONG_TIN
+)
 
 SERVICE_CONVERT_SCHEMA = vol.Schema({
     vol.Required("conversion_type"): vol.In(["solar_to_lunar", "lunar_to_solar"]),
@@ -26,9 +31,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         m = call.data["month"]
         y = call.data["year"]
 
+        def get_details(jd, lunar_obj):
+            """Hàm tiện ích lấy chi tiết tử vi của một ngày Âm lịch"""
+            can_chi_day, can_chi_month, can_chi_year = get_can_chi_day_month_year(lunar_obj)
+            ngay_thong_tin = NGAY_THONG_TIN.get(can_chi_day, {})
+            return {
+                "lunar_day": lunar_obj.day,
+                "month_name": get_month_name(lunar_obj.month, lunar_obj.leap == 1),
+                "can_chi_day": can_chi_day,
+                "can_chi_month": can_chi_month,
+                "can_chi_year": can_chi_year,
+                "tiet_khi": get_tiet_khi(jd),
+                "gio_hoang_dao": get_gio_hoang_dao(jd),
+                "gio_hac_dao": get_gio_hac_dao(jd),
+                "huong_xuat_hanh": get_huong_xuat_hanh(jd),
+                "thap_nhi_truc": get_thap_nhi_truc(jd),
+                "nhi_thap_bat_tu": get_nhi_thap_bat_tu(jd),
+                "ngay_mo_ta": ngay_thong_tin.get('moTa', ''),
+                "ngay_chi_tiet": ngay_thong_tin.get('chiTiet', [])
+            }
+
         try:
             if conv_type == "solar_to_lunar":
-                # Đổi Dương sang Âm
                 try:
                     datetime.datetime(y, m, d)
                 except ValueError:
@@ -50,6 +74,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     "ngay_am_lich": f"{int(lunar.day)}/{int(lunar.month)}/{int(lunar.year)}" + (" (Nhuận)" if lunar.leap == 1 else "")
                 }
                 
+                # Trích xuất chi tiết
+                response["details"] = await hass.async_add_executor_job(get_details, lunar.jd, lunar)
+                
                 if leap_month_of_year > 0:
                     msg = f"Năm âm lịch {can_chi} ({lunar.year}) có nhuận tháng {leap_month_of_year}."
                     if lunar.month == leap_month_of_year:
@@ -70,7 +97,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 return response
                 
             else:
-                # Đổi Âm sang Dương
+                # Kịch bản 2: Âm sang Dương
                 both_solar, leap_month_of_year = await hass.async_add_executor_job(lunar_to_solar_extended, d, m, y)
                 can_chi = get_year_can_chi(y)
                 
@@ -78,6 +105,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                      return {"error": f"Ngày {d}/{m}/{y} âm lịch không tồn tại."}
                      
                 default_res = both_solar.get("regular", both_solar.get("leap"))
+                
+                # Tính toán lại Object LunarDate để lấy JD phục vụ phong thủy
+                lunar_obj_for_details = await hass.async_add_executor_job(
+                    get_lunar_date, default_res["ngay"], default_res["thang"], default_res["nam"]
+                )
                      
                 response = {
                     "ngay": default_res["ngay"],
@@ -87,6 +119,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     "ngay_am_lich": f"{int(d)}/{int(m)}/{int(y)}",
                     "ngay_duong_lich": default_res["ngay_duong_lich"]
                 }
+                
+                if lunar_obj_for_details:
+                    response["details"] = await hass.async_add_executor_job(get_details, lunar_obj_for_details.jd, lunar_obj_for_details)
                 
                 if leap_month_of_year > 0:
                     msg = f"Năm âm lịch {can_chi} ({y}) có nhuận tháng {leap_month_of_year}."
