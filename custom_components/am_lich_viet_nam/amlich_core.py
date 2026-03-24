@@ -455,5 +455,51 @@ def get_nhi_thap_bat_tu(jd):
     sao_name = sao_names[current_mansion_index]
     return {"name": sao_name, "details": NHI_THAP_BAT_TU.get(sao_name, {})}
 
+def get_lunar_leap_info(yyyy):
+    """Trả về tháng nhuận của năm âm lịch (kiểu số int). Trả về 0 nếu năm đó không nhuận."""
+    try:
+        ly = get_year_info(yyyy)
+        for m in ly:
+            if m.leap == 1:
+                return m.month
+        return 0
+    except:
+        return 0
 
+def lunar_to_solar_extended(dd, mm, yyyy):
+    """
+    Trả về dictionary chứa các ngày dương lịch tương ứng với ngày âm lịch.
+    Vì 1 ngày âm có thể ra 1 hoặc 2 ngày dương (nếu rơi vào tháng nhuận).
+    """
+    try:
+        ly = get_year_info(yyyy)
+        results = {}
+        leap_month = 0
+        
+        for i in range(len(ly)):
+            m_info = ly[i]
+            if m_info.leap == 1:
+                leap_month = m_info.month
+                
+            if m_info.month == mm:
+                # Tính toán độ dài của tháng âm lịch này (xem là tháng đủ hay thiếu)
+                if i + 1 < len(ly):
+                    m_len = ly[i+1].jd - m_info.jd
+                else:
+                    try:
+                        next_ly = get_year_info(yyyy + 1)
+                        m_len = next_ly[0].jd - m_info.jd
+                    except ValueError:
+                        m_len = 30 # Dự phòng
+                        
+                # Chỉ lưu kết quả nếu ngày đầu vào hợp lệ (<= độ dài tháng)
+                if 1 <= dd <= m_len:
+                    target_jd = m_info.jd + dd - 1
+                    d, m, y = jd_to_date(target_jd)
+                    key = "leap" if m_info.leap == 1 else "regular"
+                    results[key] = f"{int(d)}/{int(m)}/{int(y)}"
+                    
+        return results, leap_month
+    except Exception as e:
+        raise ValueError(f"Lỗi tính toán: {str(e)}")
 
