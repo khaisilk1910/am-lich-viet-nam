@@ -264,7 +264,7 @@ content: |
 
   <div class="conv-wrapper">
     <div class="conv-header" onclick="const b = this.nextElementSibling; const i = this.querySelector('.conv-icon'); if(b.style.display==='none' || b.style.display===''){b.style.display='block'; i.style.transform='rotate(180deg)';}else{b.style.display='none'; i.style.transform='rotate(0deg)';}">
-      <h3 style="margin: 0; font-size: 1.1em; color: orange; display: flex; align-items: center; gap: 8px;">
+      <h3 style="margin: 0; font-size: 1.3em; color: orange; display: flex; align-items: center; gap: 8px;">
         <span>🔄</span> Tra cứu / Quy đổi ngày nhanh
       </h3>
       <span class="conv-icon" style="transition: transform 0.3s; color: gray;">▼</span>
@@ -391,7 +391,7 @@ card_mod:
       background: rgba(0,0,0,0.3) !important;
     }
 
-    /* --- PHẦN 1: CSS SỰ KIỆN SẮP --- */  .scroll-area {
+    /* --- PHẦN 1: CSS SỰ KIỆN SẮP ĐẾN --- */  .scroll-area {
       max-height: 250px; 
       overflow-y: auto;
       overflow-x: hidden;
@@ -431,7 +431,7 @@ card_mod:
     transition: background 0.2s; } .conv-header:hover { background:
     rgba(255,255,255,0.05); }
 
-    .conv-body { max-height: 350px; overflow-y: auto; overflow-x: hidden;
+    .conv-body { max-height: 400px; overflow-y: auto; overflow-x: hidden;
     padding-right: 5px; } .conv-body::-webkit-scrollbar { width: 4px; }
     .conv-body::-webkit-scrollbar-track { background: rgba(0,0,0,0.1);
     border-radius: 4px; } .conv-body::-webkit-scrollbar-thumb { background:
