@@ -256,7 +256,7 @@ card_mod:
       background: rgba(0,0,0,0.3) !important;
     }
 
-    /* --- PHẦN 1: CSS SỰ KIỆN SẮP ĐẾN CHUẨN GỐC --- */  .scroll-area {
+    /* --- PHẦN 1: CSS SỰ KIỆN SẮP --- */  .scroll-area {
       max-height: 250px; 
       overflow-y: auto;
       overflow-x: hidden;
