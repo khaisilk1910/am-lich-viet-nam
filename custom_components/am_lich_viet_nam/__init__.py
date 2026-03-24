@@ -8,7 +8,6 @@ from homeassistant.helpers import config_validation as cv
 from .const import DOMAIN
 from .amlich_core import get_lunar_date, lunar_to_solar_extended, get_year_can_chi, get_lunar_leap_info
 
-# Định nghĩa cấu trúc dữ liệu đầu vào (Bỏ is_leap_month đi)
 SERVICE_CONVERT_SCHEMA = vol.Schema({
     vol.Required("conversion_type"): vol.In(["solar_to_lunar", "lunar_to_solar"]),
     vol.Required("day"): cv.positive_int,
@@ -22,7 +21,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(entry.add_update_listener(update_listener))
     
     async def handle_convert_date(call: ServiceCall) -> ServiceResponse:
-        """Xử lý yêu cầu chuyển đổi ngày."""
         conv_type = call.data["conversion_type"]
         d = call.data["day"]
         m = call.data["month"]
@@ -30,7 +28,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         try:
             if conv_type == "solar_to_lunar":
-                # Kịch bản 1: Dương sang Âm
                 try:
                     datetime.datetime(y, m, d)
                 except ValueError:
@@ -41,35 +38,32 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     return {"error": "Nằm ngoài phạm vi hỗ trợ (1800-2199)."}
                 
                 can_chi = get_year_can_chi(lunar.year)
-                is_lunar_leap = (lunar.leap == 1)
                 leap_month_of_year = await hass.async_add_executor_job(get_lunar_leap_info, lunar.year)
                 
                 response = {
-                    "day": lunar.day,
-                    "month": lunar.month,
-                    "year": lunar.year,
-                    "is_leap_month": is_lunar_leap,
+                    "ngay": lunar.day,
+                    "thang": lunar.month,
+                    "nam": lunar.year,
                     "nam_can_chi": can_chi,
-                    "formatted_date": f"{lunar.day}/{lunar.month}/{lunar.year}" + (" (Nhuận)" if is_lunar_leap else "")
+                    "ngay_dinh_dang": f"{lunar.day}/{lunar.month}/{lunar.year}" + (" (Nhuận)" if lunar.leap == 1 else "")
                 }
                 
-                # Logic phân tích nhuận cho chiều Dương -> Âm
                 if leap_month_of_year > 0:
                     msg = f"Năm âm lịch {can_chi} ({lunar.year}) có nhuận tháng {leap_month_of_year}."
                     if lunar.month == leap_month_of_year:
                         msg += " Tháng bạn tra trùng ngay vào tháng Nhuận này!"
                         both_solar, _ = await hass.async_add_executor_job(lunar_to_solar_extended, lunar.day, lunar.month, lunar.year)
-                        if is_lunar_leap:
-                            response["ngay_duong_thang_thuong"] = both_solar.get("regular", "Không hợp lệ")
-                            response["ngay_duong_thang_nhuan_la_ngay"] = f"{d}/{m}/{y}" # Chính là ngày đang tra
+                        if lunar.leap == 1:
+                            if "regular" in both_solar:
+                                response["ngay_duong_thang_thuong"] = both_solar["regular"]["ngay_dinh_dang"]
+                            response["ngay_duong_thang_nhuan"] = f"{d}/{m}/{y}"
                         else:
-                            response["ngay_duong_thang_thuong_la_ngay"] = f"{d}/{m}/{y}" # Chính là ngày đang tra
-                            response["ngay_duong_thang_nhuan"] = both_solar.get("leap", "Không hợp lệ")
+                            response["ngay_duong_thang_thuong"] = f"{d}/{m}/{y}"
+                            if "leap" in both_solar:
+                                response["ngay_duong_thang_nhuan"] = both_solar["leap"]["ngay_dinh_dang"]
                     response["thong_bao_nhuan"] = msg
-                    response["thang_nhuan_cua_nam"] = leap_month_of_year
                 else:
                     response["thong_bao_nhuan"] = f"Năm âm lịch {can_chi} ({lunar.year}) không có tháng nhuận."
-                    response["thang_nhuan_cua_nam"] = 0
                     
                 return response
                 
@@ -79,28 +73,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 can_chi = get_year_can_chi(y)
                 
                 if not both_solar:
-                     return {"error": f"Ngày {d}/{m}/{y} âm lịch không tồn tại (hãy kiểm tra lại số ngày trong tháng)."}
+                     return {"error": f"Ngày {d}/{m}/{y} âm lịch không tồn tại."}
+                     
+                default_res = both_solar.get("regular", both_solar.get("leap"))
                      
                 response = {
+                    "ngay": default_res["ngay"],
+                    "thang": default_res["thang"],
+                    "nam": default_res["nam"],
                     "nam_can_chi": can_chi,
-                    "thang_nhuan_cua_nam": leap_month_of_year
+                    "ngay_dinh_dang": default_res["ngay_dinh_dang"]
                 }
                 
                 if leap_month_of_year > 0:
                     msg = f"Năm âm lịch {can_chi} ({y}) có nhuận tháng {leap_month_of_year}."
                     if m == leap_month_of_year:
                         msg += " Tháng bạn đang quy đổi chính là tháng nhuận! Dưới đây là 2 kết quả:"
-                        response["thong_bao_nhuan"] = msg
-                        response["ngay_duong_cua_thang_thuong"] = both_solar.get("regular", "Ngày này không tồn tại trong tháng thường (tháng thiếu)")
-                        response["ngay_duong_cua_thang_nhuan"] = both_solar.get("leap", "Ngày này không tồn tại trong tháng nhuận")
-                        # Dự phòng 1 trường mặc định
-                        response["formatted_date"] = both_solar.get("regular", both_solar.get("leap"))
-                    else:
-                        response["thong_bao_nhuan"] = msg
-                        response["formatted_date"] = both_solar.get("regular", "Lỗi")
+                        if "regular" in both_solar:
+                            response["ngay_duong_thang_thuong"] = both_solar["regular"]["ngay_dinh_dang"]
+                        if "leap" in both_solar:
+                            response["ngay_duong_thang_nhuan"] = both_solar["leap"]["ngay_dinh_dang"]
+                    response["thong_bao_nhuan"] = msg
                 else:
                     response["thong_bao_nhuan"] = f"Năm âm lịch {can_chi} ({y}) không có tháng nhuận."
-                    response["formatted_date"] = both_solar.get("regular", "Lỗi")
 
                 return response
                 
