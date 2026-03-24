@@ -381,7 +381,6 @@ content: |
       <div class="conv-result" style="display: none; margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.5); border-radius: 8px; border-left: 4px solid orange; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); color: white;"></div>
     </div>
   </div>
-
 card_mod:
   style: >
     ha-card {
@@ -397,7 +396,8 @@ card_mod:
 
     .scroll-area::-webkit-scrollbar { width: 4px; }
     .scroll-area::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
-    .scroll-area::-webkit-scrollbar-thumb { background: rgba(255, 165, 0, 0.6); border-radius: 4px; }
+    .scroll-area::-webkit-scrollbar-thumb { background: rgba(255, 165, 0, 0.6);
+    border-radius: 4px; }
 
     .flip-emoji {
       display: inline-block;
@@ -441,8 +441,7 @@ card_mod:
       justify-content: space-between;
       border-bottom: 1px dashed rgba(255,255,255,0.15);
       padding: 6px 0;
-    }
-    .attr-row:last-child { border-bottom: none; }
+    } .attr-row:last-child { border-bottom: none; }
 
     .attr-box {
       background: rgba(255,255,255,0.05);
@@ -450,10 +449,10 @@ card_mod:
       border-radius: 6px;
       margin-top: 8px;
       border-left: 3px solid orange;
-    }
-    .attr-label { color: #aaa; font-size: 0.9em; }
-    .attr-value { color: white; font-weight: 500; text-align: right; }
-    .attr-value-full { color: white; font-weight: normal; font-style: italic; margin-top: 4px; line-height: 1.4; font-size: 0.95em; }
+    } .attr-label { color: #aaa; font-size: 0.9em; } .attr-value { color: white;
+    font-weight: 500; text-align: right; } .attr-value-full { color: white;
+    font-weight: normal; font-style: italic; margin-top: 4px; line-height: 1.4;
+    font-size: 0.95em; }
 
     .conv-header {
       display: flex; 
@@ -463,19 +462,25 @@ card_mod:
       padding: 5px 20px 5px 5px; 
       border-radius: 6px; 
       transition: background 0.2s;
-    }
-    .conv-header:hover { background: rgba(255,255,255,0.05); }
+    } .conv-header:hover { background: rgba(255,255,255,0.05); }
+
+    .conv-body {
+      max-height: 350px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 5px;
+    } .conv-body::-webkit-scrollbar { width: 4px; }
+    .conv-body::-webkit-scrollbar-track { background: rgba(0,0,0,0.1);
+    border-radius: 4px; } .conv-body::-webkit-scrollbar-thumb { background:
+    rgba(255, 165, 0, 0.6); border-radius: 4px; }
+
     .conv-input {
       background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px; border-radius: 6px; outline: none; text-align: center; font-size: 1em;
-    }
-    .conv-input:focus { border-color: orange; }
-    .conv-btn {
+    } .conv-input:focus { border-color: orange; } .conv-btn {
       width: 100%; background: rgba(255, 165, 0, 0.8); color: black; font-weight: bold; border-radius: 6px; padding: 10px; border: none; cursor: pointer; transition: background 0.2s; font-size: 1em;
-    }
-    .conv-btn:hover { background: rgba(255, 165, 0, 1); }
+    } .conv-btn:hover { background: rgba(255, 165, 0, 1); }
 
-    /* CSS CHO NÚT CHI TIẾT LỊCH ÂM XỔ XUỐNG */
-    .btn-detail {
+    /* CSS CHO NÚT CHI TIẾT LỊCH ÂM XỔ XUỐNG */ .btn-detail {
       cursor: pointer;
       background: rgba(255,255,255,0.1);
       padding: 6px 12px;
@@ -485,10 +490,11 @@ card_mod:
       user-select: none;
       display: inline-block;
       transition: background 0.2s;
-    }
-    .btn-detail:hover { background: rgba(255,255,255,0.2); }
+    } .btn-detail:hover { background: rgba(255,255,255,0.2); }
     .btn-detail::marker { content: '▶ '; color: orange; font-size: 0.9em; }
-    details[open] > .btn-detail::marker { content: '▼ '; color: orange; font-size: 0.9em; }
+    details[open] > .btn-detail::marker { content: '▼ '; color: orange;
+    font-size: 0.9em; }
+
 ```
 
 
