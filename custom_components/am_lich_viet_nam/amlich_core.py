@@ -469,7 +469,7 @@ def get_lunar_leap_info(yyyy):
 def lunar_to_solar_extended(dd, mm, yyyy):
     """
     Trả về dictionary chứa các ngày dương lịch tương ứng với ngày âm lịch.
-    Mỗi kết quả là một dict chứa ngay, thang, nam, ngay_dinh_dang.
+    Mỗi kết quả là một dict chứa ngay, thang, nam, ngay_duong_lich đầy đủ.
     """
     try:
         ly = get_year_info(yyyy)
@@ -501,7 +501,7 @@ def lunar_to_solar_extended(dd, mm, yyyy):
                         "ngay": int(d),
                         "thang": int(m),
                         "nam": int(y),
-                        "ngay_dinh_dang": f"{int(d)}/{int(m)}/{int(y)}"
+                        "ngay_duong_lich": f"{int(d)}/{int(m)}/{int(y)}" # LUÔN ĐẦY ĐỦ NGÀY/THÁNG/NĂM
                     }
                     
         return results, leap_month
