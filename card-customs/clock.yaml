@@ -1,0 +1,217 @@
+type: custom:html-template-card
+ignore_line_breaks: true
+content: >
+  <style>
+    /* Import font Poppins */
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+    
+    .ha-clock-container {
+      background: rgba(0, 0, 0, 0); 
+      padding: 0px 10px;
+      border-radius: 20px;
+      border: 0px solid rgba(255, 255, 255, 0);
+      text-align: center;
+      font-family: 'Poppins', sans-serif;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    .ha-time {
+      font-size: 6.5rem; 
+      color: #fff;
+      text-shadow: 0 0 15px rgba(255, 255, 255, 0.2), 0 0 30px rgba(255, 255, 255, 0.3);
+      font-weight: 700;
+      letter-spacing: 2px;
+      line-height: 1;
+    }
+
+    .blink { animation: blinker 1s linear infinite; }
+    @keyframes blinker { 50% { opacity: 0; } }
+    
+    .ha-date {
+      margin-top: 5px;
+      font-size: 1.2rem;
+      color: rgba(255, 255, 255, 1);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-weight: 600;
+    }
+
+    /* Định dạng cho dòng Âm lịch */
+    .ha-lunar-date {
+      font-size: 1rem;
+      margin-top: 5px;
+      font-weight: 400;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .lunar-hl {
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* CSS cho dấu phân cách giữa Ngày - Tháng - Năm */
+    .lunar-sep {
+      color: rgba(255, 255, 255, 0.6); /* Làm mờ dấu chấm để tạo sự tinh tế */
+      margin: 0 8px; /* Khoảng cách 2 bên dấu chấm */
+      font-size: 1.2rem;
+      line-height: 1;
+    }
+
+    /* CSS cho khu vực ẩn hiện (Accordion) */
+    details.lunar-details {
+      margin-top: 15px;
+      width: 100%;
+    }
+    
+    /* Thiết kế nút bấm ẩn/hiện */
+    summary.btn-detail {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(0, 0, 0, 0.3);
+      color: #fff;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-family: 'Poppins', sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 0.9rem;
+      list-style: none;
+      user-select: none;
+    }
+    
+    summary.btn-detail::-webkit-details-marker {
+      display: none;
+    }
+    summary.btn-detail:hover { background: rgba(0, 0, 0, 0.15); }
+    
+    details.lunar-details[open] summary.btn-detail {
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    /* Giao diện bảng chi tiết bên trong */
+    .details-content {
+      margin-top: 15px;
+      background-color: #121212;
+      color: #e0e0e0;
+      border-radius: 12px;
+      border: 1px solid #333;
+      padding: 20px;
+      text-align: left;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Các định dạng text bên trong bảng chi tiết */
+    .lunar-title-main { color: #FFD700; text-align: center; font-size: 1.2rem; font-weight: 700; margin-bottom: 15px; }
+    .info-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+    .info-table td { padding: 5px 0; border-bottom: 1px dashed #2a2a2a; }
+    .info-table td:first-child { color: #8a6a5b; font-weight: 500;}
+    .info-table td:last-child { text-align: right; color: #FFD700; font-weight: 600; }
+    .info-table tr:first-child td:last-child { color: #fff; }
+
+    .divider { border: 0; border-top: 1px dashed #444; margin: 15px 0; }
+    
+    .section-title { font-weight: 600; color: #fff; margin-bottom: 5px; }
+    .text-green { color: #4CAF50; font-weight: 600; }
+    .text-orange { color: #FF9800; font-weight: 600; }
+    .badge-green { background-color: #2e7d32; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; margin-left: 5px; }
+  </style>
+
+  {% set days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ
+  Sáu', 'Thứ Bảy'] %}  {% set day_index = now().strftime('%w') | int %} 
+
+  <div class="ha-clock-container">
+    <div class="ha-time">
+      {{ now().strftime('%H') }}<span class="blink">:</span>{{ now().strftime('%M') }}
+    </div>
+    <div class="ha-date">{{ days[day_index] }}, {{ now().strftime('%d-%m-%Y') }}</div>
+    
+    <div class="ha-lunar-date">
+      <span class="lunar-hl">{{ state_attr('sensor.am_lich_hang_ngay', 'lunar_day') }}</span> 
+      <span class="lunar-sep">•</span>
+      <span class="lunar-hl">{{ state_attr('sensor.am_lich_hang_ngay', 'month_name') }}</span> 
+      <span class="lunar-sep">•</span>
+      <span class="lunar-hl">{{ state_attr('sensor.am_lich_hang_ngay', 'can_chi_year') }}</span>
+    </div>
+
+    <details class="lunar-details">
+      <summary class="btn-detail" title="Nhấn để xem hoặc ẩn">Chi tiết lịch âm</summary>
+      
+      <div class="details-content">
+        <div class="lunar-title-main">Dương lịch: {{ state_attr('sensor.am_lich_hang_ngay', 'solar_date') }}</div>
+
+        <table class="info-table">
+          <tr><td>Âm lịch:</td><td>{{ state_attr('sensor.am_lich_hang_ngay', 'lunar_day') }} {{ state_attr('sensor.am_lich_hang_ngay', 'month_name') }} {{ state_attr('sensor.am_lich_hang_ngay', 'can_chi_year') }}</td></tr>
+          <tr><td>Ngày:</td><td>{{ state_attr('sensor.am_lich_hang_ngay', 'can_chi_day') }}</td></tr>
+          <tr><td>Tháng:</td><td>{{ state_attr('sensor.am_lich_hang_ngay', 'can_chi_month') }}</td></tr>
+          <tr><td>Năm:</td><td>{{ state_attr('sensor.am_lich_hang_ngay', 'can_chi_year') }}</td></tr>
+          <tr><td>Tiết khí:</td><td>{{ state_attr('sensor.am_lich_hang_ngay', 'tiet_khi') }}</td></tr>
+        </table>
+
+        <div style="margin-top: 10px;">
+          <div class="section-title">✨ Giờ hoàng đạo:</div>
+          <div style="margin-bottom: 15px; font-size: 0.85rem;">
+            {{ state_attr('sensor.am_lich_hang_ngay', 'gio_hoang_dao') }}
+          </div>
+          
+          <div class="section-title">🔮 Giờ hắc đạo:</div>
+          <div class="text-orange" style="font-size: 0.85rem;">
+            {{ state_attr('sensor.am_lich_hang_ngay', 'gio_hac_dao') }}
+          </div>
+        </div>
+
+        <hr class="divider">
+
+        <div>
+          <div class="section-title">🧭 Hướng xuất hành:</div>
+          <div>Hỷ Thần: <span class="text-green">{{ state_attr('sensor.am_lich_hang_ngay', 'huong_xuat_hanh')['Hỷ Thần'] }}</span> - Tài Thần: <span class="text-green">{{ state_attr('sensor.am_lich_hang_ngay', 'huong_xuat_hanh')['Tài Thần'] }}</span></div>
+          <div>Tránh: <span class="text-orange">{{ state_attr('sensor.am_lich_hang_ngay', 'huong_xuat_hanh')['Hạc Thần'] }}</span></div>
+        </div>
+
+        <hr class="divider">
+
+        <div>
+          <div class="section-title">🔥 Trực: <span class="badge-green">{{ state_attr('sensor.am_lich_hang_ngay', 'thap_nhi_truc')['name'] }}</span></div>
+          <div>✅ <strong>Tốt:</strong> {{ state_attr('sensor.am_lich_hang_ngay', 'thap_nhi_truc')['details']['tot'] }}</div>
+          <div style="margin-top: 4px;">❌ <strong>Xấu:</strong> <span class="text-orange">{{ state_attr('sensor.am_lich_hang_ngay', 'thap_nhi_truc')['details']['xau'] }}</span></div>
+        </div>
+
+        <hr class="divider">
+
+        <div>
+          <div class="section-title">🌟 Ngũ hành: <span style="font-weight: normal; font-size: 0.9em;">{{ state_attr('sensor.am_lich_hang_ngay', 'ngay_mo_ta') }}</span></div>
+          {% for detail in state_attr('sensor.am_lich_hang_ngay', 'ngay_chi_tiet') %}
+            <div style="margin-top: 4px;">{{ detail }}</div>
+          {% endfor %}
+        </div>
+
+        <hr class="divider">
+
+        <div>
+          <div class="section-title">💫 Nhị Thập Bát Tú: <span class="badge-green">{{ state_attr('sensor.am_lich_hang_ngay', 'nhi_thap_bat_tu')['name'] }}</span></div>
+          <div style="font-style: italic; color: #FFD700; font-size: 0.85rem;">({{ state_attr('sensor.am_lich_hang_ngay', 'nhi_thap_bat_tu')['details']['tenNgay'] }})</div>
+          <div style="font-style: italic; margin-bottom: 5px;">{{ state_attr('sensor.am_lich_hang_ngay', 'nhi_thap_bat_tu')['details']['danhGia'] }}</div>
+          
+          <div>👍 <strong>Nên làm:</strong> {{ state_attr('sensor.am_lich_hang_ngay', 'nhi_thap_bat_tu')['details']['nenLam'] }}</div>
+          <div style="margin-top: 4px;">👎 <strong>Kiêng cữ:</strong> <span class="text-orange">{{ state_attr('sensor.am_lich_hang_ngay', 'nhi_thap_bat_tu')['details']['kiengCu'] }}</span></div>
+        </div>
+      </div>
+    </details>
+  </div>
+card_mod:
+  style:
+    .: |
+      ha-card {
+        border: none !important;
+        background: rgba(0,0,0,0) !important;
+      }
