@@ -1,4 +1,6 @@
 {
   "name": "Âm lịch Việt Nam",
-  "render_readme": true
+  "render_readme": true,
+  "iot_class": "calculated",
+  "zip_release": false
 }
