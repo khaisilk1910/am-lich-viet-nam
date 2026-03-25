@@ -4,6 +4,7 @@ import datetime
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import config_validation as cv
+from homeassistant.components.frontend import add_extra_js_url
 
 from .const import DOMAIN
 from .amlich_core import (
@@ -13,12 +14,31 @@ from .amlich_core import (
     NGAY_THONG_TIN
 )
 
+# Khai báo đường dẫn ảo trên web và thư mục thực tế chứa UI
+UI_URL_BASE = "/am_lich_viet_nam_ui"
+UI_DIR_PATH = "frontend"
+
 SERVICE_CONVERT_SCHEMA = vol.Schema({
     vol.Required("conversion_type"): vol.In(["solar_to_lunar", "lunar_to_solar"]),
     vol.Required("day"): cv.positive_int,
     vol.Required("month"): cv.positive_int,
     vol.Required("year"): cv.positive_int,
 })
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Được gọi khi Home Assistant khởi động để thiết lập các thành phần chung (Giao diện)."""
+    
+    # 1. Đăng ký đường dẫn tĩnh để Home Assistant đọc file từ thư mục /frontend
+    hass.http.register_static_path(
+        UI_URL_BASE,
+        hass.config.path(f"custom_components/{DOMAIN}/{UI_DIR_PATH}"),
+        False
+    )
+
+    # 2. Tự động thêm file JS chính vào tài nguyên Lovelace của người dùng
+    add_extra_js_url(hass, f"{UI_URL_BASE}/lich-block-am-duong-viet-nam.js")
+
+    return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Âm lịch Việt Nam from a config entry."""
