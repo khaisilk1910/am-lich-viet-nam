@@ -5,6 +5,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, Supp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import config_validation as cv
 from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
 
 from .const import DOMAIN
 from .amlich_core import (
@@ -28,12 +29,14 @@ SERVICE_CONVERT_SCHEMA = vol.Schema({
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Được gọi khi Home Assistant khởi động để thiết lập các thành phần chung (Giao diện)."""
     
-    # 1. Đăng ký đường dẫn tĩnh để Home Assistant đọc file từ thư mục /frontend
-    hass.http.register_static_path(
-        UI_URL_BASE,
-        hass.config.path(f"custom_components/{DOMAIN}/{UI_DIR_PATH}"),
-        False
-    )
+    # 1. Đăng ký đường dẫn tĩnh sử dụng API async mới của Home Assistant
+    await hass.http.async_register_static_paths([
+        StaticPathConfig(
+            UI_URL_BASE,
+            hass.config.path(f"custom_components/{DOMAIN}/{UI_DIR_PATH}"),
+            False
+        )
+    ])
 
     # 2. Tự động thêm file JS chính vào tài nguyên Lovelace của người dùng
     add_extra_js_url(hass, f"{UI_URL_BASE}/lich-block-am-duong-viet-nam.js")
