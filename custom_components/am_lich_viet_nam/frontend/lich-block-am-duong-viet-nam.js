@@ -1457,29 +1457,29 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
         .conv-input option { background: #333; color: #fff; text-shadow: none; } /* Màu nền option dropdown hệ thống */
         #conv-btn:hover { background: var(--lc-bg-overlay-hover) !important; transform: scale(1.01); border-color: var(--lc-text-accent) !important; }
       </style>
-      <div class="conv-wrapper" style="margin-top: 15px; font-family: 'Be Vietnam Pro', sans-serif;">
-        <div id="conv-header" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 10px; border-radius: 8px; background: transparent; transition: all 0.2s;">
-          <h3 style="margin: 0; font-size: 1.05em; color: var(--lc-text-accent); text-shadow: var(--lc-text-shadow-light); display: flex; align-items: center; gap: 8px;">
+      <div class="conv-wrapper" style="margin-top: clamp(8px, 3cqi, 15px); font-family: 'Be Vietnam Pro', sans-serif;">
+        <div id="conv-header" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: clamp(6px, 2.5cqi, 10px); border-radius: 8px; background: transparent; transition: all 0.2s;">
+          <h3 style="margin: 0; font-size: clamp(10px, 4.5cqi, 16.8px); color: var(--lc-text-accent); text-shadow: var(--lc-text-shadow-light); display: flex; align-items: center; gap: clamp(4px, 2cqi, 8px);">
             <span>🔄</span> Tra cứu / Quy đổi ngày nhanh
           </h3>
-          <span id="conv-icon" style="transition: transform 0.3s; color: var(--lc-text-main); text-shadow: var(--lc-text-shadow-light);">▼</span>
+          <span id="conv-icon" style="transition: transform 0.3s; color: var(--lc-text-main); text-shadow: var(--lc-text-shadow-light); font-size: clamp(10px, 4cqi, 16px);">▼</span>
         </div>
 
-        <div id="conv-body" style="display: none; margin-top: 8px; padding: 15px 10px; background: var(--lc-bg-overlay); border: 0.4px solid var(--lc-border-color); border-radius: 8px; box-shadow: var(--lc-element-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
-          <select id="conv-type" class="conv-input" style="width: 100%; margin-bottom: 12px; padding: 10px; border-radius: 6px; cursor: pointer;">
+        <div id="conv-body" style="display: none; margin-top: clamp(4px, 1.5cqi, 8px); padding: clamp(10px, 4cqi, 15px) clamp(6px, 2.5cqi, 10px); background: var(--lc-bg-overlay); border: 0.4px solid var(--lc-border-color); border-radius: 8px; box-shadow: var(--lc-element-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
+          <select id="conv-type" class="conv-input" style="width: 100%; margin-bottom: clamp(8px, 3cqi, 12px); padding: clamp(6px, 2.5cqi, 10px); border-radius: 6px; cursor: pointer; font-size: clamp(9px, 3.8cqi, 14px);">
             <option value="solar_to_lunar">☀️ Dương lịch ➡️ 🌙 Âm lịch</option>
             <option value="lunar_to_solar">🌙 Âm lịch ➡️ ☀️ Dương lịch</option>
           </select>
           
-          <div style="display: flex; gap: 8px; margin-bottom: 15px;">
-            <input id="conv-day" class="conv-input" type="number" placeholder="Ngày" min="1" max="31" style="flex: 1; padding: 10px; border-radius: 6px; text-align: center;">
-            <input id="conv-month" class="conv-input" type="number" placeholder="Tháng" min="1" max="12" style="flex: 1; padding: 10px; border-radius: 6px; text-align: center;">
-            <input id="conv-year" class="conv-input" type="number" placeholder="Năm" min="1800" max="2199" style="flex: 1.2; padding: 10px; border-radius: 6px; text-align: center;">
+          <div style="display: flex; gap: clamp(4px, 2cqi, 8px); margin-bottom: clamp(10px, 4cqi, 15px);">
+            <input id="conv-day" class="conv-input" type="number" placeholder="Ngày" min="1" max="31" style="flex: 1; padding: clamp(6px, 2.5cqi, 10px); border-radius: 6px; text-align: center; font-size: clamp(9px, 3.8cqi, 14px);">
+            <input id="conv-month" class="conv-input" type="number" placeholder="Tháng" min="1" max="12" style="flex: 1; padding: clamp(6px, 2.5cqi, 10px); border-radius: 6px; text-align: center; font-size: clamp(9px, 3.8cqi, 14px);">
+            <input id="conv-year" class="conv-input" type="number" placeholder="Năm" min="1800" max="2199" style="flex: 1.2; padding: clamp(6px, 2.5cqi, 10px); border-radius: 6px; text-align: center; font-size: clamp(9px, 3.8cqi, 14px);">
           </div>
 
-          <button id="conv-btn" style="width: 100%; background: var(--lc-bg-overlay); color: var(--lc-text-accent); text-shadow: var(--lc-text-shadow-light); font-weight: bold; border-radius: 6px; padding: 10px; border: 1px solid var(--lc-border-color); cursor: pointer; font-size: 1em; transition: all 0.2s; box-shadow: var(--lc-element-shadow);">TÍNH TOÁN QUY ĐỔI</button>
+          <button id="conv-btn" style="width: 100%; background: var(--lc-bg-overlay); color: var(--lc-text-accent); text-shadow: var(--lc-text-shadow-light); font-weight: bold; border-radius: 6px; padding: clamp(6px, 2.5cqi, 10px); border: 1px solid var(--lc-border-color); cursor: pointer; font-size: clamp(10px, 4.2cqi, 15px); transition: all 0.2s; box-shadow: var(--lc-element-shadow);">TÍNH TOÁN QUY ĐỔI</button>
           
-          <div id="conv-result" style="display: none; margin-top: 15px; padding: 15px; background: var(--lc-bg-overlay); border-radius: 8px; border-left: 4px solid var(--lc-text-accent); border-top: 0.4px solid var(--lc-border-color); border-right: 0.4px solid var(--lc-border-color); border-bottom: 0.4px solid var(--lc-border-color); color: var(--lc-text-main); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(4px); text-shadow: var(--lc-text-shadow-light);"></div>
+          <div id="conv-result" style="display: none; margin-top: clamp(10px, 4cqi, 15px); padding: clamp(10px, 4cqi, 15px); background: var(--lc-bg-overlay); border-radius: 8px; border-left: 4px solid var(--lc-text-accent); border-top: 0.4px solid var(--lc-border-color); border-right: 0.4px solid var(--lc-border-color); border-bottom: 0.4px solid var(--lc-border-color); color: var(--lc-text-main); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(4px); text-shadow: var(--lc-text-shadow-light); font-size: clamp(9px, 3.8cqi, 15px);"></div>
         </div>
       </div>`;
 
