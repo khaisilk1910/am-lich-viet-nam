@@ -370,7 +370,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
   const PRINT_OPTS = { fontSize: "13pt", tableWidth: "100%" };
 
   // ==========================================
-  // HÀM PRINTSTYLE ĐÃ ĐƯỢC CẬP NHẬT CONTAINER QUERIES
+  // HÀM PRINTSTYLE
   // ==========================================
   function printStyle(){
     let res = "";
@@ -411,29 +411,33 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       .show_dao_tet { transform-box: fill-box; transform-origin: 100px 20px; animation: lanternSwingSoft 4s ease-in-out infinite; }
       .show_mai_tet { transform-box: fill-box; transform-origin: 0% 35%; animation: lanternSwingSoft 4s ease-in-out infinite; }
       .show_mai_tet img, .show_dao_tet img, .show_right_tet img, .show_left_tet img { margin: 0 auto; display: block; height: auto !important; max-height: 70vh !important; max-width: 100% !important; width: auto !important; }
-      .thang { font-size:${PRINT_OPTS.fontSize}; padding:1; line-height:100%; font-family:Tahoma,Verdana,Arial; table-layout:fixed; background-color:transparent; }
       
-      .ngan_cach { font-family: 'Be Vietnam Pro', sans-serif; color: var(--user-element-base-color, #ffffff); opacity: 0.9; font-size: clamp(6px, 2.5cqi, 14px); text-align:center; }
-      .phan_cach { font-family: 'Be Vietnam Pro', sans-serif; color: var(--user-element-base-color, #ffffff); opacity: 0.9; vertical-align: middle; text-align:center; font-size: clamp(6px, 2.5cqi, 14px); padding-top: 1.5cqi; padding-bottom: 1.5cqi; }
-      .nam_top { font-family: 'Bebas Neue', sans-serif; padding: 0 1cqi; color: var(--lc-text-main); bottom: -8px; font-size: clamp(12px, 5cqi, 26px); font-weight:bold; text-align:center; text-shadow: var(--lc-text-shadow-light); }
-      .thang_top, .thang_top_EN { font-family: 'Be Vietnam Pro', sans-serif; color: var(--lc-text-main); font-size: clamp(9px, 3.5cqi, 18px); line-height:120%; border-top-left-radius: 16px; border-top-right-radius: 16px; padding-top: 3cqi; position: relative; overflow: visible; }
+      /* Reset bảng để kiểm soát padding tốt hơn */
+      .thang { font-size:${PRINT_OPTS.fontSize}; padding: 0; line-height: 1.2; font-family:Tahoma,Verdana,Arial; table-layout:fixed; background-color:transparent; border-collapse: collapse; border-spacing: 0; }
+      .thang td { padding: 0; }
+      
+      .ngan_cach { font-family: 'Be Vietnam Pro', sans-serif; color: var(--user-element-base-color, #ffffff); opacity: 0.9; font-size: clamp(8px, 3cqi, 16px); text-align:center; padding: 0 4px; }
+      .phan_cach { font-family: 'Be Vietnam Pro', sans-serif; color: var(--user-element-base-color, #ffffff); opacity: 0.9; vertical-align: middle; text-align:center; font-size: clamp(8px, 3cqi, 16px); padding: clamp(8px, 2.5cqi, 16px) 0; }
+      .nam_top { font-family: 'Bebas Neue', sans-serif; padding: 0 1cqi; color: var(--lc-text-main); font-size: clamp(16px, 6cqi, 32px); font-weight:bold; text-align:center; text-shadow: var(--lc-text-shadow-light); }
+      .thang_top, .thang_top_EN { font-family: 'Be Vietnam Pro', sans-serif; color: var(--lc-text-main); font-size: clamp(11px, 4cqi, 20px); line-height:120%; border-top-left-radius: 16px; border-top-right-radius: 16px; padding-top: 3cqi; position: relative; overflow: visible; }
       .thang_top { text-align:right; }
       .thang_top_EN { text-align:left; }
       
-      .todayduonglich { color: var(--lc-text-main); font-family:'Bebas Neue', sans-serif; text-align:center; font-size: clamp(50px, 32cqi, 170px); line-height: 0.9; letter-spacing: 2px; font-weight: 600; text-shadow: var(--lc-text-shadow-heavy); position: relative; overflow: visible; cursor: pointer; }
+      /* Ngày Dương Lịch: Tinh chỉnh lại tỷ lệ vàng */
+      .todayduonglich { color: var(--lc-text-main); font-family:'Bebas Neue', sans-serif; text-align:center; font-size: clamp(70px, 35cqi, 180px); line-height: 0.85; letter-spacing: 2px; font-weight: 600; text-shadow: var(--lc-text-shadow-heavy); position: relative; overflow: visible; cursor: pointer; padding: clamp(10px, 4cqi, 20px) 0; }
       
-      /* Chỉnh padding và font-size nhỏ lại cho ca dao, lễ tết */
-      .thongtin_letet { font-family: 'Playfair Display', serif; color: var(--lc-holiday-color); line-height: 1.3; padding: 1.5cqi; margin: 1.5cqi 3cqi 0 3cqi; text-align:center; font-size: clamp(8px, 3.5cqi, 18px); letter-spacing: 0.5px; background: var(--lc-bg-overlay); border-radius:14px; border:0.4px solid var(--lc-border-color); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); text-shadow: var(--lc-text-shadow-light); font-weight: 500;}
-      .cadaotucngu { font-family: 'Playfair Display', serif; font-style:italic; color: var(--lc-cadao-color); line-height: 1.3; padding: 1.5cqi; margin: 1.5cqi 3cqi; text-align:center; font-size: clamp(8px, 3.5cqi, 18px); letter-spacing: 0.5px; background: var(--lc-bg-overlay); border-radius:14px; border:0.4px solid var(--lc-border-color); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); text-shadow: var(--lc-text-shadow-light); }
+      /* Ca dao, lễ tết: Tỷ lệ margin, padding và font đẹp hơn */
+      .thongtin_letet { font-family: 'Playfair Display', serif; color: var(--lc-holiday-color); line-height: 1.35; padding: clamp(6px, 2cqi, 12px) clamp(10px, 3cqi, 20px); margin: clamp(8px, 2.5cqi, 16px) auto; text-align:center; font-size: clamp(10px, 3.5cqi, 16px); letter-spacing: 0.5px; background: var(--lc-bg-overlay); border-radius:14px; border:0.4px solid var(--lc-border-color); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); text-shadow: var(--lc-text-shadow-light); font-weight: 500; width: fit-content; max-width: 90%; }
+      .cadaotucngu { font-family: 'Playfair Display', serif; font-style:italic; color: var(--lc-cadao-color); line-height: 1.35; padding: clamp(6px, 2cqi, 12px) clamp(10px, 3cqi, 20px); margin: clamp(8px, 2.5cqi, 16px) auto; text-align:center; font-size: clamp(10px, 3.5cqi, 16px); letter-spacing: 0.5px; background: var(--lc-bg-overlay); border-radius:14px; border:0.4px solid var(--lc-border-color); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); text-shadow: var(--lc-text-shadow-light); width: fit-content; max-width: 95%; }
       
-      /* Thứ trong tuần: Chỉnh padding thành cqi, font min nhỏ hơn */
-      .thutrongtuan, .thutrongtuan_EN { font-family: 'Playfair Display', serif; color: var(--lc-text-main); background: var(--lc-bg-overlay); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); text-align:center; vertical-align: middle; font-size: clamp(9px, 4cqi, 26px); line-height: 1.1; font-weight:bold; padding: 1.5cqi; text-shadow: var(--lc-text-shadow-light); position: relative; z-index: 1;}
+      /* Thứ trong tuần */
+      .thutrongtuan, .thutrongtuan_EN { font-family: 'Playfair Display', serif; color: var(--lc-text-main); background: var(--lc-bg-overlay); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); text-align:center; vertical-align: middle; font-size: clamp(11px, 4.5cqi, 22px); line-height: 1.2; font-weight:bold; padding: clamp(4px, 1.5cqi, 10px); text-shadow: var(--lc-text-shadow-light); position: relative; z-index: 1;}
       .thutrongtuan { margin-right: 2px; border-bottom-right-radius: 16px; border-top-right-radius: 16px; }
       .thutrongtuan_EN { margin-left: 2px; border-bottom-left-radius: 16px; border-top-left-radius: 16px; }
       
-      .svg_td { text-align:center; width:clamp(30px, 13cqi, 80px); position: relative; z-index: 5; transition: z-index 0.1s; }
+      .svg_td { text-align:center; width:clamp(35px, 12cqi, 70px); position: relative; z-index: 5; transition: z-index 0.1s; }
       .svg_td:hover { z-index: 50; }
-      .svg_circle_divider { width: 90%; aspect-ratio: 1/1; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto; background: var(--lc-bg-overlay); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border: 1px solid var(--lc-border-color); box-shadow: var(--lc-element-shadow); position: relative; z-index: 2; overflow: visible; transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
+      .svg_circle_divider { width: 100%; aspect-ratio: 1/1; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto; background: var(--lc-bg-overlay); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border: 1px solid var(--lc-border-color); box-shadow: var(--lc-element-shadow); position: relative; z-index: 2; overflow: visible; transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
       .svg-cell { width: 90%; height: 90%; object-fit: contain; display: flex; align-items: center; justify-content: center; transform-origin: bottom center; will-change: transform; transition: scale 0.3s ease; scale: 1; animation: popup-bouncy 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, wiggle-continuous 3s ease-in-out 0.8s infinite; position: relative; z-index: 3;}
       
       [data-hover="neon"] .svg_circle_divider:hover { transform: scale(1.08); background: rgba(255, 200, 0, 0.15); border-color: rgba(255, 200, 0, 0.9); box-shadow: 0 0 15px rgba(255, 200, 0, 0.6), 0 0 30px rgba(255, 200, 0, 0.4), inset 0 0 12px rgba(255, 200, 0, 0.4); z-index: 10; }
@@ -452,38 +456,42 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       @keyframes popup-bouncy { 0% { transform: translateY(110%); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
       @keyframes wiggle-continuous { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-5deg); } 75% { transform: rotate(5deg); } }
       
-      /* Tháng âm lịch, năm âm lịch: Chỉnh width và padding */
-      .thang_am_lich, .nam_am_lich { position: relative; overflow: visible; color: var(--lc-text-accent); width: 50%; font-family: 'Playfair Display', serif; background: var(--lc-bg-overlay); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); text-align:center; vertical-align: middle; font-size: clamp(9px, 3.8cqi, 20px); line-height: 1.1; font-weight:bold; padding: 1.5cqi; margin: 1.5cqi auto; border-radius: 8px; text-shadow: var(--lc-text-shadow-light); }
-      .ngayamlich { color: var(--lc-text-accent); font-family: 'Playfair Display', serif; text-align:center; vertical-align: middle; font-size: clamp(40px, 23cqi, 120px); letter-spacing: 2px; line-height: 0.9; font-weight: 600; text-shadow: var(--lc-text-shadow-heavy); margin: 1.5cqi auto; cursor: pointer; }
+      /* Tháng âm lịch, năm âm lịch */
+      .thang_am_lich, .nam_am_lich { position: relative; overflow: visible; color: var(--lc-text-accent); width: clamp(120px, 60%, 250px); font-family: 'Playfair Display', serif; background: var(--lc-bg-overlay); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); text-align:center; vertical-align: middle; font-size: clamp(11px, 4cqi, 18px); line-height: 1.2; font-weight:bold; padding: clamp(4px, 1.5cqi, 10px); margin: clamp(10px, 3cqi, 20px) auto; border-radius: 8px; text-shadow: var(--lc-text-shadow-light); }
       
-      /* Can Chi, Tiết khí */
-      .ThangNgayGioTiet_before { font-family:'Bebas Neue', sans-serif; font-style:italic; color: var(--lc-text-main); text-align:center; font-size: clamp(6px, 1.8cqi, 10px); padding: 1px auto; margin: 2cqi auto 1px auto; text-shadow: var(--lc-text-shadow-light);}
-      .ThangNgayGioTiet_after { font-family: 'Playfair Display', serif; color: var(--lc-text-accent); text-align:center; font-size: clamp(7px, 2.5cqi, 16px); font-weight:bold; padding: 1px auto; margin: 1px auto 2cqi auto; text-shadow: var(--lc-text-shadow-light);}
+      /* Ngày Âm Lịch (số to) */
+      .ngayamlich { color: var(--lc-text-accent); font-family: 'Playfair Display', serif; text-align:center; vertical-align: middle; font-size: clamp(45px, 22cqi, 100px); letter-spacing: 2px; line-height: 0.9; font-weight: 600; text-shadow: var(--lc-text-shadow-heavy); margin: clamp(8px, 2cqi, 15px) auto; cursor: pointer; }
       
-      /* Nút chức năng */
-      .toggle-btn { display:block; width:100%; border:none; padding: 1cqi 0; border-radius:6px; cursor:pointer; font-weight:bold; font-size: clamp(8px, 2.8cqi, 14px); transition:all 0.3s ease; margin: 0; }
-      .toggle-btn-container { padding: 0px auto; margin: 0px auto 1.5cqi auto; }
+      /* Label và Value của Ngày/Tháng/Giờ/Tiết (Dưới cùng) */
+      .ThangNgayGioTiet_before { font-family:'Bebas Neue', sans-serif; font-style:italic; color: var(--lc-text-main); text-align:center; font-size: clamp(8px, 2.5cqi, 12px); padding: 0; margin: 2px auto; opacity: 0.85; text-shadow: var(--lc-text-shadow-light); text-transform: uppercase; letter-spacing: 0.5px;}
+      .ThangNgayGioTiet_after { font-family: 'Playfair Display', serif; color: var(--lc-text-accent); text-align:center; font-size: clamp(10px, 3.5cqi, 18px); font-weight:bold; padding: 0; margin: 2px auto clamp(8px, 2.5cqi, 16px) auto; text-shadow: var(--lc-text-shadow-light);}
+      
+      /* Nút chức năng & Lịch con */
+      .toggle-btn { display:block; width:100%; border:none; padding: clamp(4px, 1.5cqi, 10px) 0; border-radius:6px; cursor:pointer; font-weight:bold; font-size: clamp(10px, 3cqi, 14px); transition:all 0.3s ease; margin: 0; }
+      .toggle-btn-container { padding: 0; margin: 0 auto clamp(10px, 3cqi, 20px) auto; }
       .toggle-content { display:none; opacity:0; transform: translateY(-10px); transition: opacity 0.4s ease, transform 0.4s ease; }
       .toggle-content.show { display:table-row; opacity:1; transform: translateY(0); }
-      .navi-l,.navi-r{ color: var(--lc-text-main); text-align:center; font-size:75%; line-height:100%; font-weight:bold; padding: 1cqi 0; border-bottom: 1px solid var(--lc-border-color) !important;}
-      .nav-btn { color: var(--lc-text-main); border: none; padding: 1cqi 2cqi; border-radius: 6px; cursor: pointer; font-weight: bold; background: transparent !important;}
-      .tenthang { text-align:center; font-size:125%; line-height:100%; font-weight:bold; padding: 1cqi 0; border-bottom: 1px solid var(--lc-border-color) !important; color: var(--lc-text-main) !important;}
+      .navi-l,.navi-r{ color: var(--lc-text-main); text-align:center; font-size: clamp(10px, 3.5cqi, 16px); line-height:100%; font-weight:bold; padding: clamp(4px, 1.5cqi, 8px) 0; border-bottom: 1px solid var(--lc-border-color) !important;}
+      .nav-btn { color: var(--lc-text-main); border: none; padding: clamp(4px, 1cqi, 8px) clamp(8px, 2.5cqi, 16px); border-radius: 6px; cursor: pointer; font-weight: bold; background: transparent !important;}
+      .tenthang { text-align:center; font-size: clamp(12px, 4.5cqi, 18px); line-height:100%; font-weight:bold; padding: clamp(4px, 1.5cqi, 8px) 0; border-bottom: 1px solid var(--lc-border-color) !important; color: var(--lc-text-main) !important;}
       
-      .ngaytuan, .ngaytuan_t7, .ngaytuan_cn { width:14%; text-align:center; font-size: clamp(9px, 2.5cqi, 14px); padding: 1.5cqi 0; border-bottom: 1px solid var(--lc-border-color) !important;}
+      .ngaytuan, .ngaytuan_t7, .ngaytuan_cn { width:14%; text-align:center; font-size: clamp(9px, 3cqi, 14px); padding: clamp(6px, 2cqi, 12px) 0; border-bottom: 1px solid var(--lc-border-color) !important;}
       .ngaytuan_t7 { color: var(--lc-saturday-color); }
       .ngaytuan_cn { color: var(--lc-sunday-color); }
-      .ngaythang { padding-top: 2cqi; background: transparent !important; cursor: pointer; }
-      .am, .am2 { color: var(--lc-text-accent) !important; font-weight: bold !important; text-align:right; padding-right:3px; font-size:65%; }
-      .t2t6 { text-align:center; font-size:125%; color: var(--lc-text-main) !important;}
-      .t7 { color: var(--lc-saturday-color); text-align:center; font-size:125%; }
-      .cn { color: var(--lc-sunday-color); text-align:center; font-size:125%; }
+      .ngaythang { padding-top: clamp(6px, 2cqi, 12px); padding-bottom: clamp(6px, 2cqi, 12px); background: transparent !important; cursor: pointer; }
+      .am, .am2 { color: var(--lc-text-accent) !important; font-weight: bold !important; text-align:right; padding-right:3px; font-size: clamp(8px, 2.5cqi, 11px); }
+      .t2t6 { text-align:center; font-size: clamp(12px, 4cqi, 18px); color: var(--lc-text-main) !important;}
+      .t7 { color: var(--lc-saturday-color); text-align:center; font-size: clamp(12px, 4cqi, 18px); }
+      .cn { color: var(--lc-sunday-color); text-align:center; font-size: clamp(12px, 4cqi, 18px); }
       td.homnay { font-weight:bold; background: var(--lc-today-bg) !important; border-radius: 8px; }
+      
       .year-svg-container { position: absolute; top: -36px; width: 35px; height: 35px; animation: marquee-horizontal 8s ease-in-out infinite; overflow: visible; }
       .year-svg-container::after { content: ''; position: absolute; bottom: -2px; left: 15%; width: 70%; height: 4px; background: rgba(0, 0, 0, 0.25); border-radius: 50%; filter: blur(2px); z-index: -1; animation: shadow-pulse 0.5s infinite alternate; }
       .year-svg-container::before { content: ''; position: absolute; bottom: 2px; right: -5px; width: 4px; height: 4px; border-radius: 50%; background: rgba(255, 255, 255, 0.6); box-shadow: -5px -2px 0 -1px rgba(255, 255, 255, 0.4), -3px 5px 0 -1px rgba(255, 255, 255, 0.5); animation: dust-trail 0.6s infinite linear; z-index: -2; opacity: 0; }
       @keyframes marquee-horizontal { 0% { left: 0%; transform: scaleX(-1); } 49.9% { left: calc(100% - 35px); transform: scaleX(-1); } 50% { left: calc(100% - 35px); transform: scaleX(1); } 100% { left: 0%; transform: scaleX(1); } }
       @keyframes dust-trail { 0% { transform: translate(0, 0) scale(1); opacity: 0.8; } 100% { transform: translate(15px, -5px) scale(0.2); opacity: 0; } }
       @keyframes shadow-pulse { from { transform: scaleX(1); opacity: 0.25; } to { transform: scaleX(1.2); opacity: 0.15; } }
+      
       .lunar-card > div:first-child, .thang_top, .giohoangdao, .viecnenlam, .viecnentranh,
       .cat_tinh, .hung_tinh, .tenthang, .navi-l, .navi-r, .ngaytuan, .ngaytuan_t7,
       .ngaytuan_cn, .ngaythang, .tet, .nav-btn, .toggle-btn { background: transparent !important; }
@@ -551,7 +559,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
     return `<td class="${finalCellClass}" title="${title}" onclick="window.haShowDayPopup(${solarDate},${solarMonth},${solarYear}, '${pTheme}', ${pOpacity})">`+
       `<div class="${solarClass}">${solarDate}</div>`+
-      `<div style="font-size:50%;" class="${lunarClass}">${lunar}</div>`+
+      `<div class="${lunarClass}">${lunar}</div>`+
       `</td>`;
   }
 
@@ -576,7 +584,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     const pOpacity = config.popup_opacity !== undefined ? config.popup_opacity : 95;
 
     res += `<div style="border-radius: 16px;">`;
-    res += `<table class="thang" border="0" cellpadding="1" cellspacing="2" width="${PRINT_OPTS.tableWidth}">`;
+    res += `<table class="thang" border="0" width="${PRINT_OPTS.tableWidth}">`;
 
     const showthangarray_EN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
     const monthNameEN = showthangarray_EN[mm - 1];
@@ -588,7 +596,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
         if (maiImg) res += `<div class="show_mai_tet">${maiImg}</div>`;
     }
     res += `</div>`;
-    res += `<div class="nam_top" style="padding: 12px 5px 0 5px; margin: 0;">${yy}</div>`;
+    res += `<div class="nam_top">${yy}</div>`;
     res += `<div class="thang_top_EN" style="text-align: left; padding-left: 8px;"><span class="ngan_cach">❖</span> ${monthNameEN}`;
     if ((currentLunarDate.month === 12 && currentLunarDate.day >= 23) || (currentLunarDate.month === 1 && currentLunarDate.day <= 3)) {
         const tetFlower = svg_tet[0];
@@ -636,10 +644,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     if (infoAL) displayArray.push(infoAL);
 
     if (displayArray.length > 0) {
-        res += `<tr><td colspan="7"><div class="thongtin_letet">${displayArray.join(" | ")}</div></td></tr>`;
+        res += `<tr><td colspan="7"><div align="center"><div class="thongtin_letet">${displayArray.join(" | ")}</div></div></td></tr>`;
     }
 
-    res += `<tr><td colspan="7" ><div class="cadaotucngu">${getUniqueDailyContent(CA_DAO_TUC_NGU)}</div></td></tr>`;
+    res += `<tr><td colspan="7"><div align="center"><div class="cadaotucngu">${getUniqueDailyContent(CA_DAO_TUC_NGU)}</div></div></td></tr>`;
 
     const lunarDayIndex = (currentLunarDate.jd + 1) % 12;
     const lunarMonthIndex = (currentLunarDate.month + 1) % 12;
@@ -682,8 +690,8 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
     res += `<tr>`;
     res += `<td width="25%" colspan="2">`;
-    res += `<div class="ThangNgayGioTiet_before">─⟡  Ngày  ⟡─</div><div class="ThangNgayGioTiet_after">${CAN[(jd + 9) % 10]} ${CHI[(jd+1)%12]}</div>`;
-    res += `<div class="ThangNgayGioTiet_before">─⟡  Tháng  ⟡─</div><div class="ThangNgayGioTiet_after">${getMonthCanChi(currentLunarDate)}</div>`;
+    res += `<div class="ThangNgayGioTiet_before">─⟡ Ngày ⟡─</div><div class="ThangNgayGioTiet_after">${CAN[(jd + 9) % 10]} ${CHI[(jd+1)%12]}</div>`;
+    res += `<div class="ThangNgayGioTiet_before">─⟡ Tháng ⟡─</div><div class="ThangNgayGioTiet_after">${getMonthCanChi(currentLunarDate)}</div>`;
     res += `</td>`;
 
     res += `<td width="50%" colspan="3" >`;
@@ -691,8 +699,8 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     res += `</td>`;
 
     res += `<td width="25%" colspan="2">`;
-    res += `<div class="ThangNgayGioTiet_before">─⟡  Giờ đầu  ⟡─</div><div class="ThangNgayGioTiet_after">${getCanHour0(jd)} ${CHI[0]}</div>`;
-    res += `<div class="ThangNgayGioTiet_before">─⟡  Tiết  ⟡─</div><div class="ThangNgayGioTiet_after">${TIETKHI[getSunLongitude(jd+1, 7.0)]}</div>`;
+    res += `<div class="ThangNgayGioTiet_before">─⟡ Giờ đầu ⟡─</div><div class="ThangNgayGioTiet_after">${getCanHour0(jd)} ${CHI[0]}</div>`;
+    res += `<div class="ThangNgayGioTiet_before">─⟡ Tiết ⟡─</div><div class="ThangNgayGioTiet_after">${TIETKHI[getSunLongitude(jd+1, 7.0)]}</div>`;
     res += `</td>`;
     res += `</tr>`;
 
