@@ -4,8 +4,8 @@ import datetime
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import config_validation as cv
-from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
+from homeassistant.components.frontend import add_extra_js_url
 
 from .const import DOMAIN
 from .amlich_core import (
@@ -29,7 +29,7 @@ SERVICE_CONVERT_SCHEMA = vol.Schema({
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Được gọi khi Home Assistant khởi động để thiết lập các thành phần chung (Giao diện)."""
     
-    # 1. Đăng ký đường dẫn tĩnh sử dụng API async mới của Home Assistant
+    # 1. Đăng ký đường dẫn tĩnh (Chuẩn Async không làm nghẽn HASS)
     await hass.http.async_register_static_paths([
         StaticPathConfig(
             UI_URL_BASE,
@@ -38,8 +38,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         )
     ])
 
-    # 2. Tự động thêm file JS chính vào tài nguyên Lovelace của người dùng
-    add_extra_js_url(hass, f"{UI_URL_BASE}/lich-block-am-duong-viet-nam.js")
+    # 2. Tự động thêm file JS vào Lovelace (Thêm ?v=1.0 để lừa trình duyệt tải file mới, chống cache)
+    add_extra_js_url(hass, f"{UI_URL_BASE}/lich-block-am-duong-viet-nam.js?v=1.0")
 
     return True
 
@@ -55,7 +55,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         y = call.data["year"]
 
         def get_details(jd, lunar_obj):
-            """Hàm tiện ích lấy chi tiết tử vi của một ngày Âm lịch"""
             can_chi_day, can_chi_month, can_chi_year = get_can_chi_day_month_year(lunar_obj)
             ngay_thong_tin = NGAY_THONG_TIN.get(can_chi_day, {})
             return {
@@ -97,7 +96,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     "ngay_am_lich": f"{int(lunar.day)}/{int(lunar.month)}/{int(lunar.year)}" + (" (Nhuận)" if lunar.leap == 1 else "")
                 }
                 
-                # Trích xuất chi tiết
                 response["details"] = await hass.async_add_executor_job(get_details, lunar.jd, lunar)
                 
                 if leap_month_of_year > 0:
@@ -120,7 +118,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 return response
                 
             else:
-                # Kịch bản 2: Âm sang Dương
                 both_solar, leap_month_of_year = await hass.async_add_executor_job(lunar_to_solar_extended, d, m, y)
                 can_chi = get_year_can_chi(y)
                 
@@ -129,7 +126,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                      
                 default_res = both_solar.get("regular", both_solar.get("leap"))
                 
-                # Tính toán lại Object LunarDate để lấy JD phục vụ phong thủy
                 lunar_obj_for_details = await hass.async_add_executor_job(
                     get_lunar_date, default_res["ngay"], default_res["thang"], default_res["nam"]
                 )
