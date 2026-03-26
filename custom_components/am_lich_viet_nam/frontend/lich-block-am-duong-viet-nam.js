@@ -395,7 +395,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
         --lc-element-shadow: var(--user-element-shadow, 0 2px 8px rgba(0,0,0,0.12), inset 0 0.4px 0 rgba(255,255,255,0.35));
       }
       
-      .lunar-card { position: relative; isolation: isolate; container-type: inline-size; }
+      .lunar-card { position: relative; isolation: isolate; container-type: inline-size; border-radius: 16px; overflow: hidden; padding-bottom: clamp(45px, 12cqi, 55px); }
       
       .tet_cell { background-color: var(--lc-tet-bg) !important; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
       .tet_cell .t2t6, .tet_cell .t7, .tet_cell .cn { color: var(--lc-tet-text-solar) !important; font-weight: bold; }
@@ -470,13 +470,17 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       .ThangNgayGioTiet_before { font-family:'Bebas Neue', sans-serif; font-style:italic; color: var(--lc-text-main); text-align:center; font-size: clamp(8px, 2.5cqi, 12px); padding: 0; margin: 2px auto; opacity: 0.85; text-shadow: var(--lc-text-shadow-light); text-transform: uppercase; letter-spacing: 0.5px;}
       .ThangNgayGioTiet_after { font-family: 'Playfair Display', serif; color: var(--lc-text-accent); text-align:center; font-size: clamp(10px, 3.5cqi, 18px); font-weight:bold; padding: 0; margin: 4px auto clamp(8px, 2.5cqi, 16px) auto; text-shadow: var(--lc-text-shadow-light);}
       
-      /* ====== TABS STYLES ====== */
-      .tab-bar { display: flex; gap: 10px; justify-content: center; padding: clamp(4px, 1.5cqi, 10px) 0; margin: 0 auto; width: 95%; }
-      .tab-btn { flex: 1; padding: clamp(6px, 2cqi, 10px) 0; border-radius: 8px; border: 0.4px solid var(--lc-border-color); background: var(--lc-bg-overlay); color: var(--lc-text-main); font-weight: bold; cursor: pointer; transition: all 0.3s ease; box-shadow: var(--lc-element-shadow); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); font-size: clamp(10px, 3cqi, 14px); text-shadow: var(--lc-text-shadow-light); }
+      /* ====== TABS OVERLAY STYLES ====== */
+      .tab-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: clamp(45px, 12cqi, 55px); display: flex; gap: 10px; justify-content: center; align-items: center; padding: 0 15px; box-sizing: border-box; z-index: 11; background: transparent; }
+      .tab-btn { flex: 1; padding: clamp(6px, 2cqi, 10px) 0; border-radius: 8px; border: 0.4px solid var(--lc-border-color); background: var(--lc-bg-overlay); color: var(--lc-text-main); font-weight: bold; cursor: pointer; transition: all 0.3s ease; box-shadow: var(--lc-element-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-size: clamp(10px, 3cqi, 14px); text-shadow: var(--lc-text-shadow-light); }
       .tab-btn:hover { background: var(--lc-bg-overlay-hover); transform: translateY(-1px); }
-      .tab-btn.active { background: var(--lc-bg-overlay-hover); border-color: var(--lc-text-accent); color: var(--lc-text-accent); box-shadow: 0 0 10px rgba(255, 255, 0, 0.15); }
-      .tab-content-wrapper { animation: fadeInTab 0.3s ease-out forwards; }
-      @keyframes fadeInTab { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+      .tab-btn.active { background: var(--lc-bg-overlay-hover); border-color: var(--lc-text-accent); color: var(--lc-text-accent); box-shadow: 0 0 15px rgba(255, 255, 0, 0.2); }
+      
+      .tab-overlay { position: absolute; top: 0; left: 0; width: 100%; height: calc(100% - clamp(45px, 12cqi, 55px)); background: var(--lc-bg-overlay); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); z-index: 10; overflow-y: auto; overflow-x: hidden; border-radius: 16px 16px 0 0; box-sizing: border-box; padding: 10px; animation: slideUpOverlay 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; box-shadow: inset 0 0 30px rgba(0,0,0,0.1); }
+      @keyframes slideUpOverlay { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+      .tab-overlay::-webkit-scrollbar { width: 6px; }
+      .tab-overlay::-webkit-scrollbar-track { background: transparent; }
+      .tab-overlay::-webkit-scrollbar-thumb { background: var(--lc-text-accent); border-radius: 4px; opacity: 0.5; }
 
       /* Các bảng & Lịch con */
       .navi-l,.navi-r{ color: var(--lc-text-main); text-align:center; font-size: clamp(10px, 3.5cqi, 16px); line-height:100%; font-weight:bold; padding: clamp(4px, 1.5cqi, 8px) 0; border-bottom: 1px solid var(--lc-border-color) !important;}
@@ -585,7 +589,8 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     const pTheme = config.popup_theme || 'default';
     const pOpacity = config.popup_opacity !== undefined ? config.popup_opacity : 95;
 
-    res += `<div style="border-radius: 16px;">`;
+    // --- 1. Main View (Khu vực thông tin ngày hiện tại) ---
+    res += `<div id="main-view">`;
     res += `<table class="thang" border="0" width="${PRINT_OPTS.tableWidth}">`;
 
     const showthangarray_EN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -707,24 +712,17 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     res += `</tr>`;
 
     res += `<tr><td colspan="7"><div class="thang_am_lich">${getYearCanChi(currentLunarDate.year)}<span class="year-svg-container">${svgNam}</span></div></td></tr>`;
+    res += `</table></div>`; // Kết thúc Main View
 
-    // ===== TAB BAR =====
-    let calActive = window.activeLunarTab === 'cal' ? 'active' : '';
-    let convActive = window.activeLunarTab === 'conv' ? 'active' : '';
+    // --- 2. Overlay Tabs (Phần lướt lọt lòng lên trên) ---
+    let overlayDisplay = (window.activeLunarTab !== 'none') ? 'block' : 'none';
+    res += `<div id="tab-overlay" class="tab-overlay" style="display: ${overlayDisplay};">`;
 
-    res += `<tr><td colspan="7">
-      <div class="tab-bar">
-        <button id="tab-btn-cal" class="tab-btn ${calActive}">📅 Lịch Tháng</button>
-        <button id="tab-btn-conv" class="tab-btn ${convActive}">🔄 Tra Cứu</button>
-      </div>
-    </td></tr>`;
-
-    // ===== TAB CONTENT 1: LỊCH THÁNG =====
-    let calShowStyle = window.activeLunarTab === 'cal' ? 'table-row-group' : 'none';
-    res += `<tbody id="tab-content-cal" class="tab-content-wrapper" style="display: ${calShowStyle};">`;
-    
+    // 2A. Nội dung Lịch Tháng
+    let calShowStyle = window.activeLunarTab === 'cal' ? 'block' : 'none';
+    res += `<div id="tab-content-cal" style="display: ${calShowStyle};">`;
+    res += `<table class="thang" border="0" width="${PRINT_OPTS.tableWidth}">`;
     res += printHead(mm, yy); 
-
     for (let i=0;i<6;i++){
       res += `<tr>`;
       for (let j=0;j<7;j++){
@@ -739,9 +737,25 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       }
       res += '</tr>';
     }
-    res += `</tbody>`;
+    res += `</table></div>`;
 
-    res += '</table></div>';
+    // 2B. Nội dung Tra Cứu
+    let convShowStyle = window.activeLunarTab === 'conv' ? 'block' : 'none';
+    res += `<div id="tab-content-conv" style="display: ${convShowStyle};"></div>`; // Được đẩy vào qua JS sau
+    
+    res += `</div>`; // Kết thúc Overlay Tabs
+
+    // --- 3. Tab Bar (Gắn cố định phía dưới thẻ) ---
+    let calActive = window.activeLunarTab === 'cal' ? 'active' : '';
+    let convActive = window.activeLunarTab === 'conv' ? 'active' : '';
+
+    res += `
+      <div class="tab-bar">
+        <button id="tab-btn-cal" class="tab-btn ${calActive}">📅 Lịch Tháng</button>
+        <button id="tab-btn-conv" class="tab-btn ${convActive}">🔄 Tra Cứu</button>
+      </div>
+    `;
+
     return res;
   }
 
@@ -1458,18 +1472,18 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       const hoverEffect = this.config.hover_effect || 'neon';
 
       // ==========================================
-      // GIAO DIỆN BỘ CÔNG CỤ QUY ĐỔI NGÀY NHANH THÀNH TAB
+      // GIAO DIỆN BỘ CÔNG CỤ QUY ĐỔI NGÀY NHANH THÀNH TAB (KHÔNG BORDER NGOÀI)
       // ==========================================
-      let convShowStyle = window.activeLunarTab === 'conv' ? 'block' : 'none';
       const convHtml = `
       <style>
-        .conv-input { background: var(--lc-bg-overlay) !important; color: var(--lc-text-main) !important; border: 1px solid var(--lc-border-color) !important; outline: none; transition: all 0.2s; text-shadow: var(--lc-text-shadow-light); }
+        .conv-input { background: rgba(0,0,0,0.15) !important; color: var(--lc-text-main) !important; border: 1px solid var(--lc-border-color) !important; outline: none; transition: all 0.2s; text-shadow: var(--lc-text-shadow-light); }
         .conv-input:focus { background: var(--lc-bg-overlay-hover) !important; border-color: var(--lc-text-accent) !important; box-shadow: 0 0 5px var(--lc-text-accent); }
         .conv-input::placeholder { color: var(--lc-text-main); opacity: 0.6; }
         .conv-input option { background: #333; color: #fff; text-shadow: none; }
         #conv-btn:hover { background: var(--lc-bg-overlay-hover) !important; transform: scale(1.01); border-color: var(--lc-text-accent) !important; }
       </style>
-      <div id="tab-content-conv" class="tab-content-wrapper" style="display: ${convShowStyle}; margin: clamp(4px, 1.5cqi, 8px) auto; width: 95%; padding: clamp(10px, 4cqi, 15px) clamp(6px, 2.5cqi, 10px); background: var(--lc-bg-overlay); border: 0.4px solid var(--lc-border-color); border-radius: 8px; box-shadow: var(--lc-element-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-sizing: border-box;">
+      <div style="padding: clamp(5px, 2cqi, 10px); box-sizing: border-box;">
+        <h3 style="text-align: center; color: var(--lc-text-accent); margin-top: 0; font-family: 'Be Vietnam Pro', sans-serif; text-shadow: var(--lc-text-shadow-light);">Tra cứu / Quy đổi</h3>
         <select id="conv-type" class="conv-input" style="width: 100%; margin-bottom: clamp(8px, 3cqi, 12px); padding: clamp(6px, 2.5cqi, 10px); border-radius: 6px; cursor: pointer; font-size: clamp(9px, 3.8cqi, 14px); box-sizing: border-box;">
           <option value="solar_to_lunar">☀️ Dương lịch ➡️ 🌙 Âm lịch</option>
           <option value="lunar_to_solar">🌙 Âm lịch ➡️ ☀️ Dương lịch</option>
@@ -1483,49 +1497,53 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
         <button id="conv-btn" style="width: 100%; background: var(--lc-bg-overlay); color: var(--lc-text-accent); text-shadow: var(--lc-text-shadow-light); font-weight: bold; border-radius: 6px; padding: clamp(6px, 2.5cqi, 10px); border: 1px solid var(--lc-border-color); cursor: pointer; font-size: clamp(10px, 4.2cqi, 15px); transition: all 0.2s; box-shadow: var(--lc-element-shadow);">TÍNH TOÁN QUY ĐỔI</button>
         
-        <div id="conv-result" style="display: none; margin-top: clamp(10px, 4cqi, 15px); padding: clamp(10px, 4cqi, 15px); background: var(--lc-bg-overlay); border-radius: 8px; border-left: 4px solid var(--lc-text-accent); border-top: 0.4px solid var(--lc-border-color); border-right: 0.4px solid var(--lc-border-color); border-bottom: 0.4px solid var(--lc-border-color); color: var(--lc-text-main); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(4px); text-shadow: var(--lc-text-shadow-light); font-size: clamp(9px, 3.8cqi, 15px);"></div>
+        <div id="conv-result" style="display: none; margin-top: clamp(10px, 4cqi, 15px); padding: clamp(10px, 4cqi, 15px); background: var(--lc-bg-overlay); border-radius: 8px; border-left: 4px solid var(--lc-text-accent); color: var(--lc-text-main); box-shadow: var(--lc-element-shadow); text-shadow: var(--lc-text-shadow-light); font-size: clamp(9px, 3.8cqi, 15px);"></div>
       </div>`;
 
-      // Nạp HTML hiển thị lịch và bộ quy đổi
-      this.card.innerHTML = `<div class="lunar-card" data-hover="${hoverEffect}">${html}${convHtml}</div>`;
+      // Nạp HTML hiển thị lịch chính
+      this.card.innerHTML = `<div class="lunar-card" data-hover="${hoverEffect}">${html}</div>`;
+      
+      // Inject form Tra cứu vào tab-content-conv
+      const tabConvElement = this.card.querySelector('#tab-content-conv');
+      if (tabConvElement) tabConvElement.innerHTML = convHtml;
 
       // ==========================================
-      // LOGIC XỬ LÝ SỰ KIỆN TABS
+      // LOGIC XỬ LÝ SỰ KIỆN TABS (Trượt nổi lên)
       // ==========================================
       const btnCal = this.card.querySelector('#tab-btn-cal');
       const btnConv = this.card.querySelector('#tab-btn-conv');
       const contentCal = this.card.querySelector('#tab-content-cal');
       const contentConv = this.card.querySelector('#tab-content-conv');
+      const overlay = this.card.querySelector('#tab-overlay');
 
-      if(btnCal && btnConv && contentCal && contentConv) {
-          btnCal.addEventListener('click', () => {
-              if (window.activeLunarTab === 'cal') {
-                  window.activeLunarTab = 'none';
-                  contentCal.style.display = 'none';
-                  btnCal.classList.remove('active');
-              } else {
-                  window.activeLunarTab = 'cal';
-                  contentCal.style.display = 'table-row-group';
+      const toggleTab = (tabName) => {
+          if (window.activeLunarTab === tabName) {
+              // Bấm lại đúng tab đang mở -> Đóng
+              window.activeLunarTab = 'none';
+              overlay.style.display = 'none';
+              btnCal.classList.remove('active');
+              btnConv.classList.remove('active');
+          } else {
+              // Mở tab mới
+              window.activeLunarTab = tabName;
+              overlay.style.display = 'block'; // Hiển thị mảng overlay trượt lên
+              
+              if (tabName === 'cal') {
+                  contentCal.style.display = 'block';
                   contentConv.style.display = 'none';
                   btnCal.classList.add('active');
                   btnConv.classList.remove('active');
-              }
-          });
-
-          btnConv.addEventListener('click', () => {
-              if (window.activeLunarTab === 'conv') {
-                  window.activeLunarTab = 'none';
-                  contentConv.style.display = 'none';
-                  btnConv.classList.remove('active');
               } else {
-                  window.activeLunarTab = 'conv';
                   contentConv.style.display = 'block';
                   contentCal.style.display = 'none';
                   btnConv.classList.add('active');
                   btnCal.classList.remove('active');
               }
-          });
-      }
+          }
+      };
+
+      if (btnCal) btnCal.addEventListener('click', () => toggleTab('cal'));
+      if (btnConv) btnConv.addEventListener('click', () => toggleTab('conv'));
 
       // ==========================================
       // LOGIC TÍNH TOÁN QUY ĐỔI
