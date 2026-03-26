@@ -10,17 +10,14 @@ import {
   CA_DAO_TUC_NGU 
 } from './lich-block-am-duong-viet-nam-data.js';
 
-// ---- IMPORT CÁC HÀM XỬ LÝ POPUP TỪ FILE MỚI ----
 import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-popup.js?v=2';
 
 (function(){
   'use strict';
 
-  // ===== Utilities =====
   const PI = Math.PI;
   function INT(d){ return Math.floor(d); }
 
-  // ===== Data tables (Hồ Ngọc Đức) =====
   const ABOUT = "Âm lịch Việt Nam Home Assistant - Ver 20Aug2025 © 2025 Nguyễn Tiến Khải";
 
   const TK19 = [
@@ -80,24 +77,13 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
   const CHI_EMOJI = ["🐭","🐂","🐯","🐱","🐲","🐍","🐴","🐐","🐵","🐔","🐶","🐷"];
   const TUAN = ["Chủ Nhật","Thứ Hai","Thứ Ba","Thứ Tư","Thứ Năm","Thứ Sáu","Thứ Bảy"];
   const TUAN_EN = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-
   const GIO_HD = ["110100101100","001101001011","110011010010","101100110100","001011001101","010010110011"]; 
+  const TIETKHI = ["Xuân Phân","Thanh Minh","Cốc Vũ","Lập Hạ","Tiểu Mãn","Mang Chủng","Hạ Chí","Tiểu Thử","Đại Thử","Lập Thu","Xử Thử","Bạch Lộ","Thu Phân","Hàn lộ","Sương Giáng","Lập đông","Tiểu Tuyết","Đại Tuyết","Đông Chí","Tiểu Hàn","Đại Hàn","Lập Xuân","Vũ Thủy","Kinh Trập"];
 
-  const TIETKHI = [
-    "Xuân Phân","Thanh Minh","Cốc Vũ","Lập Hạ","Tiểu Mãn","Mang Chủng",
-    "Hạ Chí","Tiểu Thử","Đại Thử","Lập Thu","Xử Thử","Bạch Lộ",
-    "Thu Phân","Hàn lộ","Sương Giáng","Lập đông","Tiểu Tuyết","Đại Tuyết",
-    "Đông Chí","Tiểu Hàn","Đại Hàn","Lập Xuân","Vũ Thủy","Kinh Trập"
-  ];
-
-  const NGAY_LE_DL = [
-    "1/1","9/1","3/2","14/2","26/2","27/2","8/3","20/3","22/3","26/3","31/3","1/4","30/4","1/5","7/5","12/5","19/5","1/6","18/6","21/6","28/6","11/7","27/7","28/7","19/8","2/9","10/9","1/10","10/10","13/10","16/10","17/10","20/10","31/10","9/11","19/11","20/11","23/11","28/11","29/11","1/12","19/12","25/12","22/12"
-  ];
-  const NGAY_LE_DL_STRING = [
-    "Tết Dương lịch","Truyền thống học sinh, sinh viên Việt Nam","Thành lập Đảng Cộng Sản Việt Nam","Lễ tình nhân","Vía Thần Tài","Thầy thuốc Việt Nam","Quốc tế Phụ nữ","Quốc tế Hạnh phúc","Nước sạch Thế giới","Thành lập Đoàn TNCS Hồ Chí Minh","Lễ Phục Sinh","Cá tháng Tư","Giải phóng Miền Nam","Quốc tế Lao động","Chiến thắng Điện Biên Phủ","Ngày của Mẹ","Ngày sinh Chủ tịch Hồ Chí Minh","Quốc tế Thiếu Nhi","Ngày của Cha","Báo chí Việt Nam","Gia đình Việt Nam","Dân số thế giới","Thương binh liệt sĩ","Thành lập công đoàn Việt Nam","Kỷ niệm Cách mạng Tháng 8 thành công","Quốc Khánh","Thành lập Mặt trận Tổ quốc Việt Nam","Quốc tế người cao tuổi","Ngày giải phóng Thủ Đô","Doanh nhân Việt Nam","Ngày Lương thực thế giới","Ngày quốc tế xóa nghèo","Phụ nữ Việt Nam (20.10.1930)","Halloween","Pháp luật Việt Nam","Quốc tế Nam giới","Nhà giáo Việt Nam","Thành lập Hội chữ thập đỏ Việt Nam","Lễ Tạ Ơn","Black Friday","Thế giới phòng chống AIDS","Toàn quốc kháng chiến","Lễ Giáng Sinh","Thành lập Quân đội nhân dân Việt Nam"
-  ];
+  const NGAY_LE_DL = ["1/1","9/1","3/2","14/2","26/2","27/2","8/3","20/3","22/3","26/3","31/3","1/4","30/4","1/5","7/5","12/5","19/5","1/6","18/6","21/6","28/6","11/7","27/7","28/7","19/8","2/9","10/9","1/10","10/10","13/10","16/10","17/10","20/10","31/10","9/11","19/11","20/11","23/11","28/11","29/11","1/12","19/12","25/12","22/12"];
+  const NGAY_LE_DL_STRING = ["Tết Dương lịch","Truyền thống HS-SV","Thành lập Đảng","Lễ tình nhân","Vía Thần Tài","Thầy thuốc Việt Nam","Quốc tế Phụ nữ","Quốc tế Hạnh phúc","Nước sạch Thế giới","Thành lập Đoàn TNCS Hồ Chí Minh","Lễ Phục Sinh","Cá tháng Tư","Giải phóng Miền Nam","Quốc tế Lao động","Chiến thắng Điện Biên Phủ","Ngày của Mẹ","Ngày sinh Chủ tịch Hồ Chí Minh","Quốc tế Thiếu Nhi","Ngày của Cha","Báo chí Việt Nam","Gia đình Việt Nam","Dân số thế giới","Thương binh liệt sĩ","Thành lập công đoàn VN","Cách mạng Tháng 8","Quốc Khánh","Thành lập MTTQ Việt Nam","Quốc tế người cao tuổi","Giải phóng Thủ Đô","Doanh nhân Việt Nam","Lương thực thế giới","Quốc tế xóa nghèo","Phụ nữ Việt Nam","Halloween","Pháp luật Việt Nam","Quốc tế Nam giới","Nhà giáo Việt Nam","Thành lập Hội chữ thập đỏ","Lễ Tạ Ơn","Black Friday","Phòng chống AIDS","Toàn quốc kháng chiến","Lễ Giáng Sinh","Thành lập Quân đội nhân dân"];
   const NGAY_LE_AL = ["1/1","2/1","3/1","15/1","3/3","10/3","15/4","5/5","7/7","15/7","15/8","9/9","10/10","15/10","23/12"];
-  const NGAY_LE_AL_STRING = ["Tết Nguyên Đán | Mùng Một Tết","Mùng 2 Tết","Mùng 3 Tết","Tết Nguyên Tiêu","Tết Hàn Thực, Tiết Thanh Minh","Giỗ tổ Hùng Vương","Lễ Phật Đản","Tết Đoan Ngọ","Lễ Thất Tịch","Lễ Vu Lan","Tết Trung Thu","Tết Trùng Cửu","Tết Trùng Thập","Tết Hạ Nguyên","Ông Táo Về Trời"];
+  const NGAY_LE_AL_STRING = ["Mùng Một Tết","Mùng 2 Tết","Mùng 3 Tết","Tết Nguyên Tiêu","Tết Hàn Thực","Giỗ tổ Hùng Vương","Lễ Phật Đản","Tết Đoan Ngọ","Lễ Thất Tịch","Lễ Vu Lan","Tết Trung Thu","Tết Trùng Cửu","Tết Trùng Thập","Tết Hạ Nguyên","Ông Táo Về Trời"];
 
   function getUniqueDailyContent(sourceArray, storageKey = 'cadao_tracker') {
     if (!sourceArray || sourceArray.length === 0) return "";
@@ -130,11 +116,6 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     return content ? content.replace(/\n/g, '<br>') : "";
   }
 
-  // ===== Cát tinh / Hung tinh / Thần sát =====
-  const CAT_TINH = { "Thiên Đức": "Tốt mọi việc, nhất là cầu tài, cầu phúc", "Nguyệt Đức": "Cưới hỏi, cầu phúc, khai trương", "Thiên Hỷ": "Hỷ sự, cưới hỏi, gặp gỡ", "Tam Hợp": "Mọi việc hanh thông, cầu tài lộc thuận", "Lục Hợp": "Hòa thuận, cưới hỏi, giao dịch" };
-  const HUNG_TINH = { "Thiên Cương": "Hung sự, kỵ xây dựng, khai trương", "Địa Tặc": "Kỵ xuất hành, mất mát", "Nguyệt Kỵ": "Ngày xấu, đại kỵ khởi sự lớn", "Không Vong": "Kỵ giao dịch, ký kết", "Tiểu Hồng Sa": "Kỵ cưới hỏi" };
-
-  // ===== Core astronomy helpers =====
   function jdn(dd, mm, yy){
     let a = INT((14 - mm) / 12);
     let y = yy + 4800 - a;
@@ -408,7 +389,6 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       .show_mai_tet { transform-box: fill-box; transform-origin: 0% 35%; animation: lanternSwingSoft 4s ease-in-out infinite; }
       .show_mai_tet img, .show_dao_tet img, .show_right_tet img, .show_left_tet img { margin: 0 auto; display: block; height: auto !important; max-height: 70vh !important; max-width: 100% !important; width: auto !important; }
       
-      /* Reset bảng để kiểm soát padding tốt hơn */
       .thang { font-size:${PRINT_OPTS.fontSize}; padding: 0; line-height: 1.2; font-family:Tahoma,Verdana,Arial; table-layout:fixed; background-color:transparent; border-collapse: collapse; border-spacing: 0; }
       .thang td { padding: 0; }
       
@@ -423,14 +403,11 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
       .phan_cach { font-family: 'Be Vietnam Pro', sans-serif; color: var(--user-element-base-color, #ffffff); opacity: 0.9; vertical-align: middle; text-align:center; font-size: clamp(8px, 3cqi, 16px); padding: 0; }
 
-      /* Ngày Dương Lịch: Tinh chỉnh lại tỷ lệ vàng */
       .todayduonglich { color: var(--lc-text-main); font-family:'Bebas Neue', sans-serif; text-align:center; font-size: clamp(70px, 35cqi, 180px); line-height: 0.85; letter-spacing: 2px; font-weight: 600; text-shadow: var(--lc-text-shadow-heavy); position: relative; overflow: visible; cursor: pointer; padding: 5px 0; }
       
-      /* Ca dao, lễ tết: Tỷ lệ margin, padding và font đẹp hơn */
-      .thongtin_letet { font-family: 'Playfair Display', serif; color: var(--lc-holiday-color); line-height: 1.35; padding: clamp(4px, 1.2cqi, 8px) clamp(10px, 3cqi, 20px); margin: 2px 30px; text-align:center; font-size: clamp(12px, 3.8cqi, 18px); letter-spacing: 0.5px; background: var(--lc-bg-overlay); border-radius:14px; border:0.4px solid var(--lc-border-color); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); text-shadow: var(--lc-text-shadow-light); font-weight: 500; width: max-width: 90%; }
-      .cadaotucngu { font-family: 'Playfair Display', serif; font-style:italic; color: var(--lc-cadao-color); line-height: 1.35; padding: clamp(4px, 1.2cqi, 8px) clamp(10px, 3cqi, 20px); margin: 6px 30px 10px 30px; text-align:center; font-size: clamp(12px, 3.8cqi, 18px); letter-spacing: 0.5px; background: var(--lc-bg-overlay); border-radius:14px; border:0.4px solid var(--lc-border-color); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); text-shadow: var(--lc-text-shadow-light); width: max-width: 95%; }
+      .thongtin_letet { font-family: 'Playfair Display', serif; color: var(--lc-holiday-color); line-height: 1.35; padding: clamp(4px, 1.2cqi, 8px) clamp(10px, 3cqi, 20px); margin: 2px 30px; text-align:center; font-size: clamp(12px, 3.8cqi, 18px); letter-spacing: 0.5px; background: var(--lc-bg-overlay); border-radius:14px; border:0.4px solid var(--lc-border-color); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); text-shadow: var(--lc-text-shadow-light); font-weight: 600; width: max-width: 90%; }
+      .cadaotucngu { font-family: 'Playfair Display', serif; font-style:italic; color: var(--lc-cadao-color); line-height: 1.35; padding: clamp(4px, 1.2cqi, 8px) clamp(10px, 3cqi, 20px); margin: 6px 30px 10px 30px; text-align:center; font-size: clamp(12px, 3.8cqi, 18px); letter-spacing: 0.5px; background: var(--lc-bg-overlay); border-radius:14px; border:0.4px solid var(--lc-border-color); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); text-shadow: var(--lc-text-shadow-light); font-weight: 500; width: max-width: 95%; }
       
-      /* Thứ trong tuần */
       .thutrongtuan, .thutrongtuan_EN { font-family: 'Playfair Display', serif; color: var(--lc-text-main); background: var(--lc-bg-overlay); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); text-align:center; vertical-align: middle; font-size: clamp(11px, 4.5cqi, 22px); line-height: 1.2; font-weight:bold; padding: clamp(4px, 1.5cqi, 10px); text-shadow: var(--lc-text-shadow-light); position: relative; z-index: 1;}
       .thutrongtuan { margin-right: 12px; border-bottom-right-radius: 16px; border-top-right-radius: 16px; }
       .thutrongtuan_EN { margin-left: 12px; border-bottom-left-radius: 16px; border-top-left-radius: 16px; }
@@ -456,17 +433,13 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       @keyframes popup-bouncy { 0% { transform: translateY(110%); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
       @keyframes wiggle-continuous { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-5deg); } 75% { transform: rotate(5deg); } }
       
-      /* Tháng âm lịch, năm âm lịch */
       .thang_am_lich, .nam_am_lich { position: relative; overflow: visible; color: var(--lc-text-accent); width: clamp(120px, 40%, 200px); font-family: 'Playfair Display', serif; background: var(--lc-bg-overlay); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); text-align:center; vertical-align: middle; font-size: clamp(11px, 4cqi, 18px); line-height: 1.2; font-weight:bold; padding: clamp(4px, 1.5cqi, 10px); margin: 10px auto; border-radius: 8px; text-shadow: var(--lc-text-shadow-light); }
       
-      /* Ngày Âm Lịch (số to) */
       .ngayamlich { color: var(--lc-text-accent); font-family: 'Playfair Display', serif; text-align:center; vertical-align: middle; font-size: clamp(60px, 30cqi, 140px); letter-spacing: 2px; line-height: 0.6; font-weight: 600; text-shadow: var(--lc-text-shadow-heavy); margin: 10px auto; cursor: pointer; }
       
-      /* Label và Value của Ngày/Tháng/Giờ/Tiết (Dưới cùng) */
       .ThangNgayGioTiet_before { font-family:'Bebas Neue', sans-serif; font-style:italic; color: var(--lc-text-main); text-align:center; font-size: clamp(8px, 2.5cqi, 12px); padding: 0; margin: 2px auto; opacity: 0.85; text-shadow: var(--lc-text-shadow-light); text-transform: uppercase; letter-spacing: 0.5px;}
       .ThangNgayGioTiet_after { font-family: 'Playfair Display', serif; color: var(--lc-text-accent); text-align:center; font-size: clamp(10px, 3.5cqi, 18px); font-weight:bold; padding: 0; margin: 4px auto clamp(8px, 2.5cqi, 16px) auto; text-shadow: var(--lc-text-shadow-light);}
       
-      /* ====== TABS OVERLAY STYLES ====== */
       .tab-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: clamp(45px, 12cqi, 55px); display: flex; gap: 10px; justify-content: center; align-items: center; padding: 0 15px; box-sizing: border-box; z-index: 11; background: transparent; }
       .tab-btn { flex: 1; padding: clamp(6px, 2cqi, 10px) 0; border-radius: 8px; border: 0.4px solid var(--lc-border-color); background: var(--lc-bg-overlay); color: var(--lc-text-main); font-weight: bold; cursor: pointer; transition: all 0.3s ease; box-shadow: var(--lc-element-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-size: clamp(10px, 3cqi, 14px); text-shadow: var(--lc-text-shadow-light); }
       .tab-btn:hover { background: var(--lc-bg-overlay-hover); transform: translateY(-1px); }
@@ -478,12 +451,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       .tab-overlay::-webkit-scrollbar-track { background: transparent; }
       .tab-overlay::-webkit-scrollbar-thumb { background: var(--lc-text-accent); border-radius: 4px; opacity: 0.5; }
 
-      /* BẢNG LỊCH THÁNG CHUYÊN NGHIỆP HIỆN ĐẠI TẠI ĐÂY */
       #tab-content-cal { flex-grow: 1; display: block; overflow-y: auto; padding-bottom: 20px; } 
       
       .grid-month { width: 100%; border-collapse: separate; border-spacing: clamp(4px, 1.5cqi, 8px); table-layout: fixed; margin: 0; }
       
-      /* 1. Nút bấm & Tháng Năm trên cùng (Căn giữa & Nổi bật) */
       .grid-month .navi-l { text-align: right; }
       .grid-month .navi-r { text-align: left; }
       .grid-month .tenthang { text-align: center; vertical-align: middle; }
@@ -493,36 +464,29 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       .grid-month .nav-btn:hover { background: rgba(255,255,255,0.25) !important; transform: translateY(-2px); border-color: var(--lc-text-accent) !important; color: var(--lc-text-accent) !important; box-shadow: 0 8px 20px rgba(0,0,0,0.2), 0 0 12px rgba(255,255,255,0.2); }
       .grid-month .tenthang .nav-btn { font-size: clamp(16px, 5cqi, 22px); padding: 8px 24px; border-radius: 20px; letter-spacing: 1px; }
 
-      /* 2. Dòng tiêu đề Thứ (Khác biệt, Không đóng khung) */
-      .grid-month .ngaytuan, .grid-month .ngaytuan_t7, .grid-month .ngaytuan_cn { background: transparent !important; border: none !important; box-shadow: none !important; border-bottom: 2px solid rgba(255,255,255,0.15) !important; font-size: clamp(12px, 4cqi, 16px); text-transform: uppercase; letter-spacing: 1px; padding: clamp(6px, 2cqi, 10px) 0; font-weight: 800; text-align: center; border-radius: 0; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+      .grid-month .ngaytuan, .grid-month .ngaytuan_t7, .grid-month .ngaytuan_cn { background: transparent !important; border: none !important; box-shadow: none !important; border-bottom: 2px solid rgba(255,255,255,0.15) !important; font-size: clamp(12px, 4cqi, 16px); text-transform: uppercase; letter-spacing: 1px; padding: clamp(6px, 2cqi, 10px) 0; font-weight: 800; text-align: center; border-radius: 0; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; text-shadow: var(--lc-text-shadow-light); }
       .grid-month .ngaytuan_t7 { color: var(--lc-saturday-color); }
       .grid-month .ngaytuan_cn { color: var(--lc-sunday-color); }
       .grid-month .ngaytuan { color: var(--lc-text-main); }
 
-      /* 3. Ô ngày tháng (Bo tròn, Glassmorphism, Chiều cao hợp lý, Font tự co giãn) */
       .grid-month td.ngaythang { background: var(--lc-bg-overlay); border-radius: 12px; border: 1px solid var(--lc-border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.1), inset 0 1px 1px rgba(255,255,255,0.2); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); height: clamp(40px, 11cqi, 65px); padding: 0; position: relative; cursor: pointer; vertical-align: middle; }
       .grid-month .cell-content { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; box-sizing: border-box; padding: 2px; }
       
-      /* 4. Hiệu ứng Hover Hiện đại Sáng */
       .grid-month td.ngaythang:hover { transform: translateY(-5px) scale(1.05); background: rgba(255,255,255,0.25) !important; border-color: rgba(255,255,255,0.8); box-shadow: 0 12px 25px rgba(0,0,0,0.25), 0 0 15px rgba(255,255,255,0.3), inset 0 1px 2px rgba(255,255,255,0.9); z-index: 10; }
       
-      /* 5. Font chữ trong Grid Month */
       .grid-month .t2t6, .grid-month .t7, .grid-month .cn { font-size: clamp(16px, 5cqi, 24px) !important; font-weight: 800 !important; line-height: 1 !important; margin-bottom: 2px; text-align: center; }
       .grid-month .t2t6 { color: var(--lc-text-main); }
       .grid-month .t7 { color: var(--lc-saturday-color); }
       .grid-month .cn { color: var(--lc-sunday-color); }
       .grid-month .am, .grid-month .am2 { font-size: clamp(9px, 3cqi, 13px) !important; font-weight: 600 !important; color: var(--lc-text-accent); opacity: 0.9; text-align: center; padding: 0 !important; line-height: 1; }
       
-      /* Hôm nay */
       .grid-month td.homnay { border: 2px solid var(--lc-text-accent) !important; background: rgba(255,255,255,0.15) !important; box-shadow: 0 0 20px rgba(255,255,0,0.15), inset 0 0 15px rgba(255,255,255,0.2); }
       .grid-month td.homnay .t2t6, .grid-month td.homnay .t7, .grid-month td.homnay .cn { text-shadow: 0 0 10px rgba(255,255,255,0.5); }
 
-      /* Ngày Tết */
       .grid-month td.tet_cell { background: linear-gradient(135deg, #e53935, #b71c1c) !important; border-color: #ffcdd2 !important; box-shadow: 0 4px 15px rgba(229, 57, 53, 0.4); }
       .grid-month td.tet_cell .t2t6, .grid-month td.tet_cell .t7, .grid-month td.tet_cell .cn { color: #ffffff !important; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
       .grid-month td.tet_cell .am, .grid-month td.tet_cell .am2 { color: #fff59d !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
 
-      /* Ô trống */
       .grid-month .empty-cell { background: transparent !important; border-color: transparent !important; box-shadow: none !important; pointer-events: none; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
       .grid-month .empty-cell .cell-content { display: none; }
 
@@ -603,7 +567,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
   }
 
   if (typeof window.activeLunarTab === 'undefined') {
-      window.activeLunarTab = 'none'; // 'none', 'cal', or 'conv'
+      window.activeLunarTab = 'none'; 
   }
 
   function printTable(mm, yy, today, config){
@@ -619,7 +583,6 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     const pTheme = config.popup_theme || 'default';
     const pOpacity = config.popup_opacity !== undefined ? config.popup_opacity : 95;
 
-    // --- 1. Main View (Khu vực thông tin ngày hiện tại) ---
     res += `<div id="main-view">`;
     res += `<table class="thang" border="0" width="${PRINT_OPTS.tableWidth}">`;
 
@@ -742,13 +705,11 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     res += `</tr>`;
 
     res += `<tr><td colspan="7"><div class="thang_am_lich">${getYearCanChi(currentLunarDate.year)}<span class="year-svg-container">${svgNam}</span></div></td></tr>`;
-    res += `</table></div>`; // Kết thúc Main View
+    res += `</table></div>`; 
 
-    // --- 2. Overlay Tabs (Phần lướt lọt lòng lên trên) ---
     let overlayDisplay = (window.activeLunarTab !== 'none') ? 'flex' : 'none';
     res += `<div id="tab-overlay" class="tab-overlay" style="display: ${overlayDisplay};">`;
 
-    // 2A. Nội dung Lịch Tháng (Lưới Calendar Mới)
     let calShowStyle = window.activeLunarTab === 'cal' ? 'block' : 'none';
     res += `<div id="tab-content-cal" style="display: ${calShowStyle};">`;
     res += `<table class="grid-month" border="0">`;
@@ -769,13 +730,11 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     }
     res += `</table></div>`;
 
-    // 2B. Nội dung Tra Cứu
     let convShowStyle = window.activeLunarTab === 'conv' ? 'block' : 'none';
-    res += `<div id="tab-content-conv" style="display: ${convShowStyle};"></div>`; // Được đẩy vào qua JS sau
+    res += `<div id="tab-content-conv" style="display: ${convShowStyle};"></div>`; 
     
-    res += `</div>`; // Kết thúc Overlay Tabs
+    res += `</div>`; 
 
-    // --- 3. Tab Bar (Gắn cố định phía dưới thẻ) ---
     let calActive = window.activeLunarTab === 'cal' ? 'active' : '';
     let convActive = window.activeLunarTab === 'conv' ? 'active' : '';
 
@@ -816,7 +775,6 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     return CAN[(year*12 + month + 3) % 10] + " " + CHI[(month+1)%12];
   }
 
-  // ====== Home Assistant Custom Card Editor ======
   class LunarCalendarCardEditor extends HTMLElement {
     setConfig(config) {
       this._config = config || {};
@@ -837,8 +795,6 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       this.innerHTML = `
         <style>
           .editor-container { padding: 12px 0; font-family: var(--paper-font-body1_-_font-family, sans-serif); }
-          .section { border: 1px solid var(--divider-color, #e0e0e0); border-radius: 12px; padding: 16px; margin-bottom: 16px; background: var(--card-background-color, transparent); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-          .section-title { font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; font-size: 16px; color: var(--primary-text-color); border-bottom: 1px solid var(--divider-color, #e0e0e0); padding-bottom: 8px; }
           .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
           .row:last-child { margin-bottom: 0; }
           .label { font-weight: 500; color: var(--primary-text-color); font-size: 14px; }
@@ -846,265 +802,295 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
           input[type=color] { cursor: pointer; border: 1px solid var(--divider-color, #e0e0e0); border-radius: 6px; padding: 2px; width: 40px; height: 32px; background: transparent; }
           input[type=range] { flex-grow: 1; cursor: pointer; }
           .val-badge { background: var(--primary-color); color: var(--text-primary-color, white); padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; min-width: 48px; text-align: center; }
-          select.ha-select {
-            background: var(--card-background-color, transparent);
-            color: var(--primary-text-color);
-            border: 1px solid var(--divider-color, #e0e0e0);
-            padding: 6px 8px;
-            border-radius: 6px;
-            font-family: inherit;
-            font-size: 14px;
-            flex-grow: 1;
-            max-width: 200px;
-            cursor: pointer;
-          }
+          select.ha-select { background: var(--card-background-color, transparent); color: var(--primary-text-color); border: 1px solid var(--divider-color, #e0e0e0); padding: 6px 8px; border-radius: 6px; font-family: inherit; font-size: 14px; flex-grow: 1; max-width: 200px; cursor: pointer; }
+          
+          /* CSS CHO TÍNH NĂNG ẨN/HIỆN KHỐI */
+          .section { border: 1px solid var(--divider-color, #e0e0e0); border-radius: 12px; padding: 16px; margin-bottom: 16px; background: var(--card-background-color, transparent); box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: padding 0.3s ease; }
+          .section.collapsed { padding-bottom: 16px; }
+          .section-title { font-weight: 600; display: flex; align-items: center; justify-content: space-between; font-size: 16px; color: var(--primary-text-color); border-bottom: 1px solid var(--divider-color, #e0e0e0); padding-bottom: 8px; margin-bottom: 16px; cursor: pointer; user-select: none; }
+          .section-title:hover { opacity: 0.8; }
+          .section.collapsed .section-title { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
+          .section-content { display: block; overflow: hidden; animation: slideDown 0.3s ease-out forwards; }
+          .section.collapsed .section-content { display: none; }
+          .section-icon { font-size: 12px; opacity: 0.6; transition: transform 0.3s ease; }
+          .section.collapsed .section-icon { transform: rotate(-90deg); }
+          .title-left { display: flex; align-items: center; gap: 8px; pointer-events: none; }
+          .title-right { display: flex; align-items: center; gap: 12px; }
+          @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         </style>
 
         <div class="editor-container">
+          
           <div class="section">
-            <div class="section-title">🎨 Nền (Background)</div>
-            
-            <div class="row">
-              <span class="label" style="min-width: 120px;">Loại nền</span>
-              <select id="bg_type" class="ha-select">
-                <option value="solid">Màu đơn sắc (Solid)</option>
-                <option value="gradient">Màu dải (Gradient)</option>
-              </select>
+            <div class="section-title">
+              <div class="title-left">🎨 Nền (Background)</div>
+              <div class="title-right"><span class="section-icon">▼</span></div>
             </div>
-
-            <div class="row">
-              <span class="label" style="min-width: 120px;">Độ trong suốt</span>
-              <input type="range" id="bg_opacity" min="0" max="100">
-              <span class="val-badge" id="bg_opacity_val"></span>
-            </div>
-
-            <div id="solid_settings">
-              <div class="row" style="margin-top: 16px; border-top: 1px dashed var(--divider-color, #e0e0e0); padding-top: 16px;">
-                <span class="label">Màu nền</span>
-                <div class="input-group">
-                  <input type="color" id="bg_color">
-                  <span class="val-badge" id="bg_color_val"></span>
-                </div>
-              </div>
-            </div>
-
-            <div id="gradient_settings" style="display:none;">
-              <div class="row" style="margin-top: 16px; border-top: 1px dashed var(--divider-color, #e0e0e0); padding-top: 16px;">
-                <span class="label" style="min-width: 120px;">Mẫu Gradient</span>
-                <select id="bg_gradient_preset" class="ha-select">
-                  <option value="linear-gradient(135deg, #141e30, #243b55)">🌌 Royal Night (Đêm hoàng gia)</option>
-                  <option value="linear-gradient(135deg, #0f2027, #203a43, #2c5364)">🌊 Deep Ocean (Đại dương sâu)</option>
-                  <option value="linear-gradient(135deg, #232526, #414345)">🏙️ Midnight City (Thành phố đêm)</option>
-                  <option value="linear-gradient(135deg, #1a1a1a, #000000)">⚫ Dark Elegance (Đen thanh lịch)</option>
-                  <option value="linear-gradient(135deg, #ff0099, #493240)">🔮 Cosmic Fusion (Vũ trụ)</option>
-                  <option value="linear-gradient(135deg, #ff512f, #dd2476)">🌅 Sunset Vibes (Hoàng hôn)</option>
-                  <option value="linear-gradient(135deg, #134e5e, #71b280)">🌲 Forest Mist (Sương rừng)</option>
-                  <option value="linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05))">🪟 Glassmorphism (Kính mờ)</option>
-                  <option value="linear-gradient(135deg, #0f0c29, #302b63, #24243e)">🚀 Deep Space (Không gian rực rỡ)</option>
-                  <option value="linear-gradient(135deg, #667eea, #764ba2)">💜 Plum Plate (Tím khói)</option>
-                  <option value="linear-gradient(135deg, #ff9a9e, #fecfef)">🌸 Cherry Blossom (Hoa anh đào)</option>
-                  <option value="linear-gradient(135deg, #f12711, #f5af19)">🔥 Fire Glow (Rực lửa)</option>
-                  <option value="linear-gradient(135deg, #11998e, #38ef7d)">🌿 Neon Life (Sức sống Neon)</option>
-                  <option value="linear-gradient(135deg, #00c6ff, #0072ff)">❄️ Winter Sky (Bầu trời mùa đông)</option>
-                  <option value="linear-gradient(135deg, #f6d365, #fda085)">🍑 Sunrise Peach (Bình minh quả đào)</option>
-                  <option value="linear-gradient(135deg, #9D50BB, #6E48AA)">💎 Amethyst (Đá thạch anh tím)</option>
-                  <option value="linear-gradient(135deg, #2b5876, #4e4376)">🌠 Starry Night (Đêm đầy sao)</option>
-                  <option value="linear-gradient(135deg, #ff758c, #ff7eb3)">🍉 Sweet Pink (Hồng ngọt ngào)</option>
-                  <option value="linear-gradient(135deg, #4facfe, #00f2fe)">🏝️ Tropical Blue (Xanh nhiệt đới)</option>
-                  <option value="linear-gradient(135deg, #870000, #190a05)">🍷 Blood Moon (Trăng máu)</option>
-                  <option value="custom">✍️ Tùy chỉnh (Custom)</option>
+            <div class="section-content">
+              <div class="row">
+                <span class="label" style="min-width: 120px;">Loại nền</span>
+                <select id="bg_type" class="ha-select">
+                  <option value="solid">Màu đơn sắc (Solid)</option>
+                  <option value="gradient">Màu dải (Gradient)</option>
                 </select>
               </div>
 
-              <div id="custom_gradient_row" style="display:none; flex-direction: column; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--divider-color, #e0e0e0);">
-                <div class="row" style="width: 100%;">
-                  <span class="label">Màu 1</span>
+              <div class="row">
+                <span class="label" style="min-width: 120px;">Độ trong suốt (%)</span>
+                <input type="range" id="bg_opacity" min="0" max="100">
+                <span class="val-badge" id="bg_opacity_val"></span>
+              </div>
+
+              <div id="solid_settings">
+                <div class="row" style="margin-top: 16px; border-top: 1px dashed var(--divider-color, #e0e0e0); padding-top: 16px;">
+                  <span class="label">Màu nền</span>
                   <div class="input-group">
-                    <input type="color" id="bg_gradient_color1">
-                    <span class="val-badge" id="bg_gradient_color1_val"></span>
+                    <input type="color" id="bg_color">
+                    <span class="val-badge" id="bg_color_val"></span>
                   </div>
                 </div>
-                <div class="row" style="width: 100%;">
-                  <span class="label">Màu 2</span>
-                  <div class="input-group">
-                    <input type="color" id="bg_gradient_color2">
-                    <span class="val-badge" id="bg_gradient_color2_val"></span>
-                  </div>
+              </div>
+
+              <div id="gradient_settings" style="display:none;">
+                <div class="row" style="margin-top: 16px; border-top: 1px dashed var(--divider-color, #e0e0e0); padding-top: 16px;">
+                  <span class="label" style="min-width: 120px;">Mẫu Gradient</span>
+                  <select id="bg_gradient_preset" class="ha-select">
+                    <option value="linear-gradient(135deg, #141e30, #243b55)">🌌 Royal Night (Đêm hoàng gia)</option>
+                    <option value="linear-gradient(135deg, #0f2027, #203a43, #2c5364)">🌊 Deep Ocean (Đại dương sâu)</option>
+                    <option value="linear-gradient(135deg, #232526, #414345)">🏙️ Midnight City (Thành phố đêm)</option>
+                    <option value="linear-gradient(135deg, #1a1a1a, #000000)">⚫ Dark Elegance (Đen thanh lịch)</option>
+                    <option value="linear-gradient(135deg, #ff0099, #493240)">🔮 Cosmic Fusion (Vũ trụ)</option>
+                    <option value="linear-gradient(135deg, #ff512f, #dd2476)">🌅 Sunset Vibes (Hoàng hôn)</option>
+                    <option value="linear-gradient(135deg, #134e5e, #71b280)">🌲 Forest Mist (Sương rừng)</option>
+                    <option value="linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05))">🪟 Glassmorphism (Kính mờ)</option>
+                    <option value="linear-gradient(135deg, #0f0c29, #302b63, #24243e)">🚀 Deep Space (Không gian rực rỡ)</option>
+                    <option value="linear-gradient(135deg, #667eea, #764ba2)">💜 Plum Plate (Tím khói)</option>
+                    <option value="linear-gradient(135deg, #ff9a9e, #fecfef)">🌸 Cherry Blossom (Hoa anh đào)</option>
+                    <option value="linear-gradient(135deg, #f12711, #f5af19)">🔥 Fire Glow (Rực lửa)</option>
+                    <option value="linear-gradient(135deg, #11998e, #38ef7d)">🌿 Neon Life (Sức sống Neon)</option>
+                    <option value="linear-gradient(135deg, #00c6ff, #0072ff)">❄️ Winter Sky (Bầu trời mùa đông)</option>
+                    <option value="linear-gradient(135deg, #f6d365, #fda085)">🍑 Sunrise Peach (Bình minh quả đào)</option>
+                    <option value="linear-gradient(135deg, #9D50BB, #6E48AA)">💎 Amethyst (Đá thạch anh tím)</option>
+                    <option value="linear-gradient(135deg, #2b5876, #4e4376)">🌠 Starry Night (Đêm đầy sao)</option>
+                    <option value="linear-gradient(135deg, #ff758c, #ff7eb3)">🍉 Sweet Pink (Hồng ngọt ngào)</option>
+                    <option value="linear-gradient(135deg, #4facfe, #00f2fe)">🏝️ Tropical Blue (Xanh nhiệt đới)</option>
+                    <option value="linear-gradient(135deg, #870000, #190a05)">🍷 Blood Moon (Trăng máu)</option>
+                    <option value="custom">✍️ Tùy chỉnh (Custom)</option>
+                  </select>
                 </div>
-                <div class="row" style="width: 100%;">
-                  <span class="label" style="min-width: 120px;">Góc độ (°)</span>
-                  <input type="range" id="bg_gradient_angle" min="0" max="360" step="1">
-                  <span class="val-badge" id="bg_gradient_angle_val"></span>
+
+                <div id="custom_gradient_row" style="display:none; flex-direction: column; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--divider-color, #e0e0e0);">
+                  <div class="row" style="width: 100%;">
+                    <span class="label">Màu 1</span>
+                    <div class="input-group">
+                      <input type="color" id="bg_gradient_color1">
+                      <span class="val-badge" id="bg_gradient_color1_val"></span>
+                    </div>
+                  </div>
+                  <div class="row" style="width: 100%;">
+                    <span class="label">Màu 2</span>
+                    <div class="input-group">
+                      <input type="color" id="bg_gradient_color2">
+                      <span class="val-badge" id="bg_gradient_color2_val"></span>
+                    </div>
+                  </div>
+                  <div class="row" style="width: 100%;">
+                    <span class="label" style="min-width: 120px;">Góc độ (°)</span>
+                    <input type="range" id="bg_gradient_angle" min="0" max="360" step="1">
+                    <span class="val-badge" id="bg_gradient_angle_val"></span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
           
           <div class="section">
-            <div class="section-title">🪟 Giao diện Popup Chi tiết</div>
-            <div class="row">
-              <span class="label" style="min-width: 120px;">Màu Popup</span>
-              <select id="popup_theme" class="ha-select">
-                <option value="default">Mặc định (Đen mờ)</option>
-                <option value="theme1">1. Đen tuyền / Trắng</option>
-                <option value="theme2">2. Trắng ngà / Xanh đen</option>
-                <option value="theme3">3. Xanh Navy / Trắng ngọc</option>
-                <option value="theme4">4. Đỏ rượu / Vàng Gold</option>
-                <option value="theme5">5. Xanh Rêu / Kem sáng</option>
-                <option value="theme6">6. Nâu gỗ / Trắng sữa</option>
-                <option value="theme7">7. Tím khói / Trắng</option>
-                <option value="theme8">8. Vàng cát / Nâu cháy</option>
-                <option value="theme9">9. Xám xi măng / Đen</option>
-                <option value="theme10">10. Xanh Cyan / Cyan nhạt</option>
-              </select>
-            </div>
-            <div class="row">
-              <span class="label" style="min-width: 120px;">Độ trong suốt (%)</span>
-              <input type="range" id="popup_opacity" min="0" max="100" step="1">
-              <span class="val-badge" id="popup_opacity_val"></span>
-            </div>
-          </div>
-
-          <div class="section">
             <div class="section-title">
-              🖌️ Tùy chỉnh Nội dung & Các Thanh hiển thị
-              <input type="checkbox" id="auto_contrast" style="margin-left: auto; transform: scale(1.2); cursor: pointer;" title="Tự động tương phản màu chữ theo Nền">
+              <div class="title-left">🪟 Giao diện Popup Chi tiết</div>
+              <div class="title-right"><span class="section-icon">▼</span></div>
             </div>
-            
-            <div id="custom_colors_settings">
+            <div class="section-content">
               <div class="row">
-                <span class="label">Màu chữ chính</span>
-                <div class="input-group">
-                  <input type="color" id="text_main_color">
-                  <span class="val-badge" id="text_main_color_val"></span>
-                </div>
-              </div>
-              <div class="row">
-                <span class="label">Màu chữ phụ (Highlight)</span>
-                <div class="input-group">
-                  <input type="color" id="text_accent_color">
-                  <span class="val-badge" id="text_accent_color_val"></span>
-                </div>
-              </div>
-
-              <div class="row" style="margin-top: 16px; border-top: 1px dashed var(--divider-color, #e0e0e0); padding-top: 16px;">
-                <span class="label">Màu nền các thanh chỉ báo</span>
-                <div class="input-group">
-                  <input type="color" id="element_bg_color">
-                  <span class="val-badge" id="element_bg_color_val"></span>
-                </div>
+                <span class="label" style="min-width: 120px;">Màu Popup</span>
+                <select id="popup_theme" class="ha-select">
+                  <option value="default">Mặc định (Đen mờ)</option>
+                  <option value="theme1">1. Đen tuyền / Trắng</option>
+                  <option value="theme2">2. Trắng ngà / Xanh đen</option>
+                  <option value="theme3">3. Xanh Navy / Trắng ngọc</option>
+                  <option value="theme4">4. Đỏ rượu / Vàng Gold</option>
+                  <option value="theme5">5. Xanh Rêu / Kem sáng</option>
+                  <option value="theme6">6. Nâu gỗ / Trắng sữa</option>
+                  <option value="theme7">7. Tím khói / Trắng</option>
+                  <option value="theme8">8. Vàng cát / Nâu cháy</option>
+                  <option value="theme9">9. Xám xi măng / Đen</option>
+                  <option value="theme10">10. Xanh Cyan / Cyan nhạt</option>
+                </select>
               </div>
               <div class="row">
-                <span class="label" style="min-width: 120px;">Độ trong suốt thanh</span>
-                <input type="range" id="element_bg_opacity" min="0" max="100">
-                <span class="val-badge" id="element_bg_opacity_val"></span>
+                <span class="label" style="min-width: 120px;">Độ trong suốt (%)</span>
+                <input type="range" id="popup_opacity" min="0" max="100" step="1">
+                <span class="val-badge" id="popup_opacity_val"></span>
               </div>
-
-              <div class="row" style="margin-top: 16px; border-top: 1px dashed var(--divider-color, #e0e0e0); padding-top: 16px;">
-                <span class="label">Màu Thứ 7 (T7)</span>
-                <div class="input-group">
-                  <input type="color" id="saturday_color">
-                  <span class="val-badge" id="saturday_color_val"></span>
-                </div>
-              </div>
-              <div class="row">
-                <span class="label">Màu Chủ Nhật (CN)</span>
-                <div class="input-group">
-                  <input type="color" id="sunday_color">
-                  <span class="val-badge" id="sunday_color_val"></span>
-                </div>
-              </div>
-              <div class="row">
-                <span class="label">Màu Thông báo Lễ/Tết</span>
-                <div class="input-group">
-                  <input type="color" id="holiday_color">
-                  <span class="val-badge" id="holiday_color_val"></span>
-                </div>
-              </div>
-              <div class="row">
-                <span class="label">Màu Ca dao tục ngữ</span>
-                <div class="input-group">
-                  <input type="color" id="cadao_color">
-                  <span class="val-badge" id="cadao_color_val"></span>
-                </div>
-              </div>
-            </div> <div class="row" style="margin-top: 16px; border-top: 1px dashed var(--divider-color, #e0e0e0); padding-top: 16px;">
-              <span class="label" style="min-width: 120px;">Hiệu ứng Hover Emoji</span>
-              <select id="hover_effect" class="ha-select">
-                <option value="none">Không có</option>
-                <option value="neon">1. Neon Glow (Phát sáng rực rỡ)</option>
-                <option value="glass">2. 3D Glass (Kính nổi khối 3D)</option>
-                <option value="aura">3. Sunny Aura (Hào quang mặt trời)</option>
-                <option value="cyber">4. Cyberpunk (Viền sáng công nghệ)</option>
-                <option value="spin">5. Spin & Glow (Xoay & Phát sáng)</option>
-                <option value="pulse">6. Heartbeat (Nhịp đập nhấp nháy)</option>
-                <option value="float">7. Floating (Trôi nổi lên trên)</option>
-                <option value="ring">8. Double Ring (Vòng tròn kép)</option>
-                <option value="morph">9. Shape Morph (Biến đổi hình dạng)</option>
-                <option value="flash">10. Flash Shine (Chớp lóe chói lóa)</option>
-              </select>
-            </div>
-
-            <button id="reset_colors_btn" style="width: 100%; margin-top: 16px; padding: 8px; border-radius: 6px; border: 1px solid var(--primary-color); background: transparent; color: var(--primary-text-color); cursor: pointer; font-weight: bold; transition: background 0.2s;">
-              🔄 Đặt lại mặc định
-            </button>
-          </div>
-          <div class="section">
-            <div class="section-title">🔲 Viền (Border)</div>
-            <div class="row">
-              <span class="label">Màu viền</span>
-              <div class="input-group">
-                <input type="color" id="border_color">
-                <span class="val-badge" id="border_color_val"></span>
-              </div>
-            </div>
-            <div class="row">
-              <span class="label" style="min-width: 120px;">Độ dày viền (px)</span>
-              <input type="range" id="border_width" min="0" max="10" step="1">
-              <span class="val-badge" id="border_width_val"></span>
-            </div>
-            <div class="row">
-              <span class="label" style="min-width: 120px;">Độ trong suốt</span>
-              <input type="range" id="border_opacity" min="0" max="100">
-              <span class="val-badge" id="border_opacity_val"></span>
             </div>
           </div>
 
-          <div class="section">
+          <div class="section collapsed">
             <div class="section-title">
-              ☁️ Đổ bóng (Shadow)
-              <input type="checkbox" id="shadow_enable" style="margin-left: auto; transform: scale(1.2); cursor: pointer;">
+              <div class="title-left">🖋️ Tùy chỉnh Nội dung & Hiệu ứng</div>
+              <div class="title-right">
+                <input type="checkbox" id="auto_contrast" style="transform: scale(1.2); cursor: pointer;" title="Tự động tương phản màu chữ theo Nền">
+                <span class="section-icon">▼</span>
+              </div>
             </div>
-            <div id="shadow_settings">
+            <div class="section-content">
+              <div id="custom_colors_settings">
+                <div class="row">
+                  <span class="label">Màu chữ chính</span>
+                  <div class="input-group">
+                    <input type="color" id="text_main_color">
+                    <span class="val-badge" id="text_main_color_val"></span>
+                  </div>
+                </div>
+                <div class="row">
+                  <span class="label">Màu chữ phụ (Highlight)</span>
+                  <div class="input-group">
+                    <input type="color" id="text_accent_color">
+                    <span class="val-badge" id="text_accent_color_val"></span>
+                  </div>
+                </div>
+
+                <div class="row" style="margin-top: 16px; border-top: 1px dashed var(--divider-color, #e0e0e0); padding-top: 16px;">
+                  <span class="label">Màu nền các khối</span>
+                  <div class="input-group">
+                    <input type="color" id="element_bg_color">
+                    <span class="val-badge" id="element_bg_color_val"></span>
+                  </div>
+                </div>
+                <div class="row">
+                  <span class="label" style="min-width: 120px;">Độ trong suốt khối</span>
+                  <input type="range" id="element_bg_opacity" min="0" max="100">
+                  <span class="val-badge" id="element_bg_opacity_val"></span>
+                </div>
+
+                <div class="row" style="margin-top: 16px; border-top: 1px dashed var(--divider-color, #e0e0e0); padding-top: 16px;">
+                  <span class="label">Màu Thứ 7 (T7)</span>
+                  <div class="input-group">
+                    <input type="color" id="saturday_color">
+                    <span class="val-badge" id="saturday_color_val"></span>
+                  </div>
+                </div>
+                <div class="row">
+                  <span class="label">Màu Chủ Nhật (CN)</span>
+                  <div class="input-group">
+                    <input type="color" id="sunday_color">
+                    <span class="val-badge" id="sunday_color_val"></span>
+                  </div>
+                </div>
+                <div class="row">
+                  <span class="label">Màu Thông báo Lễ/Tết</span>
+                  <div class="input-group">
+                    <input type="color" id="holiday_color">
+                    <span class="val-badge" id="holiday_color_val"></span>
+                  </div>
+                </div>
+                <div class="row">
+                  <span class="label">Màu Ca dao tục ngữ</span>
+                  <div class="input-group">
+                    <input type="color" id="cadao_color">
+                    <span class="val-badge" id="cadao_color_val"></span>
+                  </div>
+                </div>
+              </div> 
+              <div class="row" style="margin-top: 16px; border-top: 1px dashed var(--divider-color, #e0e0e0); padding-top: 16px;">
+                <span class="label" style="min-width: 120px;">Hiệu ứng Hover Emoji</span>
+                <select id="hover_effect" class="ha-select">
+                  <option value="none">Không có</option>
+                  <option value="neon">1. Neon Glow (Phát sáng)</option>
+                  <option value="glass">2. 3D Glass (Kính nổi khối)</option>
+                  <option value="aura">3. Sunny Aura (Hào quang)</option>
+                  <option value="cyber">4. Cyberpunk (Viền sáng)</option>
+                  <option value="spin">5. Spin & Glow (Xoay)</option>
+                  <option value="pulse">6. Heartbeat (Nhịp đập)</option>
+                  <option value="float">7. Floating (Trôi nổi)</option>
+                  <option value="ring">8. Double Ring (Vòng tròn kép)</option>
+                  <option value="morph">9. Shape Morph (Biến dạng)</option>
+                  <option value="flash">10. Flash Shine (Chớp lóe)</option>
+                </select>
+              </div>
+
+              <button id="reset_colors_btn" style="width: 100%; margin-top: 16px; padding: 8px; border-radius: 6px; border: 1px solid var(--primary-color); background: transparent; color: var(--primary-text-color); cursor: pointer; font-weight: bold; transition: background 0.2s;">
+                🔄 Đặt lại màu mặc định
+              </button>
+            </div>
+          </div>
+          
+          <div class="section collapsed">
+            <div class="section-title">
+              <div class="title-left">🔲 Viền (Border)</div>
+              <div class="title-right"><span class="section-icon">▼</span></div>
+            </div>
+            <div class="section-content">
               <div class="row">
-                <span class="label">Màu đổ bóng</span>
+                <span class="label">Màu viền</span>
                 <div class="input-group">
-                  <input type="color" id="shadow_color">
-                  <span class="val-badge" id="shadow_color_val"></span>
+                  <input type="color" id="border_color">
+                  <span class="val-badge" id="border_color_val"></span>
                 </div>
               </div>
               <div class="row">
-                <span class="label" style="min-width: 120px;">Độ trong suốt</span>
-                <input type="range" id="shadow_opacity" min="0" max="100">
-                <span class="val-badge" id="shadow_opacity_val"></span>
+                <span class="label" style="min-width: 120px;">Độ dày viền (px)</span>
+                <input type="range" id="border_width" min="0" max="10" step="1">
+                <span class="val-badge" id="border_width_val"></span>
               </div>
               <div class="row">
-                <span class="label" style="min-width: 120px;">Độ nhòe (Blur)</span>
-                <input type="range" id="shadow_blur" min="0" max="100">
-                <span class="val-badge" id="shadow_blur_val"></span>
-              </div>
-              <div class="row">
-                <span class="label" style="min-width: 120px;">Khoảng cách (X)</span>
-                <input type="range" id="shadow_offset_x" min="-50" max="50">
-                <span class="val-badge" id="shadow_offset_x_val"></span>
-              </div>
-              <div class="row">
-                <span class="label" style="min-width: 120px;">Khoảng cách (Y)</span>
-                <input type="range" id="shadow_offset_y" min="-50" max="50">
-                <span class="val-badge" id="shadow_offset_y_val"></span>
+                <span class="label" style="min-width: 120px;">Độ trong suốt (%)</span>
+                <input type="range" id="border_opacity" min="0" max="100">
+                <span class="val-badge" id="border_opacity_val"></span>
               </div>
             </div>
           </div>
+
+          <div class="section collapsed">
+            <div class="section-title">
+              <div class="title-left">☁️ Đổ bóng (Shadow)</div>
+              <div class="title-right">
+                <input type="checkbox" id="shadow_enable" style="transform: scale(1.2); cursor: pointer;" title="Bật/Tắt hiệu ứng đổ bóng">
+                <span class="section-icon">▼</span>
+              </div>
+            </div>
+            <div class="section-content">
+              <div id="shadow_settings">
+                <div class="row">
+                  <span class="label">Màu đổ bóng</span>
+                  <div class="input-group">
+                    <input type="color" id="shadow_color">
+                    <span class="val-badge" id="shadow_color_val"></span>
+                  </div>
+                </div>
+                <div class="row">
+                  <span class="label" style="min-width: 120px;">Độ trong suốt (%)</span>
+                  <input type="range" id="shadow_opacity" min="0" max="100">
+                  <span class="val-badge" id="shadow_opacity_val"></span>
+                </div>
+                <div class="row">
+                  <span class="label" style="min-width: 120px;">Độ nhòe (Blur)</span>
+                  <input type="range" id="shadow_blur" min="0" max="100">
+                  <span class="val-badge" id="shadow_blur_val"></span>
+                </div>
+                <div class="row">
+                  <span class="label" style="min-width: 120px;">Khoảng cách (X)</span>
+                  <input type="range" id="shadow_offset_x" min="-50" max="50">
+                  <span class="val-badge" id="shadow_offset_x_val"></span>
+                </div>
+                <div class="row">
+                  <span class="label" style="min-width: 120px;">Khoảng cách (Y)</span>
+                  <input type="range" id="shadow_offset_y" min="-50" max="50">
+                  <span class="val-badge" id="shadow_offset_y_val"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       `;
 
@@ -1323,6 +1309,18 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
         this.dispatchEvent(event);
         this.updateUI();
       });
+
+      this.querySelectorAll('.section-title').forEach(titleEl => {
+        const inputs = titleEl.querySelectorAll('input, select, button');
+        inputs.forEach(input => {
+          input.addEventListener('click', (e) => e.stopPropagation());
+        });
+
+        titleEl.addEventListener('click', () => {
+          const section = titleEl.closest('.section');
+          section.classList.toggle('collapsed');
+        });
+      });
     }
   }
 
@@ -1347,150 +1345,233 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
         this.card = document.createElement('ha-card');
         this.shadowRoot.appendChild(this.card);
       }
-      
-      const hexToRgba = (hex, opacity) => {
-          let c;
-          if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
-              c= hex.substring(1).split('');
-              if(c.length === 3) c= [c[0], c[0], c[1], c[1], c[2], c[2]];
-              c= '0x'+c.join('');
-              return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+(opacity/100)+')';
-          }
-          return hex; 
-      };
-
-      const applyOpacityToGradientStr = (str, opacity) => {
-          return str.replace(/#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})\b/gi, (match) => hexToRgba(match, opacity));
-      };
-
-      const oldBg = this.config.background_color || this.config.background;
-      const bgType = this.config.bg_type || 'solid';
-      const bgOpacity = this.config.bg_opacity !== undefined ? this.config.bg_opacity : 50;
-
-      if (bgType === 'gradient') {
-          const preset = this.config.bg_gradient_preset || 'linear-gradient(135deg, #141e30, #243b55)';
-          if (preset === 'custom') {
-              const color1 = this.config.bg_gradient_color1 || '#ff0000';
-              const color2 = this.config.bg_gradient_color2 || '#0000ff';
-              const angle = this.config.bg_gradient_angle !== undefined ? this.config.bg_gradient_angle : 135;
-              this.card.style.background = `linear-gradient(${angle}deg, ${hexToRgba(color1, bgOpacity)}, ${hexToRgba(color2, bgOpacity)})`;
-          } else {
-              this.card.style.background = applyOpacityToGradientStr(preset, bgOpacity);
-          }
-      } else {
-          if (this.config.bg_color || this.config.bg_opacity !== undefined) {
-              const bgColor = this.config.bg_color || '#000000';
-              this.card.style.background = hexToRgba(bgColor, bgOpacity);
-          } else if (oldBg) {
-              this.card.style.background = oldBg;
-          } else {
-              this.card.style.background = 'transparent';
-          }
-      }
-
-      const borderWidth = this.config.border_width !== undefined ? this.config.border_width : 1;
-      if (this.config.border_opacity !== undefined && this.config.border_opacity > 0 && borderWidth > 0) {
-          const borderColor = this.config.border_color || '#ffffff';
-          const borderOpacity = this.config.border_opacity;
-          this.card.style.border = `${borderWidth}px solid ${hexToRgba(borderColor, borderOpacity)}`;
-      } else {
-          this.card.style.border = 'none';
-      }
-
-      if (this.config.shadow_enable) {
-          const shadowColor = this.config.shadow_color || '#000000';
-          const shadowOpacity = this.config.shadow_opacity !== undefined ? this.config.shadow_opacity : 50;
-          const blur = this.config.shadow_blur !== undefined ? this.config.shadow_blur : 16;
-          const offsetX = this.config.shadow_offset_x !== undefined ? this.config.shadow_offset_x : 0;
-          const offsetY = this.config.shadow_offset_y !== undefined ? this.config.shadow_offset_y : 4;
-          this.card.style.boxShadow = `${offsetX}px ${offsetY}px ${blur}px ${hexToRgba(shadowColor, shadowOpacity)}`;
-      } else {
-          this.card.style.boxShadow = 'none';
-      }
-
       this.card.style.borderRadius = 'var(--ha-card-border-radius, 16px)';
-
-      let textMain = this.config.text_main_color || '#ffffff';
-      let textAccent = this.config.text_accent_color || '#ffff99';
-      let elemBg = this.config.element_bg_color || '#ffffff';
-      let elemOpacity = this.config.element_bg_opacity !== undefined ? this.config.element_bg_opacity : 18;
-      let elemShadow = '0 2px 8px rgba(0,0,0,0.12), inset 0 0.4px 0 rgba(255,255,255,0.35)';
-
-      let satColor = this.config.saturday_color || '#00e600';
-      let sunColor = this.config.sunday_color || '#ff3333';
-      let holColor = this.config.holiday_color || '#ff3333';
-      let cadaoColor = this.config.cadao_color || '#ffff99';
-
-      let shadowHeavy = '0 6px 10px rgba(0,0,0,0.28)';
-      let shadowLight = '0 1px 3px rgba(0,0,0,0.3)';
-
-      if (this.config.auto_contrast) {
-          let isLightBackground = false;
-          let colorsToCheck = [];
-          let strToExtract = "";
-          if (bgType === 'solid' && this.config.bg_color) {
-              strToExtract = this.config.bg_color;
-          } else if (bgType === 'gradient') {
-              const preset = this.config.bg_gradient_preset || 'linear-gradient(135deg, #141e30, #243b55)';
-              if (preset === 'custom') {
-                  strToExtract = (this.config.bg_gradient_color1 || '#ff0000') + " " + (this.config.bg_gradient_color2 || '#0000ff');
-              } else strToExtract = preset;
-          }
-
-          const hexRegex = /#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})\b/gi;
-          let match;
-          while ((match = hexRegex.exec(strToExtract)) !== null) {
-              let hex = match[1];
-              if (hex.length === 3) hex = hex.split('').map(x => x+x).join('');
-              colorsToCheck.push({ r: parseInt(hex.substring(0,2), 16), g: parseInt(hex.substring(2,4), 16), b: parseInt(hex.substring(4,6), 16) });
-          }
-          const rgbRegex = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/gi;
-          while ((match = rgbRegex.exec(strToExtract)) !== null) {
-              colorsToCheck.push({ r: parseInt(match[1], 10), g: parseInt(match[2], 10), b: parseInt(match[3], 10) });
-          }
-
-          if (colorsToCheck.length > 0) {
-              let totalYIQ = 0;
-              colorsToCheck.forEach(c => { totalYIQ += ((c.r * 299) + (c.g * 587) + (c.b * 114)) / 1000; });
-              let avgYIQ = totalYIQ / colorsToCheck.length;
-              if (avgYIQ >= 128) isLightBackground = true;
-          }
-
-          if (isLightBackground) {
-              textMain = '#1a1a1a';   
-              textAccent = '#0d47a1'; 
-              elemBg = '#000000';     
-              elemOpacity = 10;
-              elemShadow = '0 2px 8px rgba(0,0,0,0.15), inset 0 0.4px 0 rgba(0,0,0,0.05)';
-              satColor = '#006600';   
-              sunColor = '#b30000';   
-              holColor = '#b30000';   
-              cadaoColor = '#0d47a1'; 
-              shadowHeavy = '0 2px 6px rgba(255,255,255,0.7)';
-              shadowLight = '0 1px 3px rgba(255,255,255,0.8)';
-          }
-      }
-
-      this.style.setProperty('--user-text-main', textMain);
-      this.style.setProperty('--user-text-accent', textAccent);
-      this.style.setProperty('--user-element-base-color', elemBg);
-      this.style.setProperty('--user-bg-overlay', hexToRgba(elemBg, elemOpacity));
-      this.style.setProperty('--user-bg-overlay-hover', hexToRgba(elemBg, Math.min(100, elemOpacity + 15)));
-      this.style.setProperty('--user-element-shadow', elemShadow);
-      this.style.setProperty('--user-saturday-color', satColor);
-      this.style.setProperty('--user-sunday-color', sunColor);
-      this.style.setProperty('--user-holiday-color', holColor);
-      this.style.setProperty('--user-cadao-color', cadaoColor);
-      this.style.setProperty('--user-text-shadow-heavy', shadowHeavy);
-      this.style.setProperty('--user-text-shadow-light', shadowLight);
-
+      
+      this._applyTheme(); 
       this._render();
     }
 
     set hass(hass){
+      const oldTheme = this._hass && this._hass.themes ? this._hass.themes.darkMode : null;
       this._hass = hass;
-      // ---- Gọi hàm chèn DOM Popup từ file phụ ----
+      
       injectPopupDOM();
+
+      const newTheme = hass.themes && hass.themes.darkMode !== undefined ? hass.themes.darkMode : null;
+      const todayStr = new Date().toDateString();
+      
+      if (oldTheme !== newTheme || this._lastDateStr !== todayStr || !this._renderedHass) {
+        this._lastDateStr = todayStr;
+        this._renderedHass = true;
+        this._applyTheme();
+        this._render();
+      }
+    }
+
+    _applyTheme() {
+        if (!this.config) return;
+
+        const hexToRgba = (hex, opacity) => {
+            let c;
+            if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+                c= hex.substring(1).split('');
+                if(c.length === 3) c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+                c= '0x'+c.join('');
+                return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+(opacity/100)+')';
+            }
+            return hex; 
+        };
+
+        const applyOpacityToGradientStr = (str, opacity) => {
+            return str.replace(/#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})\b/gi, (match) => hexToRgba(match, opacity));
+        };
+
+        const oldBg = this.config.background_color || this.config.background;
+        const bgType = this.config.bg_type || 'solid';
+        const bgOpacity = this.config.bg_opacity !== undefined ? this.config.bg_opacity : 50;
+
+        if (bgType === 'gradient') {
+            const preset = this.config.bg_gradient_preset || 'linear-gradient(135deg, #141e30, #243b55)';
+            if (preset === 'custom') {
+                const color1 = this.config.bg_gradient_color1 || '#ff0000';
+                const color2 = this.config.bg_gradient_color2 || '#0000ff';
+                const angle = this.config.bg_gradient_angle !== undefined ? this.config.bg_gradient_angle : 135;
+                this.card.style.background = `linear-gradient(${angle}deg, ${hexToRgba(color1, bgOpacity)}, ${hexToRgba(color2, bgOpacity)})`;
+            } else {
+                this.card.style.background = applyOpacityToGradientStr(preset, bgOpacity);
+            }
+        } else {
+            if (this.config.bg_color || this.config.bg_opacity !== undefined) {
+                const bgColor = this.config.bg_color || '#000000';
+                this.card.style.background = hexToRgba(bgColor, bgOpacity);
+            } else if (oldBg) {
+                this.card.style.background = oldBg;
+            } else {
+                this.card.style.background = 'transparent';
+            }
+        }
+
+        const borderWidth = this.config.border_width !== undefined ? this.config.border_width : 1;
+        if (this.config.border_opacity !== undefined && this.config.border_opacity > 0 && borderWidth > 0) {
+            const borderColor = this.config.border_color || '#ffffff';
+            const borderOpacity = this.config.border_opacity;
+            this.card.style.border = `${borderWidth}px solid ${hexToRgba(borderColor, borderOpacity)}`;
+        } else {
+            this.card.style.border = 'none';
+        }
+
+        if (this.config.shadow_enable) {
+            const shadowColor = this.config.shadow_color || '#000000';
+            const shadowOpacity = this.config.shadow_opacity !== undefined ? this.config.shadow_opacity : 50;
+            const blur = this.config.shadow_blur !== undefined ? this.config.shadow_blur : 16;
+            const offsetX = this.config.shadow_offset_x !== undefined ? this.config.shadow_offset_x : 0;
+            const offsetY = this.config.shadow_offset_y !== undefined ? this.config.shadow_offset_y : 4;
+            this.card.style.boxShadow = `${offsetX}px ${offsetY}px ${blur}px ${hexToRgba(shadowColor, shadowOpacity)}`;
+        } else {
+            this.card.style.boxShadow = 'none';
+        }
+
+        let textMain = this.config.text_main_color || '#ffffff';
+        let textAccent = this.config.text_accent_color || '#ffff99';
+        let elemBg = this.config.element_bg_color || '#ffffff';
+        let elemOpacity = this.config.element_bg_opacity !== undefined ? this.config.element_bg_opacity : 18;
+        let elemShadow = '0 2px 8px rgba(0,0,0,0.12), inset 0 0.4px 0 rgba(255,255,255,0.35)';
+
+        let satColor = this.config.saturday_color || '#00e600';
+        let sunColor = this.config.sunday_color || '#ff3333';
+        let holColor = this.config.holiday_color || '#ff3333';
+        let cadaoColor = this.config.cadao_color || '#ffff99';
+
+        let shadowHeavy = '0 6px 10px rgba(0,0,0,0.28)';
+        let shadowLight = '0 1px 3px rgba(0,0,0,0.3)';
+
+        // ==========================================
+        // THUẬT TOÁN TƯƠNG PHẢN THÔNG MINH BẢN V2
+        // TRÁNH TRÙNG LẶP MÀU TEXT VỚI MÀU NỀN
+        // ==========================================
+        if (this.config.auto_contrast) {
+            let strToExtract = "";
+            if (bgType === 'solid' && this.config.bg_color) {
+                strToExtract = this.config.bg_color;
+            } else if (bgType === 'gradient') {
+                const preset = this.config.bg_gradient_preset || 'linear-gradient(135deg, #141e30, #243b55)';
+                if (preset === 'custom') {
+                    strToExtract = (this.config.bg_gradient_color1 || '#ff0000') + " " + (this.config.bg_gradient_color2 || '#0000ff');
+                } else strToExtract = preset;
+            }
+
+            const hexRegex = /#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})\b/gi;
+            let match;
+            let colorsToCheck = [];
+            while ((match = hexRegex.exec(strToExtract)) !== null) {
+                let hex = match[1];
+                if (hex.length === 3) hex = hex.split('').map(x => x+x).join('');
+                colorsToCheck.push({ r: parseInt(hex.substring(0,2), 16), g: parseInt(hex.substring(2,4), 16), b: parseInt(hex.substring(4,6), 16) });
+            }
+            const rgbRegex = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/gi;
+            while ((match = rgbRegex.exec(strToExtract)) !== null) {
+                colorsToCheck.push({ r: parseInt(match[1], 10), g: parseInt(match[2], 10), b: parseInt(match[3], 10) });
+            }
+
+            if (colorsToCheck.length > 0) {
+                let avgR = 0, avgG = 0, avgB = 0;
+                colorsToCheck.forEach(c => { avgR += c.r; avgG += c.g; avgB += c.b; });
+                avgR = Math.round(avgR / colorsToCheck.length);
+                avgG = Math.round(avgG / colorsToCheck.length);
+                avgB = Math.round(avgB / colorsToCheck.length);
+
+                let isDarkTheme = false; 
+                if (this._hass && this._hass.themes && this._hass.themes.darkMode !== undefined) {
+                    isDarkTheme = this._hass.themes.darkMode;
+                } else {
+                    isDarkTheme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                }
+
+                const op = bgOpacity / 100;
+                const baseBg = isDarkTheme ? 30 : 245; 
+                
+                const effR = Math.round(avgR * op + baseBg * (1 - op));
+                const effG = Math.round(avgG * op + baseBg * (1 - op));
+                const effB = Math.round(avgB * op + baseBg * (1 - op));
+
+                const yiq = ((effR * 299) + (effG * 587) + (effB * 114)) / 1000;
+                const isLightBackground = yiq >= 135; 
+
+                let r = effR / 255, g = effG / 255, b = effB / 255;
+                let max = Math.max(r, g, b), min = Math.min(r, g, b);
+                let h, s, l = (max + min) / 2;
+                if (max == min) { h = s = 0; }
+                else {
+                    let d = max - min;
+                    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                    switch(max) {
+                        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                        case g: h = (b - r) / d + 2; break;
+                        case b: h = (r - g) / d + 4; break;
+                    }
+                    h /= 6;
+                }
+                let hue = Math.round(h * 360);
+
+                if (isLightBackground) {
+                    textMain = '#1a1a1a';   
+                    elemBg = '#000000';     
+                    elemOpacity = Math.max(10, op * 20); 
+                    elemShadow = '0 2px 4px rgba(0,0,0,0.08), inset 0 0.5px 0 rgba(0,0,0,0.05)';
+                    shadowHeavy = '0 2px 4px rgba(255,255,255,0.9), 0 0 10px rgba(255,255,255,0.5)';
+                    shadowLight = '0 1px 3px rgba(255,255,255,0.8)';
+
+                    if (s < 0.15) { 
+                        textAccent = '#1565C0'; cadaoColor = '#E65100'; satColor = '#2E7D32'; sunColor = '#C62828'; holColor = '#C62828';
+                    } else if (hue >= 330 || hue < 30) { // Nền Tone Đỏ/Hồng -> Đổi Lễ/CN thành Tím/Xanh thay vì Đỏ
+                        textAccent = '#004D40'; cadaoColor = '#0D47A1'; satColor = '#1B5E20'; sunColor = '#311B92'; holColor = '#311B92';
+                    } else if (hue >= 30 && hue < 90) { // Nền Cam/Vàng
+                        textAccent = '#0D47A1'; cadaoColor = '#4A148C'; satColor = '#006064'; sunColor = '#B71C1C'; holColor = '#B71C1C';
+                    } else if (hue >= 90 && hue < 170) { // Nền Xanh lá
+                        textAccent = '#4A148C'; cadaoColor = '#B71C1C'; satColor = '#004D40'; sunColor = '#880E4F'; holColor = '#880E4F';
+                    } else if (hue >= 170 && hue < 260) { // Nền Xanh biển
+                        textAccent = '#C2185B'; cadaoColor = '#E65100'; satColor = '#2E7D32'; sunColor = '#B71C1C'; holColor = '#B71C1C';
+                    } else { // Nền Tím
+                        textAccent = '#004D40'; cadaoColor = '#E64A19'; satColor = '#33691E'; sunColor = '#D84315'; holColor = '#D84315';
+                    }
+                } 
+                else {
+                    textMain = '#ffffff';
+                    elemBg = '#ffffff';
+                    elemOpacity = Math.max(15, op * 25);
+                    elemShadow = '0 2px 8px rgba(0,0,0,0.15), inset 0 0.5px 0 rgba(255,255,255,0.3)';
+                    shadowHeavy = '0 3px 6px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.5)';
+                    shadowLight = '0 1px 3px rgba(0,0,0,0.6)';
+
+                    if (s < 0.15) { 
+                        textAccent = '#29B6F6'; cadaoColor = '#FFCA28'; satColor = '#00E676'; sunColor = '#FF5252'; holColor = '#FF5252';
+                    } else if (hue >= 330 || hue < 30) { // Nền Tone Đỏ/Hồng đậm -> Đổi Lễ/CN thành Vàng sáng thay vì Đỏ
+                        textAccent = '#00E5FF'; cadaoColor = '#FFEA00'; satColor = '#69F0AE'; sunColor = '#FFD54F'; holColor = '#FFD54F';
+                    } else if (hue >= 30 && hue < 90) { // Nền Cam/Vàng sẫm
+                        textAccent = '#40C4FF'; cadaoColor = '#69F0AE'; satColor = '#B2FF59'; sunColor = '#FF5252'; holColor = '#FF5252';
+                    } else if (hue >= 90 && hue < 170) { // Nền Xanh lá đậm
+                        textAccent = '#FF4081'; cadaoColor = '#FF9100'; satColor = '#00E5FF'; sunColor = '#FF5252'; holColor = '#FF5252';
+                    } else if (hue >= 170 && hue < 260) { // Nền Xanh biển sẫm
+                        textAccent = '#FFAB40'; cadaoColor = '#C6FF00'; satColor = '#69F0AE'; sunColor = '#FF4081'; holColor = '#FF4081';
+                    } else { // Nền Tím sẫm
+                        textAccent = '#69F0AE'; cadaoColor = '#FFD54F'; satColor = '#B2FF59'; sunColor = '#FF5252'; holColor = '#FF5252';
+                    }
+                }
+            }
+        }
+
+        this.style.setProperty('--user-text-main', textMain);
+        this.style.setProperty('--user-text-accent', textAccent);
+        this.style.setProperty('--user-element-base-color', elemBg);
+        this.style.setProperty('--user-bg-overlay', hexToRgba(elemBg, elemOpacity));
+        this.style.setProperty('--user-bg-overlay-hover', hexToRgba(elemBg, Math.min(100, elemOpacity + 15)));
+        this.style.setProperty('--user-element-shadow', elemShadow);
+        this.style.setProperty('--user-saturday-color', satColor);
+        this.style.setProperty('--user-sunday-color', sunColor);
+        this.style.setProperty('--user-holiday-color', holColor);
+        this.style.setProperty('--user-cadao-color', cadaoColor);
+        this.style.setProperty('--user-text-shadow-heavy', shadowHeavy);
+        this.style.setProperty('--user-text-shadow-light', shadowLight);
     }
 
     _render(){
@@ -1501,9 +1582,6 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       const html = [ printStyle(), printTable(mm, yy, today, this.config) ].join('');
       const hoverEffect = this.config.hover_effect || 'neon';
 
-      // ==========================================
-      // GIAO DIỆN BỘ CÔNG CỤ QUY ĐỔI NGÀY NHANH THÀNH TAB (KHÔNG BORDER NGOÀI)
-      // ==========================================
       const convHtml = `
       <style>
         .conv-input { background: rgba(0,0,0,0.15) !important; color: var(--lc-text-main) !important; border: 1px solid var(--lc-border-color) !important; outline: none; transition: all 0.2s; text-shadow: var(--lc-text-shadow-light); }
@@ -1530,16 +1608,11 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
         <div id="conv-result" style="display: none; margin-top: clamp(10px, 4cqi, 15px); padding: clamp(10px, 4cqi, 15px); background: var(--lc-bg-overlay); border-radius: 8px; border-left: 4px solid var(--lc-text-accent); color: var(--lc-text-main); box-shadow: var(--lc-element-shadow); text-shadow: var(--lc-text-shadow-light); font-size: clamp(9px, 3.8cqi, 15px);"></div>
       </div>`;
 
-      // Nạp HTML hiển thị lịch chính
       this.card.innerHTML = `<div class="lunar-card" data-hover="${hoverEffect}">${html}</div>`;
       
-      // Inject form Tra cứu vào tab-content-conv
       const tabConvElement = this.card.querySelector('#tab-content-conv');
       if (tabConvElement) tabConvElement.innerHTML = convHtml;
 
-      // ==========================================
-      // LOGIC XỬ LÝ SỰ KIỆN TABS (Trượt nổi lên)
-      // ==========================================
       const btnCal = this.card.querySelector('#tab-btn-cal');
       const btnConv = this.card.querySelector('#tab-btn-conv');
       const contentCal = this.card.querySelector('#tab-content-cal');
@@ -1548,18 +1621,16 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
       const toggleTab = (tabName) => {
           if (window.activeLunarTab === tabName) {
-              // Bấm lại đúng tab đang mở -> Đóng
               window.activeLunarTab = 'none';
               overlay.style.display = 'none';
               btnCal.classList.remove('active');
               btnConv.classList.remove('active');
           } else {
-              // Mở tab mới
               window.activeLunarTab = tabName;
               overlay.style.display = 'flex'; 
               
               if (tabName === 'cal') {
-                  contentCal.style.display = 'block'; // Thay vì flex, dùng block để tránh bị kéo dãn dọc
+                  contentCal.style.display = 'block'; 
                   contentConv.style.display = 'none';
                   btnCal.classList.add('active');
                   btnConv.classList.remove('active');
@@ -1575,9 +1646,6 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       if (btnCal) btnCal.addEventListener('click', () => toggleTab('cal'));
       if (btnConv) btnConv.addEventListener('click', () => toggleTab('conv'));
 
-      // ==========================================
-      // LOGIC TÍNH TOÁN QUY ĐỔI
-      // ==========================================
       const convBtn = this.card.querySelector('#conv-btn');
       if (convBtn) {
           convBtn.addEventListener('click', () => {
@@ -1589,7 +1657,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
               if (!dStr || !mStr || !yStr) {
                   resDiv.style.display = 'block';
-                  resDiv.innerHTML = '<span style="color: var(--lc-holiday-color);">⚠️ Vui lòng nhập đầy đủ Ngày, Tháng, Năm!</span>';
+                  resDiv.innerHTML = '<span style="color: var(--lc-holiday-color); text-shadow: var(--lc-text-shadow-light);">⚠️ Vui lòng nhập đầy đủ Ngày, Tháng, Năm!</span>';
                   return;
               }
 
@@ -1599,20 +1667,18 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
               if (y < 1800 || y > 2199) {
                   resDiv.style.display = 'block';
-                  resDiv.innerHTML = '<span style="color: var(--lc-holiday-color);">⚠️ Chỉ hỗ trợ tra cứu năm từ 1800 đến 2199!</span>';
+                  resDiv.innerHTML = '<span style="color: var(--lc-holiday-color); text-shadow: var(--lc-text-shadow-light);">⚠️ Chỉ hỗ trợ tra cứu năm từ 1800 đến 2199!</span>';
                   return;
               }
 
               try {
                   let outHtml = "";
-                  
-                  // ====== CHIỀU 1: DƯƠNG LỊCH -> ÂM LỊCH ======
                   if (type === 'solar_to_lunar') {
                       const jd = jdn(d, m, y);
                       const checkDate = jdn2dateFunc(jd);
                       if (checkDate[0] !== d || checkDate[1] !== m || checkDate[2] !== y) {
                           resDiv.style.display = 'block';
-                          resDiv.innerHTML = '<span style="color: var(--lc-holiday-color);">⚠️ Ngày dương lịch không tồn tại!</span>';
+                          resDiv.innerHTML = '<span style="color: var(--lc-holiday-color); text-shadow: var(--lc-text-shadow-light);">⚠️ Ngày dương lịch không tồn tại!</span>';
                           return;
                       }
 
@@ -1633,7 +1699,6 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
                       outHtml += `<div style="margin-top: 10px; font-style: italic; opacity: 0.8; font-size: 0.9em;">ℹ️ ${leapMsg}</div>`;
 
                   } 
-                  // ====== CHIỀU 2: ÂM LỊCH -> DƯƠNG LỊCH ======
                   else {
                       let ly = getYearInfo(y);
                       let results = {};
@@ -1666,7 +1731,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
                       if (Object.keys(results).length === 0) {
                           resDiv.style.display = 'block';
-                          resDiv.innerHTML = `<span style="color: var(--lc-holiday-color);">⚠️ Ngày âm lịch ${d}/${m}/${y} không tồn tại! (Ví dụ: Tra ngày 30 nhưng tháng đó thiếu chỉ có 29 ngày)</span>`;
+                          resDiv.innerHTML = `<span style="color: var(--lc-holiday-color); text-shadow: var(--lc-text-shadow-light);">⚠️ Ngày âm lịch ${d}/${m}/${y} không tồn tại! (Ví dụ: Tra ngày 30 nhưng tháng đó thiếu chỉ có 29 ngày)</span>`;
                           return;
                       }
 
@@ -1692,14 +1757,11 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
                   resDiv.style.display = 'block';
               } catch (error) {
                   resDiv.style.display = 'block';
-                  resDiv.innerHTML = `<span style="color: var(--lc-holiday-color);">❌ Đã xảy ra lỗi hệ thống: ${error.message}</span>`;
+                  resDiv.innerHTML = `<span style="color: var(--lc-holiday-color); text-shadow: var(--lc-text-shadow-light);">❌ Đã xảy ra lỗi hệ thống: ${error.message}</span>`;
               }
           });
       }
 
-      // ==========================================
-      // LOGIC XỬ LÝ CHUYỂN THÁNG/NĂM CŨ CỦA LỊCH
-      // ==========================================
       const prevBtn = this.card.querySelector('#prev-month');
       if (prevBtn){
           prevBtn.addEventListener('click', () => {
