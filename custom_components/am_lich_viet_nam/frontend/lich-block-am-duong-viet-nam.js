@@ -397,9 +397,6 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       
       .lunar-card { position: relative; isolation: isolate; container-type: inline-size; border-radius: 16px; overflow: hidden; padding-bottom: clamp(45px, 12cqi, 55px); }
       
-      .tet_cell { background-color: var(--lc-tet-bg) !important; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
-      .tet_cell .t2t6, .tet_cell .t7, .tet_cell .cn { color: var(--lc-tet-text-solar) !important; font-weight: bold; }
-      .tet_cell .am, .tet_cell .am2 { color: var(--lc-tet-text-lunar) !important; }
       .td_tet_left { line-height: 0.9; align-items: flex-end; justify-content: center; position: relative; overflow: visible; }
       .show_left_tet { position: absolute; left: 50%; transform: translateX(-50%); bottom: -11px; display: flex; width: 85%; align-items: flex-end; justify-content: center; z-index: 3; }
       .td_tet_right { line-height: 0.9; align-items: flex-end; justify-content: center; position: relative; overflow: visible; }
@@ -426,10 +423,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
       .phan_cach { font-family: 'Be Vietnam Pro', sans-serif; color: var(--user-element-base-color, #ffffff); opacity: 0.9; vertical-align: middle; text-align:center; font-size: clamp(8px, 3cqi, 16px); padding: 0; }
 
-      /* Ngày Dương Lịch */
+      /* Ngày Dương Lịch: Tinh chỉnh lại tỷ lệ vàng */
       .todayduonglich { color: var(--lc-text-main); font-family:'Bebas Neue', sans-serif; text-align:center; font-size: clamp(70px, 35cqi, 180px); line-height: 0.85; letter-spacing: 2px; font-weight: 600; text-shadow: var(--lc-text-shadow-heavy); position: relative; overflow: visible; cursor: pointer; padding: 5px 0; }
       
-      /* Ca dao, lễ tết */
+      /* Ca dao, lễ tết: Tỷ lệ margin, padding và font đẹp hơn */
       .thongtin_letet { font-family: 'Playfair Display', serif; color: var(--lc-holiday-color); line-height: 1.35; padding: clamp(4px, 1.2cqi, 8px) clamp(10px, 3cqi, 20px); margin: 2px 30px; text-align:center; font-size: clamp(12px, 3.8cqi, 18px); letter-spacing: 0.5px; background: var(--lc-bg-overlay); border-radius:14px; border:0.4px solid var(--lc-border-color); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); text-shadow: var(--lc-text-shadow-light); font-weight: 500; width: max-width: 90%; }
       .cadaotucngu { font-family: 'Playfair Display', serif; font-style:italic; color: var(--lc-cadao-color); line-height: 1.35; padding: clamp(4px, 1.2cqi, 8px) clamp(10px, 3cqi, 20px); margin: 6px 30px 10px 30px; text-align:center; font-size: clamp(12px, 3.8cqi, 18px); letter-spacing: 0.5px; background: var(--lc-bg-overlay); border-radius:14px; border:0.4px solid var(--lc-border-color); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); text-shadow: var(--lc-text-shadow-light); width: max-width: 95%; }
       
@@ -443,7 +440,6 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       .svg_circle_divider { width: 100%; aspect-ratio: 1/1; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto; background: var(--lc-bg-overlay); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border: 1px solid var(--lc-border-color); box-shadow: var(--lc-element-shadow); position: relative; z-index: 2; overflow: visible; transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
       .svg-cell { width: 90%; height: 90%; object-fit: contain; display: flex; align-items: center; justify-content: center; transform-origin: bottom center; will-change: transform; transition: scale 0.3s ease; scale: 1; animation: popup-bouncy 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, wiggle-continuous 3s ease-in-out 0.8s infinite; position: relative; z-index: 3;}
       
-      /* Effects */
       [data-hover="neon"] .svg_circle_divider:hover { transform: scale(1.08); background: rgba(255, 200, 0, 0.15); border-color: rgba(255, 200, 0, 0.9); box-shadow: 0 0 15px rgba(255, 200, 0, 0.6), 0 0 30px rgba(255, 200, 0, 0.4), inset 0 0 12px rgba(255, 200, 0, 0.4); z-index: 10; }
       [data-hover="glass"] .svg_circle_divider:hover { transform: translateY(-4px) scale(1.05); background: var(--lc-bg-overlay-hover); border: 1px solid rgba(255, 255, 255, 0.8); box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2), inset 0 1px 2px rgba(255, 255, 255, 0.8); z-index: 10; }
       [data-hover="aura"] .svg_circle_divider:hover { transform: scale(1.05); background: rgba(255, 255, 255, 0.25); border-color: #ffca28; box-shadow: 0 0 0 4px rgba(255, 200, 0, 0.25), 0 0 20px rgba(255, 200, 0, 0.5), inset 0 0 15px rgba(255, 255, 255, 0.5); z-index: 10; }
@@ -476,27 +472,60 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       .tab-btn:hover { background: var(--lc-bg-overlay-hover); transform: translateY(-1px); }
       .tab-btn.active { background: var(--lc-bg-overlay-hover); border-color: var(--lc-text-accent); color: var(--lc-text-accent); box-shadow: 0 0 15px rgba(255, 255, 0, 0.2); }
       
-      .tab-overlay { position: absolute; top: 0; left: 0; width: 100%; height: calc(100% - clamp(45px, 12cqi, 55px)); background: var(--lc-bg-overlay); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); z-index: 10; overflow-y: auto; overflow-x: hidden; border-radius: 16px 16px 0 0; box-sizing: border-box; padding: 10px; animation: slideUpOverlay 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; box-shadow: inset 0 0 30px rgba(0,0,0,0.1); }
+      .tab-overlay { display: flex; flex-direction: column; position: absolute; top: 0; left: 0; width: 100%; height: calc(100% - clamp(45px, 12cqi, 55px)); background: var(--lc-bg-overlay); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); z-index: 10; overflow-y: auto; overflow-x: hidden; border-radius: 16px 16px 0 0; box-sizing: border-box; padding: clamp(8px, 2cqi, 15px); animation: slideUpOverlay 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; box-shadow: inset 0 0 30px rgba(0,0,0,0.1); }
       @keyframes slideUpOverlay { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
       .tab-overlay::-webkit-scrollbar { width: 6px; }
       .tab-overlay::-webkit-scrollbar-track { background: transparent; }
       .tab-overlay::-webkit-scrollbar-thumb { background: var(--lc-text-accent); border-radius: 4px; opacity: 0.5; }
 
-      /* Các bảng & Lịch con */
-      .navi-l,.navi-r{ color: var(--lc-text-main); text-align:center; font-size: clamp(10px, 3.5cqi, 16px); line-height:100%; font-weight:bold; padding: clamp(4px, 1.5cqi, 8px) 0; border-bottom: 1px solid var(--lc-border-color) !important;}
-      .nav-btn { color: var(--lc-text-main); border: none; padding: clamp(4px, 1cqi, 8px) clamp(8px, 2.5cqi, 16px); border-radius: 6px; cursor: pointer; font-weight: bold; background: transparent !important;}
-      .tenthang { text-align:center; font-size: clamp(12px, 4.5cqi, 18px); line-height:100%; font-weight:bold; padding: clamp(4px, 1.5cqi, 8px) 0; border-bottom: 1px solid var(--lc-border-color) !important; color: var(--lc-text-main) !important;}
+      /* BẢNG LỊCH THÁNG CHUYÊN NGHIỆP HIỆN ĐẠI TẠI ĐÂY */
+      #tab-content-cal { flex-grow: 1; display: block; overflow-y: auto; padding-bottom: 20px; } 
       
-      .ngaytuan, .ngaytuan_t7, .ngaytuan_cn { width:14%; text-align:center; font-size: clamp(9px, 3cqi, 14px); padding: clamp(6px, 2cqi, 12px) 0; border-bottom: 1px solid var(--lc-border-color) !important;}
-      .ngaytuan_t7 { color: var(--lc-saturday-color); }
-      .ngaytuan_cn { color: var(--lc-sunday-color); }
-      .ngaythang { padding-top: clamp(6px, 2cqi, 12px); padding-bottom: clamp(6px, 2cqi, 12px); background: transparent !important; cursor: pointer; }
-      .am, .am2 { color: var(--lc-text-accent) !important; font-weight: bold !important; text-align:right; padding-right:3px; font-size: clamp(8px, 2.5cqi, 11px); }
-      .t2t6 { text-align:center; font-size: clamp(12px, 4cqi, 18px); color: var(--lc-text-main) !important;}
-      .t7 { color: var(--lc-saturday-color); text-align:center; font-size: clamp(12px, 4cqi, 18px); }
-      .cn { color: var(--lc-sunday-color); text-align:center; font-size: clamp(12px, 4cqi, 18px); }
-      td.homnay { font-weight:bold; background: var(--lc-today-bg) !important; border-radius: 8px; }
+      .grid-month { width: 100%; border-collapse: separate; border-spacing: clamp(4px, 1.5cqi, 8px); table-layout: fixed; margin: 0; }
       
+      /* 1. Nút bấm & Tháng Năm trên cùng (Căn giữa & Nổi bật) */
+      .grid-month .navi-l { text-align: right; }
+      .grid-month .navi-r { text-align: left; }
+      .grid-month .tenthang { text-align: center; vertical-align: middle; }
+      .grid-month .navi-l, .grid-month .navi-r, .grid-month .tenthang { background: transparent !important; border: none !important; box-shadow: none !important; border-bottom: none !important; padding-bottom: 5px; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+      
+      .grid-month .nav-btn { font-size: clamp(14px, 4.5cqi, 18px); padding: 8px 16px; background: rgba(255,255,255,0.1) !important; border: 1px solid rgba(255,255,255,0.3) !important; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.15), inset 0 1px 1px rgba(255,255,255,0.3); transition: all 0.25s; color: var(--lc-text-main); font-weight: bold; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+      .grid-month .nav-btn:hover { background: rgba(255,255,255,0.25) !important; transform: translateY(-2px); border-color: var(--lc-text-accent) !important; color: var(--lc-text-accent) !important; box-shadow: 0 8px 20px rgba(0,0,0,0.2), 0 0 12px rgba(255,255,255,0.2); }
+      .grid-month .tenthang .nav-btn { font-size: clamp(16px, 5cqi, 22px); padding: 8px 24px; border-radius: 20px; letter-spacing: 1px; }
+
+      /* 2. Dòng tiêu đề Thứ (Khác biệt, Không đóng khung) */
+      .grid-month .ngaytuan, .grid-month .ngaytuan_t7, .grid-month .ngaytuan_cn { background: transparent !important; border: none !important; box-shadow: none !important; border-bottom: 2px solid rgba(255,255,255,0.15) !important; font-size: clamp(12px, 4cqi, 16px); text-transform: uppercase; letter-spacing: 1px; padding: clamp(6px, 2cqi, 10px) 0; font-weight: 800; text-align: center; border-radius: 0; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+      .grid-month .ngaytuan_t7 { color: var(--lc-saturday-color); }
+      .grid-month .ngaytuan_cn { color: var(--lc-sunday-color); }
+      .grid-month .ngaytuan { color: var(--lc-text-main); }
+
+      /* 3. Ô ngày tháng (Bo tròn, Glassmorphism, Chiều cao hợp lý, Font tự co giãn) */
+      .grid-month td.ngaythang { background: var(--lc-bg-overlay); border-radius: 12px; border: 1px solid var(--lc-border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.1), inset 0 1px 1px rgba(255,255,255,0.2); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); height: clamp(40px, 11cqi, 65px); padding: 0; position: relative; cursor: pointer; vertical-align: middle; }
+      .grid-month .cell-content { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; box-sizing: border-box; padding: 2px; }
+      
+      /* 4. Hiệu ứng Hover Hiện đại Sáng */
+      .grid-month td.ngaythang:hover { transform: translateY(-5px) scale(1.05); background: rgba(255,255,255,0.25) !important; border-color: rgba(255,255,255,0.8); box-shadow: 0 12px 25px rgba(0,0,0,0.25), 0 0 15px rgba(255,255,255,0.3), inset 0 1px 2px rgba(255,255,255,0.9); z-index: 10; }
+      
+      /* 5. Font chữ trong Grid Month */
+      .grid-month .t2t6, .grid-month .t7, .grid-month .cn { font-size: clamp(16px, 5cqi, 24px) !important; font-weight: 800 !important; line-height: 1 !important; margin-bottom: 2px; text-align: center; }
+      .grid-month .t2t6 { color: var(--lc-text-main); }
+      .grid-month .t7 { color: var(--lc-saturday-color); }
+      .grid-month .cn { color: var(--lc-sunday-color); }
+      .grid-month .am, .grid-month .am2 { font-size: clamp(9px, 3cqi, 13px) !important; font-weight: 600 !important; color: var(--lc-text-accent); opacity: 0.9; text-align: center; padding: 0 !important; line-height: 1; }
+      
+      /* Hôm nay */
+      .grid-month td.homnay { border: 2px solid var(--lc-text-accent) !important; background: rgba(255,255,255,0.15) !important; box-shadow: 0 0 20px rgba(255,255,0,0.15), inset 0 0 15px rgba(255,255,255,0.2); }
+      .grid-month td.homnay .t2t6, .grid-month td.homnay .t7, .grid-month td.homnay .cn { text-shadow: 0 0 10px rgba(255,255,255,0.5); }
+
+      /* Ngày Tết */
+      .grid-month td.tet_cell { background: linear-gradient(135deg, #e53935, #b71c1c) !important; border-color: #ffcdd2 !important; box-shadow: 0 4px 15px rgba(229, 57, 53, 0.4); }
+      .grid-month td.tet_cell .t2t6, .grid-month td.tet_cell .t7, .grid-month td.tet_cell .cn { color: #ffffff !important; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+      .grid-month td.tet_cell .am, .grid-month td.tet_cell .am2 { color: #fff59d !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+
+      /* Ô trống */
+      .grid-month .empty-cell { background: transparent !important; border-color: transparent !important; box-shadow: none !important; pointer-events: none; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+      .grid-month .empty-cell .cell-content { display: none; }
+
       .year-svg-container { position: absolute; top: -36px; width: 35px; height: 35px; animation: marquee-horizontal 8s ease-in-out infinite; overflow: visible; }
       .year-svg-container::after { content: ''; position: absolute; bottom: -2px; left: 15%; width: 70%; height: 4px; background: rgba(0, 0, 0, 0.25); border-radius: 50%; filter: blur(2px); z-index: -1; animation: shadow-pulse 0.5s infinite alternate; }
       .year-svg-container::before { content: ''; position: absolute; bottom: 2px; right: -5px; width: 4px; height: 4px; border-radius: 50%; background: rgba(255, 255, 255, 0.6); box-shadow: -5px -2px 0 -1px rgba(255, 255, 255, 0.4), -3px 5px 0 -1px rgba(255, 255, 255, 0.5); animation: dust-trail 0.6s infinite linear; z-index: -2; opacity: 0; }
@@ -506,10 +535,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       
       .lunar-card > div:first-child, .thang_top, .giohoangdao, .viecnenlam, .viecnentranh,
       .cat_tinh, .hung_tinh, .tenthang, .navi-l, .navi-r, .ngaytuan, .ngaytuan_t7,
-      .ngaytuan_cn, .ngaythang, .tet, .nav-btn, .tab-btn { background: transparent !important; }
+      .ngaytuan_cn, .ngaythang, .tet, .tab-btn { background: transparent !important; }
       .thang_top, .t2t6, .tenthang, .navi-r, .ngaytuan, .tab-btn, .viecnenlam b, .viecnentranh b,
       .cat_tinh b, .hung_tinh b, .giohoangdao { color: var(--lc-text-main) !important; }
-      .nav-btn:hover, .ngaythang:hover { background-color: var(--lc-bg-overlay-hover) !important; border-radius: 8px;}
+      .ngaythang:hover { background-color: var(--lc-bg-overlay-hover) !important; border-radius: 8px;}
       .todayduonglich:hover, .ngayamlich:hover { color: rgba(255, 255, 0, 1) !important; text-shadow: 0 8px 16px rgba(255, 200, 0, 0.5)!important; }
       .svg-cell:hover { scale: 1.9; }
       .show_dao_tet:hover, .show_mai_tet:hover { animation: lanternSwingStrong 1.2s ease-in-out infinite; }
@@ -522,10 +551,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
   function printHead(mm, yy){
     let res = "";
-    const monthName = mm+" | "+yy;
-    res += `<tr><td colspan="2" class="navi-l"><button id="prev-year" class="nav-btn">&lt;&lt;</button>  <button id="prev-month" class="nav-btn">&lt;</button></td>`;
-    res += `<td colspan="3" class="tenthang"><button id="reset-today" style="all:unset; cursor:pointer;" class="nav-btn">${monthName}</button></td>`;
-    res += `<td colspan="2" class="navi-r"><button id="next-month" class="nav-btn">&gt;</button><button id="next-year" class="nav-btn">&gt;&gt;</button></td></tr>`;
+    const monthName = mm+" ◦ "+yy;
+    res += `<tr><td colspan="2" class="navi-l"><button id="prev-year" class="nav-btn">&laquo;</button>  <button id="prev-month" class="nav-btn">&lsaquo;</button></td>`;
+    res += `<td colspan="3" class="tenthang"><button id="reset-today" class="nav-btn">${monthName}</button></td>`;
+    res += `<td colspan="2" class="navi-r"><button id="next-month" class="nav-btn">&rsaquo;</button>  <button id="next-year" class="nav-btn">&raquo;</button></td></tr>`;
     res += `<tr>`;
     for (let i=0;i<=6;i++){
       if (DAYNAMES[i]==='CN') res += '<td class="ngaytuan_cn">CN</td>';
@@ -537,7 +566,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
   }
 
   function printEmptyCell(){
-    return '<td class="ngaythang"><div class="cn">&nbsp;</div><div class="am">&nbsp;</div></td>';
+    return '<td class="ngaythang empty-cell"><div class="cell-content"></div></td>';
   }
 
   function printCell(lunarDate, solarDate, solarMonth, solarYear, today, config){
@@ -567,9 +596,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     const pOpacity = config.popup_opacity !== undefined ? config.popup_opacity : 95;
 
     return `<td class="${finalCellClass}" title="${title}" onclick="window.haShowDayPopup(${solarDate},${solarMonth},${solarYear}, '${pTheme}', ${pOpacity})">`+
+      `<div class="cell-content">`+
       `<div class="${solarClass}">${solarDate}</div>`+
       `<div class="${lunarClass}">${lunar}</div>`+
-      `</td>`;
+      `</div></td>`;
   }
 
   if (typeof window.activeLunarTab === 'undefined') {
@@ -715,13 +745,13 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     res += `</table></div>`; // Kết thúc Main View
 
     // --- 2. Overlay Tabs (Phần lướt lọt lòng lên trên) ---
-    let overlayDisplay = (window.activeLunarTab !== 'none') ? 'block' : 'none';
+    let overlayDisplay = (window.activeLunarTab !== 'none') ? 'flex' : 'none';
     res += `<div id="tab-overlay" class="tab-overlay" style="display: ${overlayDisplay};">`;
 
-    // 2A. Nội dung Lịch Tháng
+    // 2A. Nội dung Lịch Tháng (Lưới Calendar Mới)
     let calShowStyle = window.activeLunarTab === 'cal' ? 'block' : 'none';
     res += `<div id="tab-content-cal" style="display: ${calShowStyle};">`;
-    res += `<table class="thang" border="0" width="${PRINT_OPTS.tableWidth}">`;
+    res += `<table class="grid-month" border="0">`;
     res += printHead(mm, yy); 
     for (let i=0;i<6;i++){
       res += `<tr>`;
@@ -1526,10 +1556,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
           } else {
               // Mở tab mới
               window.activeLunarTab = tabName;
-              overlay.style.display = 'block'; // Hiển thị mảng overlay trượt lên
+              overlay.style.display = 'flex'; 
               
               if (tabName === 'cal') {
-                  contentCal.style.display = 'block';
+                  contentCal.style.display = 'block'; // Thay vì flex, dùng block để tránh bị kéo dãn dọc
                   contentConv.style.display = 'none';
                   btnCal.classList.add('active');
                   btnConv.classList.remove('active');
