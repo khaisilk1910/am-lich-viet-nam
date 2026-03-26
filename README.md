@@ -7,6 +7,7 @@
 - Chỉnh sửa màu sắc hiển thị của thẻ tự động hoặc tùy ý trên giao diện dễ dàng
 - Tra cứu, qui đổi ngày âm dương dễ dàng
 
+<img width="896" height="652" alt="image" src="https://github.com/user-attachments/assets/c2ce82eb-fa76-4e55-9b7f-7b609ba5dcfd" />
 
 <img width="506" height="700" alt="image" src="https://github.com/user-attachments/assets/8d418b9f-0b07-4b58-8348-f2f008c89d58" /><img width="506" height="700" alt="image" src="https://github.com/user-attachments/assets/27d45333-d0d3-4efb-8e2a-14fa234a86eb" />
 
