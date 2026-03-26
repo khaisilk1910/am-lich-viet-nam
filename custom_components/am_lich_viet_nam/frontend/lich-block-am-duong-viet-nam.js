@@ -460,9 +460,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       .grid-month .tenthang { text-align: center; vertical-align: middle; }
       .grid-month .navi-l, .grid-month .navi-r, .grid-month .tenthang { background: transparent !important; border: none !important; box-shadow: none !important; border-bottom: none !important; padding-bottom: 5px; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
       
-      .grid-month .nav-btn { font-size: clamp(14px, 4.5cqi, 18px); padding: 8px 16px; background: rgba(255,255,255,0.1) !important; border: 1px solid rgba(255,255,255,0.3) !important; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.15), inset 0 1px 1px rgba(255,255,255,0.3); transition: all 0.25s; color: var(--lc-text-main); font-weight: bold; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+      /* UPDATE BORDER RADIUS, PADDING AND FONT SIZE CHO NÚT ĐIỀU HƯỚNG */
+      .grid-month .nav-btn { font-size: clamp(12px, 3.5cqi, 16px); padding: 4px 12px; background: rgba(255,255,255,0.1) !important; border: 1px solid rgba(255,255,255,0.3) !important; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15), inset 0 1px 1px rgba(255,255,255,0.3); transition: all 0.25s; color: var(--lc-text-main); font-weight: bold; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
       .grid-month .nav-btn:hover { background: rgba(255,255,255,0.25) !important; transform: translateY(-2px); border-color: var(--lc-text-accent) !important; color: var(--lc-text-accent) !important; box-shadow: 0 8px 20px rgba(0,0,0,0.2), 0 0 12px rgba(255,255,255,0.2); }
-      .grid-month .tenthang .nav-btn { font-size: clamp(16px, 5cqi, 22px); padding: 8px 24px; border-radius: 20px; letter-spacing: 1px; }
+      .grid-month .tenthang .nav-btn { font-size: clamp(14px, 4cqi, 18px); padding: 4px 16px; border-radius: 12px; letter-spacing: 1px; }
 
       .grid-month .ngaytuan, .grid-month .ngaytuan_t7, .grid-month .ngaytuan_cn { background: transparent !important; border: none !important; box-shadow: none !important; border-bottom: 2px solid rgba(255,255,255,0.15) !important; font-size: clamp(12px, 4cqi, 16px); text-transform: uppercase; letter-spacing: 1px; padding: clamp(6px, 2cqi, 10px) 0; font-weight: 800; text-align: center; border-radius: 0; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; text-shadow: var(--lc-text-shadow-light); }
       .grid-month .ngaytuan_t7 { color: var(--lc-saturday-color); }
@@ -519,6 +520,15 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     res += `<tr><td colspan="2" class="navi-l"><button id="prev-year" class="nav-btn">&laquo;</button>  <button id="prev-month" class="nav-btn">&lsaquo;</button></td>`;
     res += `<td colspan="3" class="tenthang"><button id="reset-today" class="nav-btn">${monthName}</button></td>`;
     res += `<td colspan="2" class="navi-r"><button id="next-month" class="nav-btn">&rsaquo;</button>  <button id="next-year" class="nav-btn">&raquo;</button></td></tr>`;
+    
+    // Đã thay đổi kích thước các nút ĐI ĐẾN (Goto month/year) nhỏ gọn hơn
+    res += `<tr><td colspan="7" style="text-align: center; padding-bottom: 8px;">
+      <input id="goto-month" type="number" min="1" max="12" placeholder="Tháng" value="${mm}" style="width: clamp(40px, 10cqi, 50px); background: var(--lc-bg-overlay); color: var(--lc-text-main); border: 1px solid var(--lc-border-color); border-radius: 6px; padding: 3px; text-align: center; font-size: clamp(11px, 3cqi, 13px); outline: none;">
+      <span style="color: var(--lc-text-main); font-weight: bold; margin: 0 2px;">/</span>
+      <input id="goto-year" type="number" min="1800" max="2199" placeholder="Năm" value="${yy}" style="width: clamp(50px, 12cqi, 60px); background: var(--lc-bg-overlay); color: var(--lc-text-main); border: 1px solid var(--lc-border-color); border-radius: 6px; padding: 3px; text-align: center; font-size: clamp(11px, 3cqi, 13px); outline: none;">
+      <button id="goto-btn" class="nav-btn" style="padding: 3px 8px; font-size: clamp(11px, 3cqi, 13px); margin-left: 5px; border-radius: 6px;">ĐI ĐẾN</button>
+    </td></tr>`;
+
     res += `<tr>`;
     for (let i=0;i<=6;i++){
       if (DAYNAMES[i]==='CN') res += '<td class="ngaytuan_cn">CN</td>';
@@ -1338,6 +1348,40 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 			this.displayYear = today.getFullYear();
 		}
 
+    connectedCallback() {
+      if (!this._clickOutsideBound) {
+        this._clickOutsideBound = this._handleClickOutside.bind(this);
+      }
+      document.addEventListener('click', this._clickOutsideBound);
+    }
+
+    disconnectedCallback() {
+      if (this._clickOutsideBound) {
+        document.removeEventListener('click', this._clickOutsideBound);
+      }
+    }
+
+    _handleClickOutside(e) {
+      if (window.activeLunarTab !== 'none') {
+        if (!e.composedPath().includes(this)) {
+          window.activeLunarTab = 'none';
+          const today = new Date();
+          if (this.displayMonth !== (today.getMonth() + 1) || this.displayYear !== today.getFullYear()) {
+             this.displayMonth = today.getMonth() + 1;
+             this.displayYear = today.getFullYear();
+             this._render();
+          } else {
+             const overlay = this.card.querySelector('#tab-overlay');
+             const btnCal = this.card.querySelector('#tab-btn-cal');
+             const btnConv = this.card.querySelector('#tab-btn-conv');
+             if (overlay) overlay.style.display = 'none';
+             if (btnCal) btnCal.classList.remove('active');
+             if (btnConv) btnConv.classList.remove('active');
+          }
+        }
+      }
+    }
+
     setConfig(config){
       this.config = config || {};
       if (!this.shadowRoot){ this.attachShadow({mode:'open'}); }
@@ -1622,9 +1666,17 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       const toggleTab = (tabName) => {
           if (window.activeLunarTab === tabName) {
               window.activeLunarTab = 'none';
-              overlay.style.display = 'none';
-              btnCal.classList.remove('active');
-              btnConv.classList.remove('active');
+              const today = new Date();
+              if (this.displayMonth !== (today.getMonth() + 1) || this.displayYear !== today.getFullYear()) {
+                  this.displayMonth = today.getMonth() + 1;
+                  this.displayYear = today.getFullYear();
+                  this._render();
+                  return;
+              } else {
+                  overlay.style.display = 'none';
+                  btnCal.classList.remove('active');
+                  btnConv.classList.remove('active');
+              }
           } else {
               window.activeLunarTab = tabName;
               overlay.style.display = 'flex'; 
@@ -1645,6 +1697,19 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
       if (btnCal) btnCal.addEventListener('click', () => toggleTab('cal'));
       if (btnConv) btnConv.addEventListener('click', () => toggleTab('conv'));
+
+      const gotoBtn = this.card.querySelector('#goto-btn');
+      if (gotoBtn) {
+          gotoBtn.addEventListener('click', () => {
+              const m = parseInt(this.card.querySelector('#goto-month').value, 10);
+              const y = parseInt(this.card.querySelector('#goto-year').value, 10);
+              if (m >= 1 && m <= 12 && y >= 1800 && y <= 2199) {
+                  this.displayMonth = m;
+                  this.displayYear = y;
+                  this._render();
+              }
+          });
+      }
 
       const convBtn = this.card.querySelector('#conv-btn');
       if (convBtn) {
