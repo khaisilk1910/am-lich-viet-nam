@@ -73,6 +73,11 @@
                 <span class="label">Hiển thị sự kiện trong (ngày) tới</span>
                 <input type="number" id="so_ngay" min="1" max="365">
               </div>
+              <div class="row">
+                <span class="label" style="min-width: 120px;">Chiều cao tối đa (px)</span>
+                <input type="range" id="chieu_cao_the" min="200" max="600" step="50">
+                <span class="val-badge" id="chieu_cao_the_val"></span>
+              </div>
             </div>
           </div>
 
@@ -218,6 +223,7 @@
     }
 
     get _so_ngay() { return this._config.so_ngay !== undefined ? this._config.so_ngay : 30; }
+    get _chieu_cao_the() { return this._config.chieu_cao_the !== undefined ? this._config.chieu_cao_the : 350; }
 
     get _bg_type() { return this._config.bg_type || 'solid'; }
     get _bg_color() { return this._config.bg_color || '#000000'; }
@@ -254,6 +260,8 @@
       if (!this.querySelector('#so_ngay')) return;
 
       this.querySelector('#so_ngay').value = this._so_ngay;
+      this.querySelector('#chieu_cao_the').value = this._chieu_cao_the;
+      this.querySelector('#chieu_cao_the_val').textContent = this._chieu_cao_the + 'px';
 
       // Nền
       this.querySelector('#bg_type').value = this._bg_type;
@@ -336,6 +344,7 @@
         const newConfig = { 
             ...this._config, 
             so_ngay: parseInt(this.querySelector('#so_ngay').value, 10),
+            chieu_cao_the: parseInt(this.querySelector('#chieu_cao_the').value, 10),
 
             bg_type: this.querySelector('#bg_type').value,
             bg_color: this.querySelector('#bg_color').value,
@@ -380,13 +389,11 @@
 
       // 2. Logic cho Tính năng Thu gọn/Mở rộng (Collapse/Expand)
       this.querySelectorAll('.section-title').forEach(titleEl => {
-        // Ngăn không cho Click vào nút Checkbox làm gập luôn cả thẻ
         const inputs = titleEl.querySelectorAll('input, select, button');
         inputs.forEach(input => {
           input.addEventListener('click', (e) => e.stopPropagation());
         });
 
-        // Bắt sự kiện click để Gập/Mở
         titleEl.addEventListener('click', () => {
           const section = titleEl.closest('.section');
           section.classList.toggle('collapsed');
@@ -400,12 +407,50 @@
   // ==========================================
   class SuKienAmLichCard extends HTMLElement {
     static getConfigElement() { return document.createElement('su-kien-am-lich-editor'); }
-    static getStubConfig() { return { so_ngay: 30, bg_type: 'solid', bg_color: '#000000', bg_opacity: 30 }; }
+    static getStubConfig() { return { so_ngay: 30, chieu_cao_the: 350, bg_type: 'solid', bg_color: '#000000', bg_opacity: 30 }; }
 
     constructor() {
       super();
       this.expandedRows = new Set();
       this._lastDataString = null;
+      this._handleDocumentClick = this._handleDocumentClick.bind(this);
+    }
+
+    connectedCallback() {
+      document.addEventListener('click', this._handleDocumentClick);
+    }
+
+    disconnectedCallback() {
+      document.removeEventListener('click', this._handleDocumentClick);
+    }
+
+    _handleDocumentClick(event) {
+      if (this.expandedRows.size === 0) return; 
+      
+      const path = event.composedPath();
+      
+      if (path.includes(this)) {
+        const isInsideRow = path.some(el => el.classList && (el.classList.contains('event-row') || el.classList.contains('detail-row')));
+        if (!isInsideRow) {
+          this._closeAll();
+        }
+      } else {
+        this._closeAll();
+      }
+    }
+
+    _closeAll() {
+      if (!this.card) return;
+      this.expandedRows.forEach(expandedId => {
+        const detail = this.card.querySelector(`[id="detail-${expandedId}"]`);
+        const rowElement = this.card.querySelector(`.event-row[data-id="${expandedId}"]`);
+        if (detail) detail.style.display = 'none';
+        if (rowElement) {
+          const icon = rowElement.querySelector('.toggle-icon');
+          if (icon) icon.style.transform = 'rotate(0deg)';
+        }
+      });
+      this.expandedRows.clear();
     }
 
     setConfig(config) {
@@ -529,7 +574,8 @@
         mau_tieu_de_chi_tiet: '#adb5bd', 
         mau_chi_tiet: '#e9ecef',
         mau_nen_chi_tiet: '#000000',
-        opacity_nen_chi_tiet: 40
+        opacity_nen_chi_tiet: 40,
+        chieu_cao_the: 350
       }, this.config);
 
       // ==========================================
@@ -662,14 +708,23 @@
           .card-wrapper {
             container-type: inline-size;
             width: 100%;
-            display: block;
+            display: flex;
+            flex-direction: column;
+            max-height: ${cfg.chieu_cao_the}px; /* Áp dụng giới hạn cho tổng toàn bộ thẻ */
           }
-          .scroll-area { max-height: 350px; overflow-y: auto; overflow-x: hidden; padding: 0 10px 10px 10px; }
+          .scroll-area { 
+            flex: 1; 
+            min-height: 0; /* Quan trọng để flexbox cuộn được đúng */
+            overflow-y: auto; 
+            overflow-x: hidden; 
+            padding: 0 10px 10px 10px; 
+            scroll-behavior: smooth; /* Thêm tính năng cuộn mượt cho container */
+          }
           .scroll-area::-webkit-scrollbar { width: 4px; }
           .scroll-area::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
           .scroll-area::-webkit-scrollbar-thumb { background: rgba(255, 165, 0, 0.6); border-radius: 4px; }
           
-          .header-title { padding: 16px 16px 8px 16px; font-weight: bold; font-size: clamp(16px, 6cqi, 26px); color: ${cfg.mau_tieu_de_chinh}; text-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+          .header-title { padding: 8px 16px 8px 16px; font-weight: bold; font-size: clamp(16px, 6cqi, 26px); color: ${cfg.mau_tieu_de_chinh}; text-shadow: 0 1px 3px rgba(0,0,0,0.3); }
           
           .flip-emoji { display: inline-block; animation: flip-hourglass 6s ease-in-out infinite; }
           @keyframes flip-hourglass { 0% { transform: rotate(0deg); } 12.5%, 50% { transform: rotate(180deg); } 62.5%, 100% { transform: rotate(0deg); } }
@@ -709,11 +764,6 @@
       } else if (events.length === 0) {
         html += `<div style="padding: 15px; color: ${cfg.mau_tieu_de_chinh}; font-size: clamp(14px, 4cqi, 18px);">Không có sự kiện nào trong <span style="color:${cfg.mau_thu_ngayam_songay}; font-weight:bold;">${soNgay}</span> ngày tới</div>`;
       } else {
-        const attrLabels = {
-          ngay_am_lich_su_kien: 'Ngày Âm', ngay_duong_lich_su_kien: 'Ngày Dương', thu_su_kien: 'Thứ',
-          nam_can_chi_su_kien: 'Năm Can Chi', so_nam: 'Số Năm kỷ niệm', so_tuoi: 'Số Tuổi', chi_tiet: 'Chi Tiết'
-        };
-
         html += '<table border="0" cellpadding="2" cellspacing="4" width="100%" style="margin-top: -5px;">';
         events.forEach(ev => {
           let mau_td = ev.days <= 2 ? "red" : ev.days <= 7 ? "orange" : ev.days <= 15 ? "yellow" : "blue";
@@ -722,6 +772,25 @@
           if (ten_su_kien.includes("sinh nhật")) icon = "🎂";
           else if (ten_su_kien.includes("giỗ")) icon = "🕯️";
           else if (ten_su_kien.includes("cưới")) icon = "💍";
+
+          // --- LOGIC ĐỔI TÊN NHÃN ĐỘNG ---
+          const eventLabels = {
+            ngay_am_lich_su_kien: 'Ngày Âm', 
+            ngay_duong_lich_su_kien: 'Ngày Dương', 
+            thu_su_kien: 'Thứ',
+            nam_can_chi_su_kien: 'Năm Can Chi', 
+            so_nam: 'Số Năm kỷ niệm', 
+            so_tuoi: 'Số Tuổi', 
+            chi_tiet: 'Chi Tiết'
+          };
+
+          if (ten_su_kien.includes("giỗ")) {
+            eventLabels.so_tuoi = 'Hưởng dương';
+            eventLabels.so_nam = 'Số năm đã mất';
+          } else if (ten_su_kien.includes("sinh nhật")) {
+            eventLabels.so_nam = 'Tuổi';
+          }
+          // ---------------------------------
 
           const isExp = this.expandedRows.has(ev.entity_id);
           html += `
@@ -751,7 +820,7 @@
             <tr class="detail-row" id="detail-${ev.entity_id}" style="display: ${isExp ? 'table-row' : 'none'};">
               <td colspan="3" style="border-bottom: solid 1px rgba(255,255,255,0.2); padding: 0 5px 10px 5px;"><div class="detail-content">
           `;
-          for (const [key, label] of Object.entries(attrLabels)) {
+          for (const [key, label] of Object.entries(eventLabels)) {
             const val = ev.attrs[key];
             if (val !== undefined && val !== null && String(val).trim() !== '') {
               if (key === 'chi_tiet') {
@@ -770,20 +839,33 @@
       
       this.card.innerHTML = html;
 
+      // Cập nhật sự kiện Click cho từng dòng
       this.card.querySelectorAll('.event-row').forEach(row => {
         row.addEventListener('click', () => {
           const id = row.getAttribute('data-id');
-          const detail = this.card.querySelector(`[id="detail-${id}"]`);
-          const icon = row.querySelector('.toggle-icon');
+          const isCurrentlyExpanded = this.expandedRows.has(id);
           
-          if (this.expandedRows.has(id)) {
-            this.expandedRows.delete(id);
-            if(detail) detail.style.display = 'none';
-            if(icon) icon.style.transform = 'rotate(0deg)';
-          } else {
+          this._closeAll();
+
+          if (!isCurrentlyExpanded) {
             this.expandedRows.add(id);
+            const detail = this.card.querySelector(`[id="detail-${id}"]`);
+            const icon = row.querySelector('.toggle-icon');
+            
             if(detail) detail.style.display = 'table-row';
             if(icon) icon.style.transform = 'rotate(180deg)';
+
+            // THÊM TÍNH NĂNG TỰ ĐỘNG CUỘN LÊN
+            setTimeout(() => {
+              const container = this.card.querySelector('#event-container');
+              if (container && row) {
+                // Cuộn mượt mà đưa dòng được chọn lên đầu container
+                container.scrollTo({
+                  top: row.offsetTop,
+                  behavior: 'smooth'
+                });
+              }
+            }, 50); // Độ trễ 50ms đợi CSS hiển thị khối chi tiết
           }
         });
       });
