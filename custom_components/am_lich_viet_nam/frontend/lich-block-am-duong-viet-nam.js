@@ -293,8 +293,8 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 				hacThan = HAC_THAN_MAP.get(canChi) || "Không rõ";
 		}
 		
-		let tot = `Hỷ Thần: <b style="color: var(--color-good);">${hyThan}</b> - Tài Thần: <b style="color: var(--color-good);">${taiThan}</b>`;
-		let xau = `Tránh: <b style="color: var(--color-warn);">${hacThan}</b>`;
+		let tot = `Hỷ Thần: <b style="color: var(--color-good, #4caf50);">${hyThan}</b> - Tài Thần: <b style="color: var(--color-good, #4caf50);">${taiThan}</b>`;
+		let xau = `Tránh: <b style="color: var(--color-warn, #f44336);">${hacThan}</b>`;
 		return `${tot} | ${xau}`;
 	}
 
@@ -312,7 +312,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     const jd_ref = 2451545;
     const mansion_ref_index = 16;
     const day_diff = lunarDate.jd - jd_ref;
-    const current_mansion_index = (mansion_ref_index + day_diff) % 28;
+    
+    // FIX: Phép toán Modulo phải trả về giá trị dương khi day_diff là số âm (VD: năm < 2000)
+    const current_mansion_index = ((mansion_ref_index + day_diff) % 28 + 28) % 28;
+    
     const saoName = saoNames[current_mansion_index];
     const saoInfo = NHI_THAP_BAT_TU[saoName];
 
@@ -1736,6 +1739,73 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
                   return;
               }
 
+              // ---- HÀM TẠO HTML CHI TIẾT DỰA TRÊN NGÀY DƯƠNG LỊCH ----
+              const buildDetailHtml = (sD, sM, sY, jd) => {
+                  const lunar = getLunarDate(sD, sM, sY);
+                  const tietKhiStr = TIETKHI[getSunLongitude(jd + 1, 7.0)];
+                  const gioHD = getGioHoangDao(jd);
+                  const gioHacDao = getGioHacDao(jd);
+                  const huongXH = getHuongXuatHanh(jd);
+                  const thanSat = getThanSat(lunar);
+
+                  // Phân tách object Trực 
+                  let trucHtml = "";
+                  if (thanSat.truc.info) {
+                      let info = thanSat.truc.info;
+                      if (info.tot) trucHtml += `<div style="margin-bottom:6px;">✅ <b style="color:var(--color-good, #4caf50);">Tốt:</b> ${info.tot}</div>`;
+                      if (info.xau) trucHtml += `<div style="margin-bottom:6px;">❌ <b style="color:var(--color-warn, #f44336);">Xấu:</b> ${info.xau}</div>`;
+                  } else {
+                      trucHtml = "Không có thông tin";
+                  }
+
+                  // Phân tách object Sao (Nhị Thập Bát Tú)
+                  let saoHtml = "";
+                  if (thanSat.sao.info) {
+                      let info = thanSat.sao.info;
+                      if (info.tieuDe) saoHtml += `<div style="margin-bottom:8px; font-weight:bold; color:var(--lc-text-accent);">${info.tieuDe}</div>`;
+                      if (info.nenLam) saoHtml += `<div style="margin-bottom:6px;">👍 <b style="color:var(--lc-text-accent);">Nên làm:</b> ${info.nenLam}</div>`;
+                      if (info.kiengCu) saoHtml += `<div style="margin-bottom:6px;">👎 <b style="color:var(--lc-text-accent);">Kiêng cữ:</b> ${info.kiengCu}</div>`;
+                      if (info.ngoaiLe) saoHtml += `<div style="margin-bottom:6px;">⚠️ <b style="color:var(--lc-text-accent);">Ngoại lệ:</b> ${info.ngoaiLe}</div>`;
+                      if (info.baiTho) {
+                          saoHtml += `<div style="margin-top:12px; font-style:italic; text-align:center; opacity:0.9; color:var(--lc-text-main); font-family:serif; line-height:1.6;">${info.baiTho.replace(/\n/g, '<br>')}</div>`;
+                      }
+                  } else {
+                      saoHtml = "Không có thông tin";
+                  }
+
+                  return `
+                  <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--lc-border-color); color: var(--lc-text-main);">
+                      <div style="text-align: center; color: var(--lc-text-accent); font-weight: bold; margin-bottom: 15px; font-size: clamp(14px, 4.5cqi, 18px); text-transform: uppercase; text-shadow: var(--lc-text-shadow-light);">Thông tin chi tiết</div>
+                      
+                      <div style="display: flex; flex-direction: column; gap: 10px; font-size: clamp(11px, 3.8cqi, 14px);">
+                          
+                          <div style="background: var(--lc-bg-overlay); padding: 12px; border-radius: 8px; border: 1px solid var(--lc-border-color); box-shadow: var(--lc-element-shadow);">
+                              <div style="color: var(--lc-text-accent); font-weight: bold; margin-bottom: 8px; font-size: 1.1em; border-bottom: 1px dashed var(--lc-border-color); padding-bottom: 6px;">🧭 Hướng & Giờ</div>
+                              <div style="margin-bottom: 6px;"><b>Giờ Hoàng Đạo (Tốt):</b><br> ${gioHD}</div>
+                              <div style="margin-bottom: 6px;"><b>Giờ Hắc Đạo (Xấu):</b><br> ${gioHacDao}</div>
+                              <div style="margin-bottom: 6px;"><b>Xuất hành:</b><br> ${huongXH}</div>
+                              <div style="margin-top: 6px;"><b>Tiết khí:</b> ${tietKhiStr}</div>
+                          </div>
+
+                          <div style="background: var(--lc-bg-overlay); padding: 12px; border-radius: 8px; border: 1px solid var(--lc-border-color); box-shadow: var(--lc-element-shadow);">
+                              <div style="color: var(--lc-text-accent); font-weight: bold; margin-bottom: 8px; font-size: 1.1em; border-bottom: 1px dashed var(--lc-border-color); padding-bottom: 6px;">📌 Trực ${thanSat.truc.name} ${thanSat.truc.emoji}</div>
+                              <div style="line-height: 1.5;">${trucHtml}</div>
+                          </div>
+
+                          <div style="background: var(--lc-bg-overlay); padding: 12px; border-radius: 8px; border: 1px solid var(--lc-border-color); box-shadow: var(--lc-element-shadow);">
+                              <div style="color: var(--lc-text-accent); font-weight: bold; margin-bottom: 8px; font-size: 1.1em; border-bottom: 1px dashed var(--lc-border-color); padding-bottom: 6px;">🎵 Ngũ hành Nạp âm</div>
+                              <div style="line-height: 1.5;">${thanSat.napAm}</div>
+                          </div>
+
+                          <div style="background: var(--lc-bg-overlay); padding: 12px; border-radius: 8px; border: 1px solid var(--lc-border-color); box-shadow: var(--lc-element-shadow);">
+                              <div style="color: var(--lc-text-accent); font-weight: bold; margin-bottom: 8px; font-size: 1.1em; border-bottom: 1px dashed var(--lc-border-color); padding-bottom: 6px;">✨ Nhị Thập Bát Tú: Sao ${thanSat.sao.name} ${thanSat.sao.emoji}</div>
+                              <div style="line-height: 1.5;">${saoHtml}</div>
+                          </div>
+
+                      </div>
+                  </div>`;
+              };
+
               try {
                   let outHtml = "";
                   if (type === 'solar_to_lunar') {
@@ -1763,6 +1833,9 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
                       outHtml += `<div style="margin-bottom: 8px;">🐲 Năm Can Chi: <b style="color: var(--lc-text-main); font-size: 1.1em;">${canChi}</b></div>`;
                       outHtml += `<div style="margin-top: 10px; font-style: italic; opacity: 0.8; font-size: 0.9em;">ℹ️ ${leapMsg}</div>`;
 
+                      // -- THÊM PHẦN CHI TIẾT ---
+                      outHtml += buildDetailHtml(d, m, y, jd);
+
                   } 
                   else {
                       let ly = getYearInfo(y);
@@ -1788,7 +1861,8 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
                                   let key = m_info.leap === 1 ? "leap" : "regular";
                                   results[key] = {
                                       ngay: sDate[0], thang: sDate[1], nam: sDate[2], 
-                                      thu: TUAN[(target_jd + 1) % 7]
+                                      thu: TUAN[(target_jd + 1) % 7],
+                                      jd: target_jd
                                   };
                               }
                           }
@@ -1803,6 +1877,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
                       const canChi = getYearCanChi(y);
                       let leapMsg = leapMonth > 0 ? `Năm âm lịch ${canChi} (${y}) có nhuận tháng ${leapMonth}.` : `Năm âm lịch ${canChi} (${y}) không có tháng nhuận.`;
                       
+                      // Hiển thị thông tin chính cho kết quả đầu tiên tìm thấy
                       let defRes = results["regular"] || results["leap"];
                       
                       outHtml += `<div style="margin-bottom: 8px;">☀️ Ngày Dương Lịch: <b style="color: var(--lc-text-main); font-size: 1.1em;">${defRes.ngay}/${defRes.thang}/${defRes.nam} (${defRes.thu})</b></div>`;
@@ -1815,8 +1890,12 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
                           outHtml += `<div style="color: var(--lc-text-accent); margin-bottom: 5px; font-size:0.9em;">📌 Lưu ý: Vì tháng tra cứu là tháng Nhuận, hệ thống trả về 2 kết quả Dương Lịch:</div>`;
                           if(results["regular"]) outHtml += `<div style="opacity: 0.9; font-size: 0.9em; margin-bottom: 4px;">🔹 Nếu là tháng âm thường: <b>${results["regular"].ngay}/${results["regular"].thang}/${results["regular"].nam} (${results["regular"].thu})</b></div>`;
                           if(results["leap"]) outHtml += `<div style="opacity: 0.9; font-size: 0.9em;">🔹 Nếu là tháng âm nhuận: <b>${results["leap"].ngay}/${results["leap"].thang}/${results["leap"].nam} (${results["leap"].thu})</b></div>`;
+                          outHtml += `<div style="margin-top: 5px; opacity: 0.75; font-size: 0.85em;">(Chi tiết hiển thị bên dưới áp dụng cho kết quả Dương lịch: ${defRes.ngay}/${defRes.thang}/${defRes.nam})</div>`;
                           outHtml += `</div>`;
                       }
+
+                      // -- THÊM PHẦN CHI TIẾT ---
+                      outHtml += buildDetailHtml(defRes.ngay, defRes.thang, defRes.nam, defRes.jd);
                   }
                   resDiv.innerHTML = outHtml;
                   resDiv.style.display = 'block';
