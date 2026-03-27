@@ -5,7 +5,9 @@ from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, Supp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import config_validation as cv
 from homeassistant.components.http import StaticPathConfig
-from homeassistant.components.frontend import add_extra_js_url
+
+# Import thêm thư viện quản lý Resource của Lovelace
+from homeassistant.components.lovelace.resources import ResourceStorageCollection
 
 from .const import DOMAIN
 from .amlich_core import (
@@ -18,6 +20,12 @@ from .amlich_core import (
 # Khai báo đường dẫn ảo trên web và thư mục thực tế chứa UI
 UI_URL_BASE = "/am_lich_viet_nam_ui"
 UI_DIR_PATH = "frontend"
+
+VERSION = "11.0" # Khai báo version chung để dễ quản lý cache
+CARDS = [
+    f"{UI_URL_BASE}/lich-block-am-duong-viet-nam.js",
+    f"{UI_URL_BASE}/su-kien-am-lich-card.js"
+]
 
 SERVICE_CONVERT_SCHEMA = vol.Schema({
     vol.Required("conversion_type"): vol.In(["solar_to_lunar", "lunar_to_solar"]),
@@ -38,9 +46,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         )
     ])
 
-    # 2. Tự động thêm file JS vào Lovelace (Thêm ?v=1.0 để lừa trình duyệt tải file mới, chống cache)
-    add_extra_js_url(hass, f"{UI_URL_BASE}/lich-block-am-duong-viet-nam.js?v=11.0") # <--- Thẻ hiện lịch block
-    add_extra_js_url(hass, f"{UI_URL_BASE}/su-kien-am-lich-card.js?v=11.0") # <--- Thẻ hiện danh sách đếm ngược sự kiện
+    # LƯU Ý: Đã xóa add_extra_js_url ở đây để chuyển sang đăng ký chuẩn Lovelace Resource bên dưới
+
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -48,6 +55,43 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
     entry.async_on_unload(entry.add_update_listener(update_listener))
     
+    # ==========================================
+    # HÀM TỰ ĐỘNG ĐĂNG KÝ LOVELACE RESOURCE
+    # ==========================================
+    async def register_lovelace_resources():
+        # Đợi một chút để đảm bảo Lovelace đã được load
+        if "lovelace" not in hass.data:
+            return
+
+        lovelace = hass.data["lovelace"]
+        resources = lovelace.get("resources")
+
+        # Chỉ hỗ trợ thêm tự động nếu giao diện đang ở chế độ Storage (UI Mode)
+        if not isinstance(resources, ResourceStorageCollection):
+            return
+
+        # Lấy danh sách các URL đã tồn tại để tránh thêm trùng lặp
+        existing_items = resources.async_items()
+        
+        for card_url in CARDS:
+            url_with_version = f"{card_url}?v={VERSION}"
+            url_exists = any(item.get("url", "").startswith(card_url) for item in existing_items)
+
+            if not url_exists:
+                await resources.async_create_item({
+                    "res_type": "module",
+                    "url": url_with_version
+                })
+            else:
+                # Tùy chọn: Tự động cập nhật version nếu đã tồn tại (Giúp người dùng không cần xóa cache tay)
+                for item in existing_items:
+                    if item.get("url", "").startswith(card_url) and item.get("url") != url_with_version:
+                        await resources.async_update_item(item["id"], {"url": url_with_version})
+
+    # Chạy hàm đăng ký tài nguyên một cách không đồng bộ
+    hass.async_create_task(register_lovelace_resources())
+    # ==========================================
+
     async def handle_convert_date(call: ServiceCall) -> ServiceResponse:
         conv_type = call.data["conversion_type"]
         d = call.data["day"]
@@ -174,6 +218,21 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entries = hass.config_entries.async_entries(DOMAIN)
         if len([e for e in entries if e.state.name == "LOADED"]) == 1:
             hass.services.async_remove(DOMAIN, "convert_date")
+            
+            # ==========================================
+            # HÀM XÓA LOVELACE RESOURCE KHI GỠ TÍCH HỢP
+            # ==========================================
+            if "lovelace" in hass.data:
+                lovelace = hass.data["lovelace"]
+                resources = lovelace.get("resources")
+                if isinstance(resources, ResourceStorageCollection):
+                    existing_items = list(resources.async_items())
+                    for card_url in CARDS:
+                        for item in existing_items:
+                            if item.get("url", "").startswith(card_url):
+                                await resources.async_delete_item(item["id"])
+            # ==========================================
+            
     return unload_ok
 
 async def update_listener(hass: HomeAssistant, entry: ConfigEntry):
