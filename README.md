@@ -22,9 +22,7 @@
   
    - Sau khi thêm xong tích hợp vào tích hợp nhấn `Add Entry` chọn `Sự kiện Âm lịch (Đếm ngược ngày lễ, giỗ)` điền tên sự kiện âm lịch và các thông tin khác nếu có
      
-   <img width="685" height="834" alt="image" src="https://github.com/user-attachments/assets/59166708-8411-4725-b3b0-a39b268d7fb4" />
-
-
+   <img width="680" height="856" alt="image" src="https://github.com/user-attachments/assets/e60fe52f-02e1-4dcc-be00-67de58c6c5e0" />
 
 
 
