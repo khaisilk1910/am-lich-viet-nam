@@ -1,4 +1,5 @@
 """The Vietnamese Lunar Calendar integration."""
+import logging
 import voluptuous as vol
 import datetime
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
@@ -6,6 +7,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import config_validation as cv
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.lovelace.resources import ResourceStorageCollection
 
 from .const import DOMAIN
 from .amlich_core import (
@@ -14,6 +16,8 @@ from .amlich_core import (
     get_gio_hac_dao, get_huong_xuat_hanh, get_thap_nhi_truc, get_nhi_thap_bat_tu,
     NGAY_THONG_TIN
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 # Khai báo đường dẫn ảo trên web và thư mục thực tế chứa UI
 UI_URL_BASE = "/am_lich_viet_nam_ui"
@@ -25,6 +29,60 @@ SERVICE_CONVERT_SCHEMA = vol.Schema({
     vol.Required("month"): cv.positive_int,
     vol.Required("year"): cv.positive_int,
 })
+
+async def init_resource(hass: HomeAssistant, url: str, ver: str) -> bool:
+    """Hàm tự động thêm thẻ vào Lovelace Resources (Đã tối ưu logic bắt chuỗi)."""
+    url_with_version = f"{url}?v={ver}"
+
+    # 1. Nếu Lovelace chưa sẵn sàng -> dùng fallback (chỉ nạp tạm thời vào bộ nhớ)
+    if "lovelace" not in hass.data:
+        _LOGGER.debug("Lovelace chưa được tải, sử dụng add_extra_js_url fallback.")
+        add_extra_js_url(hass, url_with_version)
+        return False
+
+    lovelace = hass.data.get("lovelace")
+    resources: ResourceStorageCollection = (
+        lovelace.resources if hasattr(lovelace, "resources") else lovelace.get("resources")
+    )
+
+    if not resources:
+        return False
+
+    # Ép tải dữ liệu storage của Lovelace
+    if hasattr(resources, "async_get_info"):
+        await resources.async_get_info()
+
+    for item in resources.async_items():
+        item_url = item.get("url", "")
+        
+        # 2. LOGIC SO SÁNH CHÍNH XÁC: Phải khớp hoàn toàn hoặc chỉ khác tham số ?v=...
+        if item_url == url or item_url.startswith(f"{url}?"):
+            
+            # Đã tồn tại và đúng phiên bản -> Không cần làm gì
+            if item_url.endswith(f"v={ver}"):
+                return False
+
+            _LOGGER.debug(f"Cập nhật Lovelace resource thành: {url_with_version}")
+
+            if isinstance(resources, ResourceStorageCollection):
+                await resources.async_update_item(
+                    item["id"], {"res_type": "module", "url": url_with_version}
+                )
+            else:
+                item["url"] = url_with_version
+
+            return True
+
+    # 3. Thêm mới nếu chưa tồn tại
+    if isinstance(resources, ResourceStorageCollection):
+        _LOGGER.debug(f"Thêm mới Lovelace resource: {url_with_version}")
+        await resources.async_create_item({"res_type": "module", "url": url_with_version})
+    else:
+        _LOGGER.debug(f"Thêm extra JS module (chế độ YAML): {url_with_version}")
+        add_extra_js_url(hass, url_with_version)
+
+    return True
+
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Được gọi khi Home Assistant khởi động để thiết lập các thành phần chung (Giao diện)."""
@@ -38,13 +96,16 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         )
     ])
 
-    # 2. Tự động thêm file JS vào Lovelace (Thêm ?v=1.0 để lừa trình duyệt tải file mới, chống cache)
-    #add_extra_js_url(hass, f"{UI_URL_BASE}/lich-block-am-duong-viet-nam.js?v=11.0") # <--- Thẻ hiện lịch block
-    #add_extra_js_url(hass, f"{UI_URL_BASE}/su-kien-am-lich-card.js?v=11.0") # <--- Thẻ hiện danh sách đếm ngược sự kiện
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Âm lịch Việt Nam from a config entry."""
+    
+    # 2. Tự động thêm file JS vào Lovelace ở bước này
+    version = "11.0"
+    await init_resource(hass, f"{UI_URL_BASE}/lich-block-am-duong-viet-nam.js", version)
+    await init_resource(hass, f"{UI_URL_BASE}/su-kien-am-lich-card.js", version)
+
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
     entry.async_on_unload(entry.add_update_listener(update_listener))
     
