@@ -1,4 +1,6 @@
 """The Vietnamese Lunar Calendar integration."""
+import os
+import time
 import logging
 import voluptuous as vol
 import datetime
@@ -31,10 +33,9 @@ SERVICE_CONVERT_SCHEMA = vol.Schema({
 })
 
 async def init_resource(hass: HomeAssistant, url: str, ver: str) -> bool:
-    """Hàm tự động thêm thẻ vào Lovelace Resources (Đã tối ưu logic bắt chuỗi)."""
-    url_with_version = f"{url}?v={ver}"
+    """Hàm tự động thêm thẻ vào Lovelace Resources với định dạng hacstag."""
+    url_with_version = f"{url}?hacstag={ver}"
 
-    # 1. Nếu Lovelace chưa sẵn sàng -> dùng fallback (chỉ nạp tạm thời vào bộ nhớ)
     if "lovelace" not in hass.data:
         _LOGGER.debug("Lovelace chưa được tải, sử dụng add_extra_js_url fallback.")
         add_extra_js_url(hass, url_with_version)
@@ -48,18 +49,14 @@ async def init_resource(hass: HomeAssistant, url: str, ver: str) -> bool:
     if not resources:
         return False
 
-    # Ép tải dữ liệu storage của Lovelace
     if hasattr(resources, "async_get_info"):
         await resources.async_get_info()
 
     for item in resources.async_items():
         item_url = item.get("url", "")
         
-        # 2. LOGIC SO SÁNH CHÍNH XÁC: Phải khớp hoàn toàn hoặc chỉ khác tham số ?v=...
         if item_url == url or item_url.startswith(f"{url}?"):
-            
-            # Đã tồn tại và đúng phiên bản -> Không cần làm gì
-            if item_url.endswith(f"v={ver}"):
+            if item_url.endswith(f"hacstag={ver}"):
                 return False
 
             _LOGGER.debug(f"Cập nhật Lovelace resource thành: {url_with_version}")
@@ -73,7 +70,6 @@ async def init_resource(hass: HomeAssistant, url: str, ver: str) -> bool:
 
             return True
 
-    # 3. Thêm mới nếu chưa tồn tại
     if isinstance(resources, ResourceStorageCollection):
         _LOGGER.debug(f"Thêm mới Lovelace resource: {url_with_version}")
         await resources.async_create_item({"res_type": "module", "url": url_with_version})
@@ -87,7 +83,6 @@ async def init_resource(hass: HomeAssistant, url: str, ver: str) -> bool:
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Được gọi khi Home Assistant khởi động để thiết lập các thành phần chung (Giao diện)."""
     
-    # 1. Đăng ký đường dẫn tĩnh (Chuẩn Async không làm nghẽn HASS)
     await hass.http.async_register_static_paths([
         StaticPathConfig(
             UI_URL_BASE,
@@ -101,10 +96,27 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Âm lịch Việt Nam from a config entry."""
     
-    # 2. Tự động thêm file JS vào Lovelace ở bước này
-    version = "11.0"
-    await init_resource(hass, f"{UI_URL_BASE}/lich-block-am-duong-viet-nam.js", version)
-    await init_resource(hass, f"{UI_URL_BASE}/su-kien-am-lich-card.js", version)
+    # ---------------------------------------------------------
+    # AUTO CACHE BUSTING BẰNG THỜI GIAN CHỈNH SỬA FILE (MTIME)
+    # ---------------------------------------------------------
+    def get_file_version(file_name):
+        """Hàm đọc mốc thời gian file được sửa đổi cuối cùng."""
+        try:
+            file_path = hass.config.path(f"custom_components/{DOMAIN}/{UI_DIR_PATH}/{file_name}")
+            # Lấy thời gian sửa file (ví dụ: 1712154320)
+            return str(int(os.path.getmtime(file_path)))
+        except Exception:
+            # Nếu không tìm thấy file, dự phòng bằng thời gian hiện tại
+            return str(int(time.time()))
+
+    # Lấy version riêng biệt cho từng file để tối ưu nhất
+    ver_lich_block = await hass.async_add_executor_job(get_file_version, "lich-block-am-duong-viet-nam.js")
+    ver_su_kien = await hass.async_add_executor_job(get_file_version, "su-kien-am-lich-card.js")
+
+    # Đăng ký URL với mã version vừa tự động tạo
+    await init_resource(hass, f"{UI_URL_BASE}/lich-block-am-duong-viet-nam.js", ver_lich_block)
+    await init_resource(hass, f"{UI_URL_BASE}/su-kien-am-lich-card.js", ver_su_kien)
+    # ---------------------------------------------------------
 
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
     entry.async_on_unload(entry.add_update_listener(update_listener))
