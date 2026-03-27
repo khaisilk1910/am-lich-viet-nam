@@ -30,7 +30,8 @@
 
 
 ## Automation để thông báo khi 30 ngày Sau sẽ có sự kiện ( các bạn có thể tùy biến theo khả năng dựa vào các sensor)
-<img width="648" height="643" alt="image" src="https://github.com/user-attachments/assets/643d2a26-a3e0-4c0c-b2a9-af555f71a930" />
+<img width="748" height="576" alt="image" src="https://github.com/user-attachments/assets/1b58c37b-aba6-42e6-b2b1-66172606069c" />
+
 
 
 ```
