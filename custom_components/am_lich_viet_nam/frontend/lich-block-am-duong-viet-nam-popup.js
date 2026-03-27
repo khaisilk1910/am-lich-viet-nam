@@ -1,6 +1,7 @@
 // ==========================================
 // LUNAR CALENDAR POPUP MODULE
-// File này chỉ chứa giao diện và logic của Popup
+// File này chứa giao diện và logic của Popup
+// Đã sửa lỗi giữ vị trí cuộn (scroll position)
 // ==========================================
 
 export function injectPopupDOM() {
@@ -27,7 +28,7 @@ export function injectPopupDOM() {
             .ha-popup { position: fixed !important; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.5); z-index: 99999 !important; display: none; justify-content: center; align-items: flex-end; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
             .ha-popup.show { display: flex !important; }
             
-            .ha-popup-box { background: rgba(var(--popup-bg-rgb), var(--popup-opacity)) !important; color: var(--popup-text) !important; width: 100%; max-width: 500px; max-height: 85vh; border-radius: 24px 24px 0 0; padding: 24px; overflow-y: auto; animation: slideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); margin-bottom: 0; border-top: 1px solid rgba(var(--popup-text-rgb), 0.1); box-shadow: 0 -10px 40px rgba(0,0,0,0.5); }
+            .ha-popup-box { background: rgba(var(--popup-bg-rgb), var(--popup-opacity)) !important; color: var(--popup-text) !important; width: 100%; max-width: 500px; max-height: 85vh; border-radius: 24px 24px 0 0; padding: 24px; overflow-y: auto; animation: slideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); margin-bottom: 0; border-top: 1px solid rgba(var(--popup-text-rgb), 0.1); box-shadow: 0 -10px 40px rgba(0,0,0,0.5); scroll-behavior: smooth; }
             @media (min-width: 600px) { .ha-popup { align-items: center; } .ha-popup-box { border-radius: 24px; margin-bottom: auto; width: 420px; border: 1px solid rgba(var(--popup-text-rgb), 0.1); } }
             
             .ha-popup-header { display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 1.2em; margin-bottom: 20px; border-bottom: 1px solid rgba(var(--popup-text-rgb), 0.1); padding-bottom: 15px; }
@@ -79,13 +80,17 @@ export function initPopupCore(helpers) {
         return [dd, mm, yy, 0];
     }
 
+    // Hàm đóng Popup và reset vị trí cuộn
     window.haClosePopup = function() {
         const popup = document.getElementById('ha-lich-popup');
+        const popupBox = document.querySelector('.ha-popup-box');
         if (popup) popup.classList.remove('show');
+        if (popupBox) popupBox.scrollTop = 0; 
     };
 
     window.haShowDayPopup = function(dd, mm, yy, theme = 'default', opacity = 95) {
         const popup = document.getElementById('ha-lich-popup');
+        const popupBox = document.querySelector('.ha-popup-box');
         if (!popup) return;
 
         try {
@@ -285,6 +290,8 @@ export function initPopupCore(helpers) {
             if(titleEl) titleEl.innerText = `Chi tiết`;
             if(contentEl) contentEl.innerHTML = res;
 
+            // Reset cuộn lên đầu trước khi hiển thị
+            if (popupBox) popupBox.scrollTop = 0; 
             popup.classList.add('show');
 
         } catch(e) {
