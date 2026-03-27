@@ -530,6 +530,7 @@
     updateData() {
       if (!this._hass || !this.config) return;
 
+      // ƯU TIÊN LẤY SỐ NGÀY TỪ THANH TRƯỢT GIAO DIỆN (NẾU CÓ), CÒN KHÔNG LẤY TỪ CONFIG
       const configSoNgay = this.config.so_ngay !== undefined ? this.config.so_ngay : 30;
       const soNgay = this._localSoNgay !== null ? this._localSoNgay : configSoNgay;
 
@@ -547,6 +548,7 @@
         }
 
         const daysLeft = parseInt(stateObj.state);
+        // Lọc bằng soNgay đã được lấy ở trên
         if (isNaN(daysLeft) || daysLeft < 0 || daysLeft > soNgay) continue;
 
         try {
@@ -567,6 +569,7 @@
 
       events.sort((a, b) => a.days - b.days);
 
+      // Thêm biến _localSoNgay vào Hash để check nếu kéo thanh trượt thì phải render lại
       const dataHash = JSON.stringify(events.map(e => `${e.entity_id}_${e.days}`)) + JSON.stringify(this.config) + hasIntegrationData + this._localSoNgay;
       if (this._lastDataString === dataHash) return;
       this._lastDataString = dataHash;
@@ -725,11 +728,11 @@
             max-height: ${cfg.chieu_cao_the}px; 
           }
           
-          /* CSS CHO KHỐI TIÊU ĐỀ VÀ THANH TRƯỢT HIỆN ĐẠI */
+          /* CSS CHO KHỐI TIÊU ĐỀ VÀ THANH TRƯỢT */
           .header-container { 
             display: flex; 
             flex-direction: column; 
-            padding: 14px 16px 12px 16px; 
+            padding: 12px 16px 8px 16px; 
             border-bottom: 1px solid rgba(255,255,255,0.05); 
             margin-bottom: 5px; 
           }
@@ -738,50 +741,31 @@
             font-size: clamp(16px, 6cqi, 26px); 
             color: ${cfg.mau_tieu_de_chinh}; 
             text-shadow: 0 1px 3px rgba(0,0,0,0.3); 
-            margin-bottom: 14px; 
-            display: flex;
-            align-items: center;
+            margin-bottom: 12px; 
           }
           
-          /* Box bọc ngoài thanh trượt (Glassmorphism effect) */
-          .slider-wrapper {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            padding: 12px 16px;
-            box-shadow: inset 0 2px 6px rgba(0,0,0,0.1);
-          }
-
+          /* --- CSS THANH TRƯỢT (SLIDER) HIỆN ĐẠI --- */
           .slider-container { 
             display: flex; 
             align-items: center; 
-            gap: 16px; 
+            gap: 15px; 
+            margin: 0 0 4px 0;
+            padding: 0 4px;
           }
-          
-          /* Styling cho dãy số min/max 2 bên */
-          .slider-label {
-            font-size: 13px;
-            color: ${cfg.mau_tieu_de_chi_tiet};
-            font-weight: 600;
-            opacity: 0.8;
-            user-select: none;
-          }
-
-          /* Thanh trượt (Track & Fill) */
           .days-slider { 
             flex: 1; 
             -webkit-appearance: none; 
             appearance: none; 
-            height: 8px; /* Track dày và mượt hơn */
-            /* Dùng CSS variable để fill màu phần bên trái slider */
-            background: linear-gradient(to right, ${cfg.mau_thu_ngayam_songay} var(--slider-progress, 0%), rgba(128, 128, 128, 0.25) var(--slider-progress, 0%));
-            border-radius: 8px; 
+            height: 8px; /* Dày hơn một chút */
+            /* Tạo hiệu ứng dải màu chạy theo nút kéo (Progress Fill) */
+            background: linear-gradient(to right, ${cfg.mau_thu_ngayam_songay} var(--slider-progress, 0%), rgba(150, 150, 150, 0.25) var(--slider-progress, 0%)); 
+            border-radius: 10px; 
             outline: none; 
-            transition: 0.1s; 
-            cursor: pointer;
-            box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.3); /* Đổ bóng chìm cho thanh */
+            transition: opacity 0.2s;
           }
-          
+          .days-slider:hover { opacity: 0.9; }
+
           /* Nút kéo (Thumb) cho Chrome/Safari/Edge */
           .days-slider::-webkit-slider-thumb { 
             -webkit-appearance: none; 
@@ -789,38 +773,40 @@
             width: 22px; 
             height: 22px; 
             border-radius: 50%; 
-            background: #ffffff; /* Lõi màu trắng nổi bật */
-            border: 3px solid ${cfg.mau_thu_ngayam_songay}; /* Viền ngoài màu nhấn */
+            background: ${cfg.mau_thu_ngayam_songay}; 
             cursor: pointer; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
+            /* Tạo hiệu ứng vòng tròn nổi khối 3D */
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4), inset 0 0 0 4px rgba(255,255,255,0.85); 
             transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s; 
           }
+          /* Hiệu ứng khi di chuột hoặc bấm giữ nút kéo */
+          .days-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.5), inset 0 0 0 3px rgba(255,255,255,0.95);
+          }
+          .days-slider::-webkit-slider-thumb:active {
+            transform: scale(0.95);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4), inset 0 0 0 5px rgba(255,255,255,1);
+          }
+
           /* Nút kéo (Thumb) cho Firefox */
           .days-slider::-moz-range-thumb { 
-            width: 16px; 
-            height: 16px; 
+            width: 22px; 
+            height: 22px; 
             border-radius: 50%; 
-            background: #ffffff; 
-            border: 3px solid ${cfg.mau_thu_ngayam_songay}; 
+            background: ${cfg.mau_thu_ngayam_songay}; 
             cursor: pointer; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
+            border: none; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4), inset 0 0 0 4px rgba(255,255,255,0.85); 
             transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s; 
           }
-          
-          /* Hiệu ứng hover & active cho nút kéo */
-          .days-slider::-webkit-slider-thumb:hover { 
-            transform: scale(1.15); 
-            box-shadow: 0 0 10px ${hexToRgba(cfg.mau_thu_ngayam_songay, 50)}, 0 4px 8px rgba(0,0,0,0.4); 
+          .days-slider::-moz-range-thumb:hover {
+            transform: scale(1.15);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.5), inset 0 0 0 3px rgba(255,255,255,0.95);
           }
-          .days-slider::-moz-range-thumb:hover { 
-            transform: scale(1.15); 
-            box-shadow: 0 0 10px ${hexToRgba(cfg.mau_thu_ngayam_songay, 50)}, 0 4px 8px rgba(0,0,0,0.4); 
-          }
-          .days-slider:active::-webkit-slider-thumb { 
-            transform: scale(0.95); /* Hiệu ứng nhấn xuống */
-          }
-          .days-slider:active::-moz-range-thumb { 
-            transform: scale(0.95); 
+          .days-slider::-moz-range-thumb:active {
+            transform: scale(0.95);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4), inset 0 0 0 5px rgba(255,255,255,1);
           }
           /* --------------------------------- */
 
@@ -861,15 +847,11 @@
         
         <div class="card-wrapper">
           <div class="header-container">
-            <div class="header-title">
-              ⏰ Sự kiện trong <span id="title-days-val" style="color:${cfg.mau_thu_ngayam_songay}; margin: 0 6px; font-size: 1.15em; text-shadow: 0 0 10px ${hexToRgba(cfg.mau_thu_ngayam_songay, 30)};">${soNgay}</span> ngày tới
-            </div>
-            <div class="slider-wrapper">
-              <div class="slider-container">
-                <span class="slider-label">1</span>
-                <input type="range" class="days-slider" id="days-slider-ui" min="1" max="365" value="${soNgay}">
-                <span class="slider-label">365</span>
-              </div>
+            <div class="header-title">⏰ Sự kiện trong <span id="title-days-val" style="color:${cfg.mau_thu_ngayam_songay}; margin: 0 4px; font-size: 1.1em;">${soNgay}</span> ngày tới</div>
+            <div class="slider-container">
+              <span style="font-size: 12px; color: ${cfg.mau_tieu_de_chi_tiet}; font-weight: bold;">1</span>
+              <input type="range" class="days-slider" id="days-slider-ui" min="1" max="365" value="${soNgay}">
+              <span style="font-size: 12px; color: ${cfg.mau_tieu_de_chi_tiet}; font-weight: bold;">365</span>
             </div>
           </div>
           <div class="scroll-area" id="event-container">
@@ -961,33 +943,33 @@
       html += '</div></div>';
       this.card.innerHTML = html;
 
-      // SỰ KIỆN CHO THANH TRƯỢT (SLIDER) VÀ HIỆU ỨNG FILL
+      // SỰ KIỆN CHO THANH TRƯỢT GIAO DIỆN NGOÀI
       const sliderUI = this.card.querySelector('#days-slider-ui');
       const titleDaysVal = this.card.querySelector('#title-days-val');
 
       if (sliderUI) {
-        // Hàm tính toán và cập nhật màu Track lấp đầy
-        const updateSliderFill = () => {
-          const min = parseInt(sliderUI.min, 10) || 1;
-          const max = parseInt(sliderUI.max, 10) || 365;
-          const val = parseInt(sliderUI.value, 10);
-          const percent = ((val - min) / (max - min)) * 100;
-          sliderUI.style.setProperty('--slider-progress', `${percent}%`);
+        // Hàm tính toán và cập nhật phần trăm màu cho thanh trượt
+        const updateSliderProgress = (slider) => {
+          const val = slider.value;
+          const min = slider.min ? slider.min : 1;
+          const max = slider.max ? slider.max : 365;
+          const percentage = ((val - min) / (max - min)) * 100;
+          slider.style.setProperty('--slider-progress', `${percentage}%`);
         };
 
-        // Chạy lần đầu khi render
-        updateSliderFill();
+        // Cập nhật dải màu ngay khi thẻ vừa load
+        updateSliderProgress(sliderUI);
 
-        // Cập nhật khi kéo (mượt mà)
+        // Cập nhật số và dải màu liên tục khi đang kéo thanh trượt
         sliderUI.addEventListener('input', (e) => {
           if (titleDaysVal) titleDaysVal.textContent = e.target.value;
-          updateSliderFill();
+          updateSliderProgress(e.target);
         });
 
-        // Chỉ tải lại dữ liệu Home Assistant khi nhả tay ra
+        // Chỉ tải lại dữ liệu khi người dùng nhả tay ra khỏi thanh trượt
         sliderUI.addEventListener('change', (e) => {
           this._localSoNgay = parseInt(e.target.value, 10);
-          this._lastDataString = null; 
+          this._lastDataString = null; // Xóa Cache để ép thẻ tải lại danh sách
           this.updateData();
         });
       }
