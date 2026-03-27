@@ -579,7 +579,8 @@
       }, this.config);
 
       // ==========================================
-      // THUẬT TOÁN AUTO CONTRAST NÂNG CAO
+      // THUẬT TOÁN AUTO CONTRAST NÂNG CAO (BẢN V2)
+      // Tích hợp và map biến tương thích sự kiện
       // ==========================================
       if (cfg.auto_contrast) {
           let strToExtract = "";
@@ -612,24 +613,22 @@
               avgG = Math.round(avgG / colorsToCheck.length);
               avgB = Math.round(avgB / colorsToCheck.length);
 
-              let isDarkTheme = true;
+              let isDarkTheme = false;
               if (this._hass && this._hass.themes && this._hass.themes.darkMode !== undefined) {
                   isDarkTheme = this._hass.themes.darkMode;
               } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
                   isDarkTheme = true;
-              } else {
-                  isDarkTheme = false;
               }
 
               const op = (this.config.bg_opacity !== undefined ? this.config.bg_opacity : 30) / 100;
-              const baseBg = isDarkTheme ? 30 : 240; 
+              const baseBg = isDarkTheme ? 30 : 245; 
               
               const effR = Math.round(avgR * op + baseBg * (1 - op));
               const effG = Math.round(avgG * op + baseBg * (1 - op));
               const effB = Math.round(avgB * op + baseBg * (1 - op));
 
               const yiq = ((effR * 299) + (effG * 587) + (effB * 114)) / 1000;
-              const isLightBackground = yiq >= 128;
+              const isLightBackground = yiq >= 135;
 
               let r = effR / 255, g = effG / 255, b = effB / 255;
               let max = Math.max(r, g, b), min = Math.min(r, g, b);
@@ -652,48 +651,54 @@
                   cfg.mau_ngay_duong = '#111111';
                   cfg.mau_tieu_de_chi_tiet = '#555555';
                   cfg.mau_chi_tiet = '#222222';
-                  cfg.mau_nen_chi_tiet = '#ffffff';
-                  cfg.opacity_nen_chi_tiet = 75; 
+                  cfg.mau_nen_chi_tiet = '#000000';
+                  cfg.opacity_nen_chi_tiet = Math.max(10, op * 20); 
 
                   if (s < 0.15) { 
-                      cfg.mau_thu_ngayam_songay = '#D32F2F'; 
-                      cfg.mau_ten_su_kien = '#1976D2'; 
-                  } else if (hue >= 0 && hue < 60) { 
-                      cfg.mau_thu_ngayam_songay = '#0D47A1'; 
-                      cfg.mau_ten_su_kien = '#006064';
-                  } else if (hue >= 60 && hue < 160) { 
-                      cfg.mau_thu_ngayam_songay = '#4A148C'; 
-                      cfg.mau_ten_su_kien = '#B71C1C';
-                  } else if (hue >= 160 && hue < 260) { 
+                      cfg.mau_ten_su_kien = '#1565C0'; 
                       cfg.mau_thu_ngayam_songay = '#E65100'; 
-                      cfg.mau_ten_su_kien = '#C2185B';
+                  } else if (hue >= 330 || hue < 30) { 
+                      cfg.mau_ten_su_kien = '#004D40'; 
+                      cfg.mau_thu_ngayam_songay = '#0D47A1';
+                  } else if (hue >= 30 && hue < 90) { 
+                      cfg.mau_ten_su_kien = '#0D47A1'; 
+                      cfg.mau_thu_ngayam_songay = '#4A148C';
+                  } else if (hue >= 90 && hue < 170) { 
+                      cfg.mau_ten_su_kien = '#4A148C'; 
+                      cfg.mau_thu_ngayam_songay = '#B71C1C';
+                  } else if (hue >= 170 && hue < 260) { 
+                      cfg.mau_ten_su_kien = '#C2185B'; 
+                      cfg.mau_thu_ngayam_songay = '#E65100';
                   } else { 
-                      cfg.mau_thu_ngayam_songay = '#004D40'; 
-                      cfg.mau_ten_su_kien = '#E64A19';
+                      cfg.mau_ten_su_kien = '#004D40'; 
+                      cfg.mau_thu_ngayam_songay = '#E64A19';
                   }
               } else {
                   cfg.mau_tieu_de_chinh = '#ffffff';
                   cfg.mau_ngay_duong = '#ffffff';
                   cfg.mau_tieu_de_chi_tiet = '#adb5bd';
                   cfg.mau_chi_tiet = '#f8f9fa';
-                  cfg.mau_nen_chi_tiet = '#000000';
-                  cfg.opacity_nen_chi_tiet = 50; 
+                  cfg.mau_nen_chi_tiet = '#ffffff';
+                  cfg.opacity_nen_chi_tiet = Math.max(15, op * 25); 
 
                   if (s < 0.15) { 
-                      cfg.mau_thu_ngayam_songay = '#FFCA28'; 
                       cfg.mau_ten_su_kien = '#29B6F6'; 
-                  } else if (hue >= 0 && hue < 60) { 
-                      cfg.mau_thu_ngayam_songay = '#FFEA00'; 
-                      cfg.mau_ten_su_kien = '#00E5FF';
-                  } else if (hue >= 60 && hue < 160) { 
-                      cfg.mau_thu_ngayam_songay = '#FF9100'; 
-                      cfg.mau_ten_su_kien = '#FF4081';
-                  } else if (hue >= 160 && hue < 260) { 
-                      cfg.mau_thu_ngayam_songay = '#C6FF00'; 
-                      cfg.mau_ten_su_kien = '#40C4FF';
+                      cfg.mau_thu_ngayam_songay = '#FFCA28'; 
+                  } else if (hue >= 330 || hue < 30) { 
+                      cfg.mau_ten_su_kien = '#00E5FF'; 
+                      cfg.mau_thu_ngayam_songay = '#FFEA00';
+                  } else if (hue >= 30 && hue < 90) { 
+                      cfg.mau_ten_su_kien = '#40C4FF'; 
+                      cfg.mau_thu_ngayam_songay = '#69F0AE';
+                  } else if (hue >= 90 && hue < 170) { 
+                      cfg.mau_ten_su_kien = '#FF4081'; 
+                      cfg.mau_thu_ngayam_songay = '#FF9100';
+                  } else if (hue >= 170 && hue < 260) { 
+                      cfg.mau_ten_su_kien = '#FFAB40'; 
+                      cfg.mau_thu_ngayam_songay = '#C6FF00';
                   } else { 
-                      cfg.mau_thu_ngayam_songay = '#69F0AE'; 
-                      cfg.mau_ten_su_kien = '#FFAB40';
+                      cfg.mau_ten_su_kien = '#69F0AE'; 
+                      cfg.mau_thu_ngayam_songay = '#FFD54F';
                   }
               }
           }
