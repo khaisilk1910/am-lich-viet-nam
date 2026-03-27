@@ -414,6 +414,9 @@
       this.expandedRows = new Set();
       this._lastDataString = null;
       this._handleDocumentClick = this._handleDocumentClick.bind(this);
+      
+      // BIẾN LƯU STATE LOCAL CHO THANH TRƯỢT MÀ KHÔNG CẦN VÀO EDITOR
+      this._localSoNgay = null; 
     }
 
     connectedCallback() {
@@ -455,6 +458,11 @@
 
     setConfig(config) {
       if (!config) throw new Error("Invalid configuration");
+      
+      // Nếu có sự thay đổi config từ Editor, reset lại số ngày tạm thời
+      if (this.config && this.config.so_ngay !== config.so_ngay) {
+          this._localSoNgay = null;
+      }
       this.config = config;
 
       if (!this.shadowRoot) {
@@ -522,7 +530,9 @@
     updateData() {
       if (!this._hass || !this.config) return;
 
-      const soNgay = this.config.so_ngay !== undefined ? this.config.so_ngay : 30;
+      const configSoNgay = this.config.so_ngay !== undefined ? this.config.so_ngay : 30;
+      const soNgay = this._localSoNgay !== null ? this._localSoNgay : configSoNgay;
+
       let events = [];
       let hasIntegrationData = false; 
 
@@ -557,7 +567,7 @@
 
       events.sort((a, b) => a.days - b.days);
 
-      const dataHash = JSON.stringify(events.map(e => `${e.entity_id}_${e.days}`)) + JSON.stringify(this.config) + hasIntegrationData;
+      const dataHash = JSON.stringify(events.map(e => `${e.entity_id}_${e.days}`)) + JSON.stringify(this.config) + hasIntegrationData + this._localSoNgay;
       if (this._lastDataString === dataHash) return;
       this._lastDataString = dataHash;
 
@@ -580,7 +590,6 @@
 
       // ==========================================
       // THUẬT TOÁN AUTO CONTRAST NÂNG CAO (BẢN V2)
-      // Tích hợp và map biến tương thích sự kiện
       // ==========================================
       if (cfg.auto_contrast) {
           let strToExtract = "";
@@ -704,10 +713,8 @@
           }
       }
 
-      // Xử lý riêng độ trong suốt của Nền Chi tiết
       const detailBgRgba = hexToRgba(cfg.mau_nen_chi_tiet, cfg.opacity_nen_chi_tiet);
 
-      // SỬ DỤNG CSS CONTAINER QUERIES (cqi) ĐỂ RESPONSIVE MỌI KÍCH THƯỚC CHỮ
       let html = `
         <style>
           .card-wrapper {
@@ -715,21 +722,119 @@
             width: 100%;
             display: flex;
             flex-direction: column;
-            max-height: ${cfg.chieu_cao_the}px; /* Áp dụng giới hạn cho tổng toàn bộ thẻ */
+            max-height: ${cfg.chieu_cao_the}px; 
           }
+          
+          /* CSS CHO KHỐI TIÊU ĐỀ VÀ THANH TRƯỢT HIỆN ĐẠI */
+          .header-container { 
+            display: flex; 
+            flex-direction: column; 
+            padding: 14px 16px 12px 16px; 
+            border-bottom: 1px solid rgba(255,255,255,0.05); 
+            margin-bottom: 5px; 
+          }
+          .header-title { 
+            font-weight: bold; 
+            font-size: clamp(16px, 6cqi, 26px); 
+            color: ${cfg.mau_tieu_de_chinh}; 
+            text-shadow: 0 1px 3px rgba(0,0,0,0.3); 
+            margin-bottom: 14px; 
+            display: flex;
+            align-items: center;
+          }
+          
+          /* Box bọc ngoài thanh trượt (Glassmorphism effect) */
+          .slider-wrapper {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 12px 16px;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.1);
+          }
+
+          .slider-container { 
+            display: flex; 
+            align-items: center; 
+            gap: 16px; 
+          }
+          
+          /* Styling cho dãy số min/max 2 bên */
+          .slider-label {
+            font-size: 13px;
+            color: ${cfg.mau_tieu_de_chi_tiet};
+            font-weight: 600;
+            opacity: 0.8;
+            user-select: none;
+          }
+
+          /* Thanh trượt (Track & Fill) */
+          .days-slider { 
+            flex: 1; 
+            -webkit-appearance: none; 
+            appearance: none; 
+            height: 8px; /* Track dày và mượt hơn */
+            /* Dùng CSS variable để fill màu phần bên trái slider */
+            background: linear-gradient(to right, ${cfg.mau_thu_ngayam_songay} var(--slider-progress, 0%), rgba(128, 128, 128, 0.25) var(--slider-progress, 0%));
+            border-radius: 8px; 
+            outline: none; 
+            transition: 0.1s; 
+            cursor: pointer;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+          }
+          
+          /* Nút kéo (Thumb) cho Chrome/Safari/Edge */
+          .days-slider::-webkit-slider-thumb { 
+            -webkit-appearance: none; 
+            appearance: none; 
+            width: 22px; 
+            height: 22px; 
+            border-radius: 50%; 
+            background: #ffffff; /* Lõi màu trắng nổi bật */
+            border: 3px solid ${cfg.mau_thu_ngayam_songay}; /* Viền ngoài màu nhấn */
+            cursor: pointer; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s; 
+          }
+          /* Nút kéo (Thumb) cho Firefox */
+          .days-slider::-moz-range-thumb { 
+            width: 16px; 
+            height: 16px; 
+            border-radius: 50%; 
+            background: #ffffff; 
+            border: 3px solid ${cfg.mau_thu_ngayam_songay}; 
+            cursor: pointer; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s; 
+          }
+          
+          /* Hiệu ứng hover & active cho nút kéo */
+          .days-slider::-webkit-slider-thumb:hover { 
+            transform: scale(1.15); 
+            box-shadow: 0 0 10px ${hexToRgba(cfg.mau_thu_ngayam_songay, 50)}, 0 4px 8px rgba(0,0,0,0.4); 
+          }
+          .days-slider::-moz-range-thumb:hover { 
+            transform: scale(1.15); 
+            box-shadow: 0 0 10px ${hexToRgba(cfg.mau_thu_ngayam_songay, 50)}, 0 4px 8px rgba(0,0,0,0.4); 
+          }
+          .days-slider:active::-webkit-slider-thumb { 
+            transform: scale(0.95); /* Hiệu ứng nhấn xuống */
+          }
+          .days-slider:active::-moz-range-thumb { 
+            transform: scale(0.95); 
+          }
+          /* --------------------------------- */
+
           .scroll-area { 
             flex: 1; 
-            min-height: 0; /* Quan trọng để flexbox cuộn được đúng */
+            min-height: 0; 
             overflow-y: auto; 
             overflow-x: hidden; 
             padding: 0 10px 10px 10px; 
-            scroll-behavior: smooth; /* Thêm tính năng cuộn mượt cho container */
+            scroll-behavior: smooth; 
           }
           .scroll-area::-webkit-scrollbar { width: 4px; }
           .scroll-area::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
           .scroll-area::-webkit-scrollbar-thumb { background: rgba(255, 165, 0, 0.6); border-radius: 4px; }
-          
-          .header-title { padding: 8px 16px 8px 16px; font-weight: bold; font-size: clamp(16px, 6cqi, 26px); color: ${cfg.mau_tieu_de_chinh}; text-shadow: 0 1px 3px rgba(0,0,0,0.3); }
           
           .flip-emoji { display: inline-block; animation: flip-hourglass 6s ease-in-out infinite; }
           @keyframes flip-hourglass { 0% { transform: rotate(0deg); } 12.5%, 50% { transform: rotate(180deg); } 62.5%, 100% { transform: rotate(0deg); } }
@@ -747,15 +852,26 @@
           .attr-value { font-weight: 500; text-align: right; } 
           .attr-value-full { font-weight: normal; font-style: italic; margin-top: 4px; line-height: 1.4; }
           
-          /* KÍCH THƯỚC CHỮ TỰ CO DÃN & CANH GIỮA EMOJI */
           .txt-thu-am { font-size: clamp(11px, 3.5cqi, 15px); line-height: 1.1; font-weight: 500; }
           .txt-duong { font-size: clamp(22px, 7cqi, 34px); font-weight: bold; line-height: 1; }
           .txt-ten-sk { font-size: clamp(13px, 4.5cqi, 20px); font-weight: 600; line-height: 1.2; }
           .txt-so-ngay { font-size: clamp(11px, 3.8cqi, 16px); font-style: italic; font-weight: 500; }
           .emoji-sk { font-size: clamp(24px, 7cqi, 34px); margin-right: 10px; flex-shrink: 0; }
         </style>
+        
         <div class="card-wrapper">
-          <div class="header-title">⏰ Sự kiện sắp đến</div>
+          <div class="header-container">
+            <div class="header-title">
+              ⏰ Sự kiện trong <span id="title-days-val" style="color:${cfg.mau_thu_ngayam_songay}; margin: 0 6px; font-size: 1.15em; text-shadow: 0 0 10px ${hexToRgba(cfg.mau_thu_ngayam_songay, 30)};">${soNgay}</span> ngày tới
+            </div>
+            <div class="slider-wrapper">
+              <div class="slider-container">
+                <span class="slider-label">1</span>
+                <input type="range" class="days-slider" id="days-slider-ui" min="1" max="365" value="${soNgay}">
+                <span class="slider-label">365</span>
+              </div>
+            </div>
+          </div>
           <div class="scroll-area" id="event-container">
       `;
 
@@ -767,7 +883,7 @@
             <span style="opacity: 0.8; font-size: 0.9em;">Tích hợp Lịch Âm Dương chưa được cài đặt hoặc các cảm biến sự kiện đang bị tắt. Vui lòng kiểm tra lại cấu hình.</span>
           </div>`;
       } else if (events.length === 0) {
-        html += `<div style="padding: 15px; color: ${cfg.mau_tieu_de_chinh}; font-size: clamp(14px, 4cqi, 18px);">Không có sự kiện nào trong <span style="color:${cfg.mau_thu_ngayam_songay}; font-weight:bold;">${soNgay}</span> ngày tới</div>`;
+        html += `<div style="padding: 15px; color: ${cfg.mau_tieu_de_chinh}; font-size: clamp(14px, 4cqi, 18px); text-align: center; margin-top: 20px;">Không có sự kiện nào trong <span style="color:${cfg.mau_thu_ngayam_songay}; font-weight:bold;">${soNgay}</span> ngày tới</div>`;
       } else {
         html += '<table border="0" cellpadding="2" cellspacing="4" width="100%" style="margin-top: -5px;">';
         events.forEach(ev => {
@@ -778,7 +894,6 @@
           else if (ten_su_kien.includes("giỗ")) icon = "🕯️";
           else if (ten_su_kien.includes("cưới")) icon = "💍";
 
-          // --- LOGIC ĐỔI TÊN NHÃN ĐỘNG ---
           const eventLabels = {
             ngay_am_lich_su_kien: 'Ngày Âm', 
             ngay_duong_lich_su_kien: 'Ngày Dương', 
@@ -795,7 +910,6 @@
           } else if (ten_su_kien.includes("sinh nhật")) {
             eventLabels.so_nam = 'Tuổi';
           }
-          // ---------------------------------
 
           const isExp = this.expandedRows.has(ev.entity_id);
           html += `
@@ -827,13 +941,9 @@
           `;
           for (const [key, label] of Object.entries(eventLabels)) {
             const val = ev.attrs[key];
-            
-            // Lọc bỏ undefined và null trước
             if (val !== undefined && val !== null) {
               const valStr = String(val).trim();
               const valLower = valStr.toLowerCase();
-              
-              // Điều kiện lọc bổ sung: Khác rỗng, khác "không rõ", khác "unknown" và khác "0"
               if (valStr !== '' && valLower !== 'không rõ' && valLower !== 'unknown' && valStr !== '0') {
                 if (key === 'chi_tiet') {
                   html += `<div class="attr-box" style="border-left: 3px solid ${cfg.mau_thu_ngayam_songay};"><div class="attr-label" style="color:${cfg.mau_tieu_de_chi_tiet}">${label}:</div><div class="attr-value-full" style="color:${cfg.mau_chi_tiet}">${val}</div></div>`;
@@ -849,10 +959,40 @@
       }
       
       html += '</div></div>';
-      
       this.card.innerHTML = html;
 
-      // Cập nhật sự kiện Click cho từng dòng
+      // SỰ KIỆN CHO THANH TRƯỢT (SLIDER) VÀ HIỆU ỨNG FILL
+      const sliderUI = this.card.querySelector('#days-slider-ui');
+      const titleDaysVal = this.card.querySelector('#title-days-val');
+
+      if (sliderUI) {
+        // Hàm tính toán và cập nhật màu Track lấp đầy
+        const updateSliderFill = () => {
+          const min = parseInt(sliderUI.min, 10) || 1;
+          const max = parseInt(sliderUI.max, 10) || 365;
+          const val = parseInt(sliderUI.value, 10);
+          const percent = ((val - min) / (max - min)) * 100;
+          sliderUI.style.setProperty('--slider-progress', `${percent}%`);
+        };
+
+        // Chạy lần đầu khi render
+        updateSliderFill();
+
+        // Cập nhật khi kéo (mượt mà)
+        sliderUI.addEventListener('input', (e) => {
+          if (titleDaysVal) titleDaysVal.textContent = e.target.value;
+          updateSliderFill();
+        });
+
+        // Chỉ tải lại dữ liệu Home Assistant khi nhả tay ra
+        sliderUI.addEventListener('change', (e) => {
+          this._localSoNgay = parseInt(e.target.value, 10);
+          this._lastDataString = null; 
+          this.updateData();
+        });
+      }
+
+      // SỰ KIỆN CLICK MỞ RỘNG CHI TIẾT
       this.card.querySelectorAll('.event-row').forEach(row => {
         row.addEventListener('click', () => {
           const id = row.getAttribute('data-id');
@@ -868,17 +1008,12 @@
             if(detail) detail.style.display = 'table-row';
             if(icon) icon.style.transform = 'rotate(180deg)';
 
-            // THÊM TÍNH NĂNG TỰ ĐỘNG CUỘN LÊN
             setTimeout(() => {
               const container = this.card.querySelector('#event-container');
               if (container && row) {
-                // Cuộn mượt mà đưa dòng được chọn lên đầu container
-                container.scrollTo({
-                  top: row.offsetTop,
-                  behavior: 'smooth'
-                });
+                container.scrollTo({ top: row.offsetTop, behavior: 'smooth' });
               }
-            }, 50); // Độ trễ 50ms đợi CSS hiển thị khối chi tiết
+            }, 50);
           }
         });
       });
