@@ -83,6 +83,32 @@
 
           <div class="section">
             <div class="section-title">
+              <div class="title-left">✨ Hiệu ứng nổi bật (Hôm nay/Ngày mai)</div>
+              <div class="title-right"><span class="section-icon">▼</span></div>
+            </div>
+            <div class="section-content">
+              <div class="row">
+                <span class="label" style="min-width: 120px;">Chọn hiệu ứng</span>
+                <select id="hieu_ung_hom_nay" class="ha-select" style="max-width: 250px;">
+                  <option value="none">❌ Không hiệu ứng</option>
+                  <option value="pulse-glow">🌟 Nhịp đập & Phát sáng</option>
+                  <option value="heartbeat">❤️ Nhịp tim (Heartbeat)</option>
+                  <option value="bounce">🦘 Nhảy nhót (Bounce)</option>
+                  <option value="rubber-band">🪀 Co giãn (Rubber Band)</option>
+                  <option value="wobble">🌀 Lắc lư (Wobble)</option>
+                  <option value="shake">👋 Lắc ngang (Shake)</option>
+                  <option value="swing">🔔 Đung đưa (Swing)</option>
+                  <option value="flash">⚡ Chớp nháy (Flash)</option>
+                  <option value="neon">💡 Đèn Neon chập chờn</option>
+                  <option value="zoom-in-out">🔍 Phóng to / Thu nhỏ</option>
+                </select>
+              </div>
+              <div style="font-size: 12px; color: var(--secondary-text-color); margin-top: -8px; font-style: italic;">Hiệu ứng này sẽ tự động kích hoạt cho các sự kiện còn 0 ngày và 1 ngày.</div>
+            </div>
+          </div>
+
+          <div class="section collapsed">
+            <div class="section-title">
               <div class="title-left">🎨 Nền (Background)</div>
               <div class="title-right"><span class="section-icon">▼</span></div>
             </div>
@@ -224,6 +250,7 @@
 
     get _so_ngay() { return this._config.so_ngay !== undefined ? this._config.so_ngay : 30; }
     get _chieu_cao_the() { return this._config.chieu_cao_the !== undefined ? this._config.chieu_cao_the : 350; }
+    get _hieu_ung_hom_nay() { return this._config.hieu_ung_hom_nay || 'pulse-glow'; }
 
     get _bg_type() { return this._config.bg_type || 'solid'; }
     get _bg_color() { return this._config.bg_color || '#000000'; }
@@ -262,6 +289,7 @@
       this.querySelector('#so_ngay').value = this._so_ngay;
       this.querySelector('#chieu_cao_the').value = this._chieu_cao_the;
       this.querySelector('#chieu_cao_the_val').textContent = this._chieu_cao_the + 'px';
+      this.querySelector('#hieu_ung_hom_nay').value = this._hieu_ung_hom_nay;
 
       // Nền
       this.querySelector('#bg_type').value = this._bg_type;
@@ -345,6 +373,7 @@
             ...this._config, 
             so_ngay: parseInt(this.querySelector('#so_ngay').value, 10),
             chieu_cao_the: parseInt(this.querySelector('#chieu_cao_the').value, 10),
+            hieu_ung_hom_nay: this.querySelector('#hieu_ung_hom_nay').value,
 
             bg_type: this.querySelector('#bg_type').value,
             bg_color: this.querySelector('#bg_color').value,
@@ -407,7 +436,7 @@
   // ==========================================
   class SuKienAmLichCard extends HTMLElement {
     static getConfigElement() { return document.createElement('su-kien-am-lich-editor'); }
-    static getStubConfig() { return { so_ngay: 30, chieu_cao_the: 350, bg_type: 'solid', bg_color: '#000000', bg_opacity: 30 }; }
+    static getStubConfig() { return { so_ngay: 30, chieu_cao_the: 350, hieu_ung_hom_nay: 'pulse-glow', bg_type: 'solid', bg_color: '#000000', bg_opacity: 30 }; }
 
     constructor() {
       super();
@@ -588,7 +617,8 @@
         mau_chi_tiet: '#e9ecef',
         mau_nen_chi_tiet: '#000000',
         opacity_nen_chi_tiet: 40,
-        chieu_cao_the: 350
+        chieu_cao_the: 350,
+        hieu_ung_hom_nay: 'pulse-glow'
       }, this.config);
 
       // ==========================================
@@ -841,8 +871,60 @@
           .txt-thu-am { font-size: clamp(11px, 3.5cqi, 15px); line-height: 1.1; font-weight: 500; }
           .txt-duong { font-size: clamp(22px, 7cqi, 34px); font-weight: bold; line-height: 1; }
           .txt-ten-sk { font-size: clamp(13px, 4.5cqi, 20px); font-weight: 600; line-height: 1.2; }
-          .txt-so-ngay { font-size: clamp(11px, 3.8cqi, 16px); font-style: italic; font-weight: 500; }
+          .txt-so-ngay { font-size: clamp(11px, 3.8cqi, 16px); font-style: italic; font-weight: 500; transition: opacity 0.3s; }
           .emoji-sk { font-size: clamp(24px, 7cqi, 34px); margin-right: 10px; flex-shrink: 0; }
+          
+          /* ---------------------------------------------------- */
+          /* TỔNG HỢP 10 HIỆU ỨNG ANIMATION DÀNH CHO "HÔM NAY" VÀ "NGÀY MAI" */
+          /* ---------------------------------------------------- */
+          
+          .highlight-day {
+            display: inline-block;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          /* 1. Nhịp đập & Phát sáng */
+          @keyframes ef-pulse-glow { 0%, 100% { transform: scale(1); text-shadow: 0 0 0 transparent; } 50% { transform: scale(1.15); text-shadow: 0 0 10px currentColor, 0 0 20px currentColor; } }
+          .effect-pulse-glow { animation: ef-pulse-glow 1.5s ease-in-out infinite; }
+
+          /* 2. Nhịp tim */
+          @keyframes ef-heartbeat { 0%, 100% { transform: scale(1); } 14% { transform: scale(1.3); } 28% { transform: scale(1); } 42% { transform: scale(1.3); } 70% { transform: scale(1); } }
+          .effect-heartbeat { animation: ef-heartbeat 1.5s ease-in-out infinite; }
+
+          /* 3. Nhảy nhót */
+          @keyframes ef-bounce { 0%, 20%, 50%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-8px); } 60% { transform: translateY(-4px); } }
+          .effect-bounce { animation: ef-bounce 2s infinite; }
+
+          /* 4. Co giãn dây thun */
+          @keyframes ef-rubber-band { 0% { transform: scale(1); } 30% { transform: scaleX(1.25) scaleY(0.75); } 40% { transform: scaleX(0.75) scaleY(1.25); } 60% { transform: scaleX(1.15) scaleY(0.85); } 100% { transform: scale(1); } }
+          .effect-rubber-band { animation: ef-rubber-band 2s infinite; }
+
+          /* 5. Lắc lư Wobble */
+          @keyframes ef-wobble { 0%, 100% { transform: translateX(0%); } 15% { transform: translateX(-15%) rotate(-5deg); } 30% { transform: translateX(10%) rotate(3deg); } 45% { transform: translateX(-10%) rotate(-3deg); } 60% { transform: translateX(5%) rotate(2deg); } 75% { transform: translateX(-2%) rotate(-1deg); } }
+          .effect-wobble { animation: ef-wobble 2s infinite; }
+
+          /* 6. Lắc ngang Shake */
+          @keyframes ef-shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); } 20%, 40%, 60%, 80% { transform: translateX(3px); } }
+          .effect-shake { animation: ef-shake 1.5s infinite; }
+
+          /* 7. Đung đưa Swing */
+          @keyframes ef-swing { 20% { transform: rotate(15deg); } 40% { transform: rotate(-10deg); } 60% { transform: rotate(5deg); } 80% { transform: rotate(-5deg); } 100% { transform: rotate(0deg); } }
+          .effect-swing { animation: ef-swing 2s infinite; transform-origin: top center; }
+
+          /* 8. Chớp nháy Flash */
+          @keyframes ef-flash { 0%, 50%, 100% { opacity: 1; } 25%, 75% { opacity: 0; } }
+          .effect-flash { animation: ef-flash 2s infinite; }
+
+          /* 9. Đèn Neon chập chờn */
+          @keyframes ef-neon { 0%, 100% { text-shadow: 0 0 5px currentColor, 0 0 10px currentColor; opacity: 1; } 30% { opacity: 0.8; text-shadow: none; } 31% { opacity: 1; text-shadow: 0 0 5px currentColor; } 50% { opacity: 0.4; } 51% { opacity: 1; } }
+          .effect-neon { animation: ef-neon 1.5s infinite; }
+
+          /* 10. Phóng to thu nhỏ */
+          @keyframes ef-zoom-in-out { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+          .effect-zoom-in-out { animation: ef-zoom-in-out 1.5s ease-in-out infinite; }
+
         </style>
         
         <div class="card-wrapper">
@@ -894,6 +976,22 @@
           }
 
           const isExp = this.expandedRows.has(ev.entity_id);
+          
+          // Lấy hiệu ứng đã chọn
+          const chosenEffect = cfg.hieu_ung_hom_nay !== 'none' ? `highlight-day effect-${cfg.hieu_ung_hom_nay}` : '';
+          
+          // Xử lý đổi text và thêm class hiệu ứng cho Hôm nay / Ngày mai
+          let textNgayConLai = `${ev.days} ngày`;
+          let classHieuUng = '';
+          
+          if (ev.days === 0) {
+              textNgayConLai = "Hôm nay";
+              classHieuUng = chosenEffect; 
+          } else if (ev.days === 1) {
+              textNgayConLai = "Ngày mai";
+              classHieuUng = chosenEffect; 
+          }
+
           html += `
             <tr class="event-row" data-id="${ev.entity_id}">
               <td align="center" width="20%" style="border-bottom: solid 1px rgba(255,255,255,0.2); vertical-align: middle; padding: 8px 0;">
@@ -910,7 +1008,7 @@
                       <span class="txt-ten-sk">${ev.name}</span>
                     </div>
                     <div style="color:${cfg.mau_thu_ngayam_songay}; text-align: right; padding-right: 10px; margin-top: 4px;">
-                      <span class="txt-so-ngay">${ev.days} ngày</span>
+                      <span class="txt-so-ngay ${classHieuUng}">${textNgayConLai}</span>
                       <span class="flip-emoji" style="font-size: clamp(14px, 4cqi, 18px); margin: 0 4px;">⏳</span>
                       <span class="toggle-icon" style="font-size: 12px; color: #888; display: inline-block; transition: transform 0.3s; transform: rotate(${isExp ? '180deg' : '0deg'});">▼</span>
                     </div>
