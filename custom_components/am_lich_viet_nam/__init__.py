@@ -39,8 +39,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     ])
 
     # 2. Tự động thêm file JS vào Lovelace (Thêm ?v=1.0 để lừa trình duyệt tải file mới, chống cache)
-    add_extra_js_url(hass, f"{UI_URL_BASE}/lich-block-am-duong-viet-nam.js?v=10.0") # <--- Thẻ hiện lịch block
-    add_extra_js_url(hass, f"{UI_URL_BASE}/su-kien-am-lich-card.js?v=10.0") # <--- Thẻ hiện danh sách đếm ngược sự kiện
+    add_extra_js_url(hass, f"{UI_URL_BASE}/lich-block-am-duong-viet-nam.js?v=11.0") # <--- Thẻ hiện lịch block
+    add_extra_js_url(hass, f"{UI_URL_BASE}/su-kien-am-lich-card.js?v=11.0") # <--- Thẻ hiện danh sách đếm ngược sự kiện
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
