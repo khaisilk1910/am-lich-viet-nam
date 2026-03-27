@@ -1,13 +1,11 @@
 """The Vietnamese Lunar Calendar integration."""
 import voluptuous as vol
 import datetime
-import asyncio # <--- THÊM THƯ VIỆN NÀY ĐỂ XỬ LÝ CHỜ (DELAY)
-
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import config_validation as cv
 from homeassistant.components.http import StaticPathConfig
-from homeassistant.components.lovelace.resources import ResourceStorageCollection
+from homeassistant.components.frontend import add_extra_js_url
 
 from .const import DOMAIN
 from .amlich_core import (
@@ -21,12 +19,6 @@ from .amlich_core import (
 UI_URL_BASE = "/am_lich_viet_nam_ui"
 UI_DIR_PATH = "frontend"
 
-VERSION = "11.1" # Đổi version để ép trình duyệt nhận diện lại
-CARDS = [
-    f"{UI_URL_BASE}/lich-block-am-duong-viet-nam.js",
-    f"{UI_URL_BASE}/su-kien-am-lich-card.js"
-]
-
 SERVICE_CONVERT_SCHEMA = vol.Schema({
     vol.Required("conversion_type"): vol.In(["solar_to_lunar", "lunar_to_solar"]),
     vol.Required("day"): cv.positive_int,
@@ -36,6 +28,8 @@ SERVICE_CONVERT_SCHEMA = vol.Schema({
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Được gọi khi Home Assistant khởi động để thiết lập các thành phần chung (Giao diện)."""
+    
+    # 1. Đăng ký đường dẫn tĩnh (Chuẩn Async không làm nghẽn HASS)
     await hass.http.async_register_static_paths([
         StaticPathConfig(
             UI_URL_BASE,
@@ -43,6 +37,10 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
             False
         )
     ])
+
+    # 2. Tự động thêm file JS vào Lovelace (Thêm ?v=1.0 để lừa trình duyệt tải file mới, chống cache)
+    #add_extra_js_url(hass, f"{UI_URL_BASE}/lich-block-am-duong-viet-nam.js?v=11.0") # <--- Thẻ hiện lịch block
+    #add_extra_js_url(hass, f"{UI_URL_BASE}/su-kien-am-lich-card.js?v=11.0") # <--- Thẻ hiện danh sách đếm ngược sự kiện
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -50,47 +48,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
     entry.async_on_unload(entry.add_update_listener(update_listener))
     
-    # ==========================================
-    # HÀM TỰ ĐỘNG ĐĂNG KÝ LOVELACE RESOURCE (BẢN SỬA LỖI TIMING)
-    # ==========================================
-    async def register_lovelace_resources():
-        # Chờ tối đa 15 giây để đảm bảo hệ thống Lovelace (Giao diện) đã khởi tạo xong
-        for _ in range(15):
-            if "lovelace" in hass.data:
-                break
-            await asyncio.sleep(1)
-
-        if "lovelace" not in hass.data:
-            return
-
-        lovelace = hass.data["lovelace"]
-        resources = lovelace.get("resources")
-
-        if not isinstance(resources, ResourceStorageCollection):
-            return
-
-        existing_items = resources.async_items()
-        
-        for card_url in CARDS:
-            url_with_version = f"{card_url}?v={VERSION}"
-            url_exists = any(item.get("url", "").startswith(card_url) for item in existing_items)
-
-            if not url_exists:
-                await resources.async_create_item({
-                    "res_type": "module",
-                    "url": url_with_version
-                })
-            else:
-                for item in existing_items:
-                    if item.get("url", "").startswith(card_url) and item.get("url") != url_with_version:
-                        await resources.async_update_item(item["id"], {"url": url_with_version})
-
-    # Chạy hàm đăng ký tài nguyên
-    hass.async_create_task(register_lovelace_resources())
-    # ==========================================
-
     async def handle_convert_date(call: ServiceCall) -> ServiceResponse:
-        # ... (Phần code xử lý logic Service vẫn giữ nguyên như bản trước) ...
         conv_type = call.data["conversion_type"]
         d = call.data["day"]
         m = call.data["month"]
@@ -216,20 +174,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entries = hass.config_entries.async_entries(DOMAIN)
         if len([e for e in entries if e.state.name == "LOADED"]) == 1:
             hass.services.async_remove(DOMAIN, "convert_date")
-            
-            if "lovelace" in hass.data:
-                lovelace = hass.data["lovelace"]
-                resources = lovelace.get("resources")
-                if isinstance(resources, ResourceStorageCollection):
-                    existing_items = list(resources.async_items())
-                    for card_url in CARDS:
-                        for item in existing_items:
-                            if item.get("url", "").startswith(card_url):
-                                await resources.async_delete_item(item["id"])
-            
     return unload_ok
 
 async def update_listener(hass: HomeAssistant, entry: ConfigEntry):
     """Handle options update."""
     await hass.config_entries.async_reload(entry.entry_id)
-    
