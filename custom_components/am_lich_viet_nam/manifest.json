@@ -1,10 +1,10 @@
 {
   "domain": "am_lich_viet_nam",
   "name": "Âm lịch Việt Nam",
-  "version": "2026.04.04",
+  "version": "2026.04.03b2",
   "documentation": "https://github.com/khaisilk1910/am-lich-viet-nam",
   "requirements": [],
-  "dependencies": [],
+  "dependencies": [ "lovelace", "frontend"],
   "codeowners": [
     "@khaisilk1910"
   ],
