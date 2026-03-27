@@ -29,8 +29,8 @@
 - Vào Cài đặt (Settings) > Bảng điều khiển (Dashboards).
 - Bấm vào biểu tượng 3 chấm ở góc trên cùng bên phải > Chọn Tài nguyên (Resources).
 - Bấm Thêm tài nguyên (Add Resource) và nhập lần lượt 2 đường dẫn sau:
-- URL: ```/am_lich_viet_nam_ui/lich-block-am-duong-viet-nam.js?v=11.0``` (Loại: JavaScript Module)
-- URL: ```/am_lich_viet_nam_ui/su-kien-am-lich-card.js?v=11.0``` (Loại: JavaScript Module)
+- URL: ```/config/custom_components/am_lich_viet_nam/frontend/lich-block-am-duong-viet-nam.js?v=11.0``` (Loại: JavaScript Module)
+- URL: ```/config/custom_components/am_lich_viet_nam/frontend/su-kien-am-lich-card.js?v=11.0``` (Loại: JavaScript Module)
 
 
 
