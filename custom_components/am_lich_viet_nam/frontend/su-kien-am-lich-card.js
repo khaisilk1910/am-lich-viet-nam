@@ -822,11 +822,19 @@
           `;
           for (const [key, label] of Object.entries(eventLabels)) {
             const val = ev.attrs[key];
-            if (val !== undefined && val !== null && String(val).trim() !== '') {
-              if (key === 'chi_tiet') {
-                html += `<div class="attr-box" style="border-left: 3px solid ${cfg.mau_thu_ngayam_songay};"><div class="attr-label" style="color:${cfg.mau_tieu_de_chi_tiet}">${label}:</div><div class="attr-value-full" style="color:${cfg.mau_chi_tiet}">${val}</div></div>`;
-              } else {
-                html += `<div class="attr-row"><span class="attr-label" style="color:${cfg.mau_tieu_de_chi_tiet}">${label}:</span><span class="attr-value" style="color:${cfg.mau_chi_tiet}">${val}</span></div>`;
+            
+            // Lọc bỏ undefined và null trước
+            if (val !== undefined && val !== null) {
+              const valStr = String(val).trim();
+              const valLower = valStr.toLowerCase();
+              
+              // Điều kiện lọc bổ sung: Khác rỗng, khác "không rõ", khác "unknown" và khác "0"
+              if (valStr !== '' && valLower !== 'không rõ' && valLower !== 'unknown' && valStr !== '0') {
+                if (key === 'chi_tiet') {
+                  html += `<div class="attr-box" style="border-left: 3px solid ${cfg.mau_thu_ngayam_songay};"><div class="attr-label" style="color:${cfg.mau_tieu_de_chi_tiet}">${label}:</div><div class="attr-value-full" style="color:${cfg.mau_chi_tiet}">${val}</div></div>`;
+                } else {
+                  html += `<div class="attr-row"><span class="attr-label" style="color:${cfg.mau_tieu_de_chi_tiet}">${label}:</span><span class="attr-value" style="color:${cfg.mau_chi_tiet}">${val}</span></div>`;
+                }
               }
             }
           }
