@@ -1,7 +1,6 @@
 // ==========================================
 // LUNAR CALENDAR POPUP MODULE
 // File này chứa giao diện và logic của Popup
-// Đã sửa lỗi giữ vị trí cuộn (scroll position)
 // ==========================================
 
 export function injectPopupDOM() {
