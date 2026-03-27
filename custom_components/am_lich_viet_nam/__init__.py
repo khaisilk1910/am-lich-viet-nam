@@ -1,6 +1,5 @@
 """The Vietnamese Lunar Calendar integration."""
 import os
-import time
 import logging
 import voluptuous as vol
 import datetime
@@ -55,6 +54,7 @@ async def init_resource(hass: HomeAssistant, url: str, ver: str) -> bool:
     for item in resources.async_items():
         item_url = item.get("url", "")
         
+        # LOGIC SO SÁNH CHÍNH XÁC: Phải khớp hoàn toàn hoặc chỉ khác tham số phía sau ?
         if item_url == url or item_url.startswith(f"{url}?"):
             if item_url.endswith(f"hacstag={ver}"):
                 return False
@@ -86,32 +86,41 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     await hass.http.async_register_static_paths([
         StaticPathConfig(
             UI_URL_BASE,
-            hass.config.path(f"custom_components/{DOMAIN}/{UI_DIR_PATH}"),
+            hass.config.path("custom_components", DOMAIN, UI_DIR_PATH),
             False
         )
     ])
 
     return True
 
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Âm lịch Việt Nam from a config entry."""
     
     # ---------------------------------------------------------
-    # AUTO CACHE BUSTING BẰNG THỜI GIAN CHỈNH SỬA FILE (MTIME)
+    # AUTO CACHE BUSTING KẾT HỢP MANIFEST FALLBACK
     # ---------------------------------------------------------
-    def get_file_version(file_name):
-        """Hàm đọc mốc thời gian file được sửa đổi cuối cùng."""
+    # Lấy version từ manifest.json làm dự phòng (fallback)
+    integration = hass.data.get("integrations", {}).get(DOMAIN)
+    fallback_version = getattr(integration, "version", "1.0")
+    
+    def get_file_version(file_name, fallback):
+        """Hàm đọc mốc thời gian file được sửa đổi (chạy trong executor an toàn)."""
         try:
-            file_path = hass.config.path(f"custom_components/{DOMAIN}/{UI_DIR_PATH}/{file_name}")
-            # Lấy thời gian sửa file (ví dụ: 1712154320)
+            # Dùng hass.config.path nối chuỗi nhiều tham số để chống lỗi đường dẫn chéo nền tảng
+            file_path = hass.config.path("custom_components", DOMAIN, UI_DIR_PATH, file_name)
             return str(int(os.path.getmtime(file_path)))
-        except Exception:
-            # Nếu không tìm thấy file, dự phòng bằng thời gian hiện tại
-            return str(int(time.time()))
+        except Exception as e:
+            _LOGGER.warning(f"Không thể đọc file {file_name} để tạo hacstag ({e}). Dùng version dự phòng: {fallback}")
+            return fallback
 
-    # Lấy version riêng biệt cho từng file để tối ưu nhất
-    ver_lich_block = await hass.async_add_executor_job(get_file_version, "lich-block-am-duong-viet-nam.js")
-    ver_su_kien = await hass.async_add_executor_job(get_file_version, "su-kien-am-lich-card.js")
+    # Chạy hàm đọc file trong môi trường an toàn (tránh block luồng chính của HASS)
+    ver_lich_block = await hass.async_add_executor_job(
+        get_file_version, "lich-block-am-duong-viet-nam.js", fallback_version
+    )
+    ver_su_kien = await hass.async_add_executor_job(
+        get_file_version, "su-kien-am-lich-card.js", fallback_version
+    )
 
     # Đăng ký URL với mã version vừa tự động tạo
     await init_resource(hass, f"{UI_URL_BASE}/lich-block-am-duong-viet-nam.js", ver_lich_block)
@@ -240,6 +249,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     return True
 
+
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, ["sensor"])
@@ -248,6 +258,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if len([e for e in entries if e.state.name == "LOADED"]) == 1:
             hass.services.async_remove(DOMAIN, "convert_date")
     return unload_ok
+
 
 async def update_listener(hass: HomeAssistant, entry: ConfigEntry):
     """Handle options update."""
