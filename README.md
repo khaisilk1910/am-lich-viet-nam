@@ -32,12 +32,12 @@
 
 
 ```
-alias: "Thông báo Sự kiện Âm và Dương lịch (Trước 7 ngày)"
-description: "Gửi thông báo sự kiện đếm ngược còn 7 ngày"
+alias: "Thông báo Sự kiện Âm và Dương lịch (Trước 30 ngày)"
+description: "Gửi thông báo sự kiện đếm ngược còn 30 ngày"
 mode: single
 trigger:
   - platform: time
-    at: "08:00:00"
+    at: "09:00:00"
 variables:
   su_kien_sap_toi: >
     {% set ns = namespace(output="") %}
