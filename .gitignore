@@ -1,0 +1,62 @@
+# ========================
+# Python
+# ========================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ========================
+# Home Assistant / HACS
+# ========================
+# Nếu bạn có thư mục test Home Assistant nội bộ
+home-assistant.log
+home-assistant_v2.db
+.storage/
+secrets.yaml
+
+# ========================
+# Frontend / JavaScript
+# ========================
+# Đề phòng sau này bạn dùng npm/yarn để build frontend
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# ========================
+# Trình soạn thảo (IDEs)
+# ========================
+# VS Code
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# PyCharm / IntelliJ
+.idea/
+
+# ========================
+# Hệ điều hành (OS)
+# ========================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.cab
