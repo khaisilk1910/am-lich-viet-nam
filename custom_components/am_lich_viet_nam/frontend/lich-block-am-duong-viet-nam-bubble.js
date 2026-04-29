@@ -27,7 +27,8 @@ class LunarCalendarBubbleCard extends HTMLElement {
             shadow_size: 15,
             divider_color: "#388e3c", 
             divider_thickness: 1.5,
-            animation_type: "float" // Hiệu ứng mặc định
+            animation_type: "float", 
+            compact_mode: false      
         };
     }
 
@@ -45,6 +46,16 @@ class LunarCalendarBubbleCard extends HTMLElement {
         this._hass = hass;
         if (this.mainCard) this.mainCard.hass = hass;
         this.updateDates();
+
+        // Xử lý tự động nhận diện Theme Light và áp dụng nền tối
+        const modal = this.shadowRoot.getElementById('modal');
+        if (modal) {
+            if (hass.themes && hass.themes.darkMode === false) {
+                modal.classList.add('is-light-theme');
+            } else {
+                modal.classList.remove('is-light-theme');
+            }
+        }
     }
 
     getRGBA(hex, opacity) {
@@ -70,8 +81,8 @@ class LunarCalendarBubbleCard extends HTMLElement {
         const bgColor = this.getRGBA(this.config.bg_color, this.config.bg_opacity);
         const borderColor = this.getRGBA(this.config.border_color, this.config.border_opacity);
         const shadowColor = this.getRGBA(this.config.shadow_color, this.config.shadow_opacity);
+        const isCompact = this.config.compact_mode;
 
-        // Map hiệu ứng
         const animations = {
             "none": "none",
             "breathe": "anim-breathe 3s ease-in-out infinite",
@@ -98,6 +109,7 @@ class LunarCalendarBubbleCard extends HTMLElement {
                     display: flex;
                     flex-direction: column;
                     align-items: center;
+                    transform: translate3d(0, 0, 0); 
                 }
 
                 .tooltip {
@@ -115,17 +127,16 @@ class LunarCalendarBubbleCard extends HTMLElement {
                     box-shadow: 0 4px 10px rgba(0,0,0,0.3);
                 }
 
-                /* --- TẬP HỢP 10 HIỆU ỨNG IDLE --- */
-                @keyframes anim-breathe { 0%, 100% { transform: scale(1) translateZ(0); } 50% { transform: scale(1.04) translateZ(0); } }
-                @keyframes anim-float { 0%, 100% { transform: translateY(0) translateZ(0); } 50% { transform: translateY(-8px) translateZ(0); } }
-                @keyframes anim-pulse_glow { 0%, 100% { box-shadow: 0 0 ${this.config.shadow_size}px ${shadowColor}; transform: translateZ(0); } 50% { box-shadow: 0 0 ${this.config.shadow_size + 12}px ${borderColor}; transform: translateZ(0); } }
-                @keyframes anim-swing { 0%, 100% { transform: rotate(0deg) translateZ(0); } 25% { transform: rotate(4deg) translateZ(0); } 75% { transform: rotate(-4deg) translateZ(0); } }
-                @keyframes anim-heartbeat { 0%, 100%, 70% { transform: scale(1) translateZ(0); } 14%, 42% { transform: scale(1.05) translateZ(0); } 28% { transform: scale(1.02) translateZ(0); } }
-                @keyframes anim-bounce { 0%, 100% { transform: translateY(0) translateZ(0); } 50% { transform: translateY(-5px) translateZ(0); } }
-                @keyframes anim-jelly { 0%, 100% { transform: scale(1, 1) translateZ(0); } 25% { transform: scale(1.03, 0.97) translateZ(0); } 50% { transform: scale(0.97, 1.03) translateZ(0); } 75% { transform: scale(1.01, 0.99) translateZ(0); } }
-                @keyframes anim-wobble { 0%, 100% { transform: translateX(0%) rotate(0deg) translateZ(0); } 15% { transform: translateX(-3px) rotate(-3deg) translateZ(0); } 30% { transform: translateX(2px) rotate(2deg) translateZ(0); } 45% { transform: translateX(-2px) rotate(-1deg) translateZ(0); } 60% { transform: translateX(1px) rotate(1deg) translateZ(0); } }
-                @keyframes anim-squeeze { 0%, 100% { transform: scale(1, 1) translateZ(0); } 50% { transform: scale(0.96, 1.04) translateZ(0); } }
-                @keyframes anim-rubber_band { 0%, 100% { transform: scale(1) translateZ(0); } 30% { transform: scale(1.06, 0.94) translateZ(0); } 40% { transform: scale(0.94, 1.06) translateZ(0); } 50% { transform: scale(1.03, 0.97) translateZ(0); } 65% { transform: scale(0.98, 1.02) translateZ(0); } 75% { transform: scale(1.01, 0.99) translateZ(0); } }
+                @keyframes anim-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+                @keyframes anim-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+                @keyframes anim-pulse_glow { 0%, 100% { box-shadow: 0 0 ${this.config.shadow_size}px ${shadowColor}; } 50% { box-shadow: 0 0 ${this.config.shadow_size + 12}px ${borderColor}; } }
+                @keyframes anim-swing { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(4deg); } 75% { transform: rotate(-4deg); } }
+                @keyframes anim-heartbeat { 0%, 100%, 70% { transform: scale(1); } 14%, 42% { transform: scale(1.05); } 28% { transform: scale(1.02); } }
+                @keyframes anim-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+                @keyframes anim-jelly { 0%, 100% { transform: scale(1, 1); } 25% { transform: scale(1.03, 0.97); } 50% { transform: scale(0.97, 1.03); } 75% { transform: scale(1.01, 0.99); } }
+                @keyframes anim-wobble { 0%, 100% { transform: translateX(0%) rotate(0deg); } 15% { transform: translateX(-3px) rotate(-3deg); } 30% { transform: translateX(2px) rotate(2deg); } 45% { transform: translateX(-2px) rotate(-1deg); } 60% { transform: translateX(1px) rotate(1deg); } }
+                @keyframes anim-squeeze { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(0.96, 1.04); } }
+                @keyframes anim-rubber_band { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.06, 0.94); } 40% { transform: scale(0.94, 1.06); } 50% { transform: scale(1.03, 0.97); } 65% { transform: scale(0.98, 1.02); } 75% { transform: scale(1.01, 0.99); } }
 
                 .bubble {
                     width: 108px; height: 108px;
@@ -134,75 +145,90 @@ class LunarCalendarBubbleCard extends HTMLElement {
                     border: ${this.config.border_width}px solid ${borderColor};
                     box-shadow: 0 0 ${this.config.shadow_size}px ${shadowColor};
                     display: flex; flex-direction: column; align-items: center; justify-content: center;
-                    cursor: pointer; 
-                    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+                    cursor: grab; 
+                    transition: width 0.3s, height 0.3s, box-shadow 0.3s, border-color 0.3s;
                     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
                     user-select: none; box-sizing: border-box; text-align: center;
                     position: relative;
-                    
-                    /* Fix lỗi mờ chữ (Anti-aliasing & Hardware Acceleration) */
                     -webkit-font-smoothing: antialiased;
                     -moz-osx-font-smoothing: grayscale;
                     backface-visibility: hidden;
-                    transform: translateZ(0);
-                    will-change: transform, box-shadow;
-                    
-                    /* Áp dụng hiệu ứng được chọn */
                     animation: ${currentAnim};
                 }
                 
+                .bubble:active { cursor: grabbing; }
+
                 .bubble-wrapper:hover .bubble {
-                    /* Dùng !important để ghi đè hiệu ứng idle, bỏ xoay (rotate) để chữ sắc nét tuyệt đối */
-                    transform: scale(1.12) translateZ(0) !important;
+                    transform: scale(1.1) !important;
                     box-shadow: 0 0 ${this.config.shadow_size + 12}px ${borderColor} !important;
                     border-color: ${this.config.color_primary};
                     animation: none !important; 
                 }
 
-                .bubble-wrapper:hover .tooltip {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-
+                .bubble-wrapper:hover .tooltip { opacity: 1; transform: translateY(0); }
                 .color-p { color: ${this.config.color_primary}; }
                 .color-s { color: ${this.config.color_secondary}; }
-
                 .solar-day { font-size: 34px; font-weight: 900; line-height: 1; }
                 .solar-ym { font-size: 10px; font-weight: bold; opacity: 0.9; margin-bottom: 2px; }
                 
                 .divider { 
-                    width: 60%; 
-                    height: ${this.config.divider_thickness}px; 
+                    width: 60%; height: ${this.config.divider_thickness}px; 
                     background: ${this.config.divider_color}; 
-                    margin: 4px 0; 
-                    border-radius: 2px;
+                    margin: 4px 0; border-radius: 2px;
                 }
 
                 .lunar-date { font-size: 14px; font-weight: 800; line-height: 1.2; }
                 .lunar-year { font-size: 10px; font-weight: bold; opacity: 0.9; margin-top: -2px; }
 
-                /* MODAL */
+                .bubble.compact { width: 72px; height: 72px; padding: 0; }
+                .bubble.compact .solar-ym { order: 1; font-size: 10px; font-weight: 900; line-height: 1; margin: 0 0 2px 0; color: ${this.config.color_primary}; opacity: 1; }
+                .bubble.compact .solar-day { order: 2; font-size: 36px; font-weight: 900; line-height: 0.85; margin: 0; letter-spacing: -1px; }
+                .bubble.compact .lunar-date { order: 3; font-size: 10px; font-weight: 900; line-height: 1; margin: 2px 0 0 0; color: ${this.config.color_secondary}; }
+                .bubble.compact .divider, .bubble.compact .lunar-year { display: none; }
+
+                /* MODAL OVERLAY CHÍNH */
                 .modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10000; display: none; align-items: center; justify-content: center; }
                 .modal-overlay { position: absolute; width: 100%; height: 100%; background: transparent; }
                 .modal-content { position: relative; width: 95%; max-width: 480px; max-height: 85vh; border-radius: 28px; animation: popInModal 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; box-shadow: 0 25px 50px rgba(0,0,0,0.5); overflow: hidden;}
                 @keyframes popInModal { 0% { opacity: 0; transform: scale(0.7) translateY(30px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
                 .close-btn { position: absolute; top: 15px; right: 15px; z-index: 101; background: rgba(0,0,0,0.2); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-                #card-container { overflow-y: auto; background: var(--card-background-color); }
+                
+                #card-container { 
+                    overflow-y: auto; 
+                    background: var(--card-background-color); 
+                    border-radius: 28px;
+                }
 
-                /* RESPONSIVE CHO ĐIỆN THOẠI */
+                /* TỐI ƯU CỰC MẠNH CHO THEME SÁNG (LIGHT THEME) */
+                .is-light-theme #card-container {
+                    /* Nền đen trong suốt hiển thị sau lớp kính mờ */
+                    background: rgba(0, 0, 0, 0.75) !important;
+                    
+                    /* Ép thẻ con xuyên thấu màu để nhận nền đen ở trên */
+                    --ha-card-background: transparent !important;
+                    --card-background-color: transparent !important;
+                    --paper-card-background-color: transparent !important;
+                    --primary-background-color: transparent !important;
+                    --secondary-background-color: transparent !important;
+                    
+                    /* Hiệu ứng kính (Glassmorphism) */
+                    backdrop-filter: blur(12px);
+                    -webkit-backdrop-filter: blur(12px);
+                }
+
                 @media (max-width: 600px) {
-                    .bubble { width: 85px; height: 85px; }
-                    .solar-day { font-size: 26px; }
-                    .solar-ym { font-size: 9px; margin-bottom: 1px; }
-                    .divider { margin: 3px 0; }
-                    .lunar-date { font-size: 12px; }
-                    .lunar-year { font-size: 9px; margin-top: -1px; }
+                    .bubble:not(.compact) { width: 85px; height: 85px; }
+                    .bubble:not(.compact) .solar-day { font-size: 26px; }
+                    .bubble:not(.compact) .solar-ym { font-size: 9px; margin-bottom: 1px; }
+                    .bubble:not(.compact) .divider { margin: 3px 0; }
+                    .bubble:not(.compact) .lunar-date { font-size: 12px; }
+                    .bubble:not(.compact) .lunar-year { font-size: 9px; margin-top: -1px; }
                 }
             </style>
 
-            <div class="bubble-wrapper">
-                <div class="tooltip">Nhấn để xem chi tiết</div>
-                <div class="bubble" id="bubble">
+            <div class="bubble-wrapper" id="wrapper">
+                <div class="tooltip">Nhấn để xem / Kéo để di chuyển</div>
+                <div class="bubble ${isCompact ? 'compact' : ''}" id="bubble">
                     <div class="solar-day color-p" id="s_day">--</div>
                     <div class="solar-ym color-s" id="s_ym">--/----</div>
                     <div class="divider"></div>
@@ -220,11 +246,78 @@ class LunarCalendarBubbleCard extends HTMLElement {
             </div>
         `;
 
-        this.shadowRoot.getElementById('bubble').addEventListener('click', () => this.openModal());
+        this.setupDragAndDrop();
         this.shadowRoot.getElementById('overlay').addEventListener('click', () => this.closeModal());
         this.shadowRoot.getElementById('close').addEventListener('click', () => this.closeModal());
-
         this.updateDates();
+    }
+
+    setupDragAndDrop() {
+        const wrapper = this.shadowRoot.getElementById('wrapper');
+        const bubble = this.shadowRoot.getElementById('bubble');
+        
+        let isDragging = false;
+        let initialX, initialY, currentX, currentY;
+        let xOffset = 0, yOffset = 0;
+        let hasDragged = false; 
+
+        const dragStart = (e) => {
+            if (e.type === "touchstart") {
+                initialX = e.touches[0].clientX - xOffset;
+                initialY = e.touches[0].clientY - yOffset;
+            } else {
+                initialX = e.clientX - xOffset;
+                initialY = e.clientY - yOffset;
+            }
+            isDragging = true;
+            hasDragged = false;
+            
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', dragEnd);
+            document.addEventListener('touchmove', drag, { passive: false });
+            document.addEventListener('touchend', dragEnd);
+        };
+
+        const drag = (e) => {
+            if (isDragging) {
+                let clientX = e.type === "touchmove" ? e.touches[0].clientX : e.clientX;
+                let clientY = e.type === "touchmove" ? e.touches[0].clientY : e.clientY;
+
+                currentX = clientX - initialX;
+                currentY = clientY - initialY;
+
+                if (Math.abs(clientX - (initialX + xOffset)) > 5 || Math.abs(clientY - (initialY + yOffset)) > 5) {
+                    hasDragged = true;
+                }
+
+                xOffset = currentX;
+                yOffset = currentY;
+                wrapper.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+                
+                if (e.cancelable) e.preventDefault(); 
+            }
+        };
+
+        const dragEnd = () => {
+            isDragging = false;
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', dragEnd);
+            document.removeEventListener('touchmove', drag);
+            document.removeEventListener('touchend', dragEnd);
+        };
+
+        bubble.addEventListener('mousedown', dragStart);
+        bubble.addEventListener('touchstart', dragStart, { passive: false });
+
+        bubble.addEventListener('click', (e) => {
+            if (hasDragged) {
+                e.preventDefault();
+                e.stopPropagation();
+                hasDragged = false; 
+                return;
+            }
+            this.openModal();
+        });
     }
 
     updateDates() {
@@ -236,7 +329,13 @@ class LunarCalendarBubbleCard extends HTMLElement {
 
         const now = new Date();
         sDayEl.innerText = now.getDate();
-        sYmEl.innerText = `Tháng ${now.getMonth() + 1}, ${now.getFullYear()}`;
+        
+        if (this.config.compact_mode) {
+            const m = (now.getMonth() + 1).toString().padStart(2, '0');
+            sYmEl.innerText = `${m}/${now.getFullYear()}`;
+        } else {
+            sYmEl.innerText = `Tháng ${now.getMonth() + 1}, ${now.getFullYear()}`;
+        }
 
         try {
             const options = { calendar: 'chinese', day: 'numeric', month: 'numeric', year: 'numeric' };
@@ -249,7 +348,9 @@ class LunarCalendarBubbleCard extends HTMLElement {
             const yearForCanChi = (year && year.length === 4) ? parseInt(year) : now.getFullYear();
 
             if (day && month) {
-                lDateEl.innerText = `${day}/${month}`;
+                const fDay = day.padStart(2, '0');
+                const fMonth = month.padStart(2, '0');
+                lDateEl.innerText = `${fDay}/${fMonth}`;
                 lYearEl.innerText = this.getCanChi(yearForCanChi);
             }
         } catch (e) {
@@ -297,10 +398,22 @@ class LunarCalendarBubbleEditor extends HTMLElement {
                 input[type="color"] { width: 38px; height: 38px; border: none; border-radius: 50%; cursor: pointer; padding: 0; background: none; }
                 input[type="number"], input[type="range"], select { padding: 8px; border-radius: 6px; border: 1px solid var(--divider-color); flex: 1; color: var(--primary-text-color); background: var(--card-background-color); }
                 .value-badge { font-family: monospace; font-size: 11px; background: var(--divider-color); padding: 2px 6px; border-radius: 4px; min-width: 45px; text-align: center; color: var(--primary-text-color); }
+                .checkbox-group { display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 6px;}
+                .checkbox-group input { width: 16px; height: 16px; accent-color: var(--primary-color); cursor: pointer;}
+                .checkbox-group label { cursor: pointer; font-size: 13px; font-weight: normal; color: var(--primary-text-color); }
             </style>
             <div class="config-container">
                 <div class="section">
                     <div class="section-title">Trạng thái & Hiển thị</div>
+                    
+                    <div class="field">
+                        <label>Chế độ hiển thị</label>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="compact_mode" ${this.config.compact_mode ? 'checked' : ''}>
+                            <label for="compact_mode">Kích hoạt giao diện rút gọn (Chỉ hiển thị số, nhỏ gọn)</label>
+                        </div>
+                    </div>
+
                     <div class="field">
                         <label>Hiệu ứng Bong bóng (Idle Animation)</label>
                         <select id="animation_type">
@@ -318,7 +431,7 @@ class LunarCalendarBubbleEditor extends HTMLElement {
                         </select>
                     </div>
                     <div class="field">
-                        <label>Vị trí hiển thị</label>
+                        <label>Vị trí hiển thị mặc định</label>
                         <select id="position">
                             <option value="bottom-right" ${this.config.position === 'bottom-right' ? 'selected' : ''}>Dưới cùng bên phải</option>
                             <option value="top-right" ${this.config.position === 'top-right' ? 'selected' : ''}>Trên cùng bên phải</option>
@@ -336,14 +449,14 @@ class LunarCalendarBubbleEditor extends HTMLElement {
                 <div class="section">
                     <div class="section-title">Cấu hình Màu sắc Chữ</div>
                     <div class="field">
-                        <label>Màu chính (Ngày Dương & Ngày/Tháng Âm)</label>
+                        <label>Màu chính (Ngày Dương & MM/YYYY nếu rút gọn)</label>
                         <div class="input-group">
                             <input type="color" id="color_primary" value="${this.config.color_primary}">
                             <span class="value-badge">${this.config.color_primary.toUpperCase()}</span>
                         </div>
                     </div>
                     <div class="field">
-                        <label>Màu phụ (Tháng/Năm Dương & Năm Can Chi)</label>
+                        <label>Màu phụ (Tháng/Năm Dương & Ngày Âm nếu rút gọn)</label>
                         <div class="input-group">
                             <input type="color" id="color_secondary" value="${this.config.color_secondary}">
                             <span class="value-badge">${this.config.color_secondary.toUpperCase()}</span>
@@ -397,6 +510,7 @@ class LunarCalendarBubbleEditor extends HTMLElement {
             el.addEventListener('change', () => {
                 const newConfig = {
                     ...this.config,
+                    compact_mode: this.querySelector('#compact_mode').checked,
                     animation_type: this.querySelector('#animation_type').value,
                     position: this.querySelector('#position').value,
                     offset_y: parseInt(this.querySelector('#offset_y').value),
@@ -434,6 +548,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
     type: "lich-am-duong-bubble",
     name: "Bong Bóng Lịch Âm Dương",
-    description: "Bong bóng nổi tự động co giãn kích thước, có tùy biến vạch phân cách và 10 hiệu ứng sinh động.",
+    description: "Bong bóng nổi tự động co giãn, có kéo thả tự do, vạch phân cách và 10 hiệu ứng sinh động.",
     preview: true,
 });
