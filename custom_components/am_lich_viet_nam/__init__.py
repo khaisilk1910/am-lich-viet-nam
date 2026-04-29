@@ -121,10 +121,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     ver_su_kien = await hass.async_add_executor_job(
         get_file_version, "su-kien-am-lich-card.js", fallback_version
     )
+    ver_lich_bubble = await hass.async_add_executor_job(
+        get_file_version, "su-kien-am-lich-card.js", fallback_version
+    )
 
     # Đăng ký URL với mã version vừa tự động tạo
     await init_resource(hass, f"{UI_URL_BASE}/lich-block-am-duong-viet-nam.js", ver_lich_block)
     await init_resource(hass, f"{UI_URL_BASE}/su-kien-am-lich-card.js", ver_su_kien)
+    await init_resource(hass, f"{UI_URL_BASE}/lich-block-am-duong-viet-nam-bubble.js", ver_lich_bubble)
     # ---------------------------------------------------------
 
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
