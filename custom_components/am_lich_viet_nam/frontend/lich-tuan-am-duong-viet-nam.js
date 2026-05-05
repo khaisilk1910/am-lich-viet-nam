@@ -777,8 +777,8 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
           <div class="section">
             <div class="section-title">Nền thẻ và popup</div>
             <div class="grid">
-              ${this._colorField("card_background_color", "Màu nền thẻ", "Nếu chọn màu này, thẻ sẽ dùng màu và độ trong suốt bên dưới.")}
-              ${this._rangeField("card_background_opacity", "Độ trong suốt nền thẻ (%)", 0, 100, "0 là trong suốt, 100 là đậm hoàn toàn.")}
+              ${this._colorField("card_background_color", "Màu nền thẻ tuần", "Mặc định để trống là trong suốt. Nếu chọn màu này, thẻ sẽ dùng màu và độ trong suốt bên dưới.")}
+              ${this._rangeField("card_background_opacity", "Độ trong suốt nền thẻ tuần (%)", 0, 100, "Mặc định 0 là trong suốt, 100 là đậm hoàn toàn.")}
               ${this._textField("card_background", "Nền thẻ CSS tùy chỉnh", "transparent hoặc rgba(255,255,255,0.2)", "Dùng khi mục Màu nền thẻ để trống.")}
               ${this._selectField("popup_theme", "Giao diện popup", [
                 ["default", "Default"], ["theme1", "Theme 1"], ["theme2", "Theme 2"], ["theme3", "Theme 3"], ["theme4", "Theme 4"],
@@ -1090,7 +1090,9 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       if (dow >= 1 && dow <= 5 && !isCenter && hasConfigValue(this.config, "normal_day_color")) classNames.push("is-normal");
 
       const centerTop = isCenter ? `<div class="wlc-month wlc-month-top" title="Bấm để xem chi tiết">${escapeHtml(solarMonthTitle(date))}</div>` : `<div class="wlc-month-spacer"></div>`;
-      const centerBottom = isCenter ? `<div class="wlc-month wlc-month-bottom" title="Bấm để xem chi tiết">${escapeHtml(lunarMonthTitle(lunar))}</div>` : `<div class="wlc-month-spacer"></div>`;
+      const lunarMonthName = lunarMonthTitle(lunar);
+      const lunarMonthFitClass = lunarMonthName.length >= 12 ? " wlc-month-fit" : "";
+      const centerBottom = isCenter ? `<div class="wlc-month wlc-month-bottom${lunarMonthFitClass}" title="Bấm để xem chi tiết">${escapeHtml(lunarMonthName)}</div>` : `<div class="wlc-month-spacer"></div>`;
       const title = `${TUAN[dow]}, ${dd}/${mm}/${yy} - Âm lịch ${lunar.day}/${lunar.month}${lunar.leap ? " nhuận" : ""}`;
 
       return `
@@ -1200,12 +1202,14 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
             font-size: clamp(10px, 2.6cqw, 18px);
             line-height: 1;
             width: 100%;
-            height: clamp(18px, 4.7cqw, 32px);
-            align-self: center;
+            height: 100%;
+            min-height: 100%;
+            align-self: stretch;
             display: flex;
             align-items: center;
             justify-content: center;
             opacity: 0.92;
+            touch-action: manipulation;
             transition: transform 0.18s ease, opacity 0.18s ease, filter 0.18s ease;
           }
 
@@ -1368,6 +1372,11 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
             color: var(--wlc-month-lunar-color);
           }
 
+          .wlc-month-fit {
+            font-size: clamp(5px, 1.55cqw, 12px);
+            letter-spacing: -0.06em;
+          }
+
           .wlc-day.is-center .wlc-month-top {
             margin-top: clamp(2px, 0.55cqw, 6px);
           }
@@ -1474,10 +1483,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
           .wlc-lunar-month-emoji {
             position: absolute;
-            left: calc(50% + 0.88em);
-            top: -0.42em;
+            left: calc(50% + 1.62em);
+            top: 0.02em;
             transform: none;
-            font-size: 0.58em;
+            font-size: 0.42em;
             line-height: 1;
             pointer-events: none;
           }
@@ -1555,9 +1564,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
             .wlc-lunar { font-size: clamp(11px, 3.7cqw, 17px); }
             .wlc-month,
             .wlc-month-spacer { font-size: clamp(7px, 2.25cqw, 10px); }
+            .wlc-month-fit { font-size: clamp(5px, 1.55cqw, 8px); letter-spacing: -0.07em; }
             .wlc-day.is-center .wlc-month-top { margin-top: clamp(1px, 0.35cqw, 3px); }
             .wlc-day.is-center .wlc-month-bottom { margin-bottom: clamp(1px, 0.35cqw, 3px); }
-            .wlc-nav { font-size: clamp(9px, 2.5cqw, 14px); border-radius: 6px; height: clamp(16px, 4.6cqw, 24px); }
+            .wlc-nav { font-size: clamp(9px, 2.5cqw, 14px); border-radius: 6px; }
             .wlc-today-reset { width: clamp(14px, 4.3cqw, 20px); height: clamp(14px, 4.3cqw, 20px); font-size: clamp(8px, 2.5cqw, 12px); }
           }
 
@@ -1569,6 +1579,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
             .wlc-day { padding: 0; }
             .wlc-month,
             .wlc-month-spacer { font-size: 7px; }
+            .wlc-month-fit { font-size: 5px; letter-spacing: -0.08em; }
             .wlc-day.is-center .wlc-month-top { margin-top: 1px; }
             .wlc-day.is-center .wlc-month-bottom { margin-bottom: 1px; }
             .wlc-weekday { font-size: 10px; }
@@ -1577,7 +1588,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
             .wlc-solar-number, .wlc-solar-first { width: 1.22em; min-width: 1.22em; }
             .wlc-today-marker { height: 1px; max-height: 1px; width: 34%; }
             .wlc-lunar { font-size: 10px; }
-            .wlc-nav { font-size: 9px; height: 16px; }
+            .wlc-nav { font-size: 9px; }
             .wlc-today-reset { width: 13px; height: 13px; font-size: 8px; }
           }
         </style>
