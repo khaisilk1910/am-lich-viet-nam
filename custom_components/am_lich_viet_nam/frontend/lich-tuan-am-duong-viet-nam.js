@@ -369,6 +369,8 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     saturday_color: "#00a85a",
     sunday_color: "#ef1722",
     arrow_color: "#c7eaff",
+    arrow_background_color: "",
+    arrow_background_opacity: 0,
     center_gradient_top: "rgba(229, 246, 255, 0.72)",
     center_gradient_bottom: "rgba(136, 191, 225, 0.82)",
     center_gradient: "",
@@ -428,7 +430,8 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
   function formatLunarInWeekHtml(lunarDate, showMonthEmoji = false) {
     const lunarText = `<span class="wlc-lunar-text">${escapeHtml(formatLunarInWeek(lunarDate))}</span>`;
     if (!showMonthEmoji) return lunarText;
-    return `${lunarText}<span class="wlc-lunar-month-emoji" title="${getLunarMonthLength(lunarDate)} ngày">${lunarMonthLengthEmoji(lunarDate)}</span>`;
+    const monthLength = getLunarMonthLength(lunarDate);
+    return `${lunarText}<span class="wlc-lunar-month-emoji" title="${monthLength} ngày">${lunarMonthLengthEmoji(lunarDate)}</span>`;
   }
 
   function solarMonthTitle(date) {
@@ -836,6 +839,8 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
         saturday_color: "#00a85a",
         sunday_color: "#ef1722",
         arrow_color: "#c7eaff",
+        arrow_background_color: "",
+        arrow_background_opacity: 0,
         center_gradient_top: "rgba(229, 246, 255, 0.72)",
         center_gradient_bottom: "rgba(136, 191, 225, 0.82)",
         card_background_color: "",
@@ -855,6 +860,8 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       this._offsetDays = 0;
       this._lastTodayKey = "";
       this._timer = null;
+      this._cardPopupModal = null;
+      this._cardPopupMainCard = null;
     }
 
     connectedCallback() {
@@ -887,6 +894,8 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     set hass(hass) {
       this._hass = hass;
       injectPopupDOM();
+      if (this._cardPopupMainCard) this._cardPopupMainCard.hass = hass;
+      this._syncCardPopupTheme();
       const key = new Date().toDateString();
       if (key !== this._lastTodayKey) {
         this._lastTodayKey = key;
@@ -914,13 +923,157 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     }
 
     _showPopup(date) {
-      injectPopupDOM();
-      const [dd, mm, yy] = solarArgs(date);
-      const theme = this.config.popup_theme || "default";
-      const opacity = clampNumber(this.config.popup_opacity, 95, 0, 100);
-      if (typeof window.haShowDayPopup === "function") {
-        window.haShowDayPopup(dd, mm, yy, theme, opacity);
+      this._openCalendarCardPopup(date);
+    }
+
+    _syncCardPopupTheme() {
+      if (!this._cardPopupModal) return;
+      if (this._hass && this._hass.themes && this._hass.themes.darkMode === false) {
+        this._cardPopupModal.classList.add("is-light-theme");
+      } else {
+        this._cardPopupModal.classList.remove("is-light-theme");
       }
+    }
+
+    _ensureCalendarCardPopup() {
+      if (this._cardPopupModal) return;
+      if (!this.shadowRoot) this.attachShadow({ mode: "open" });
+
+      const modal = document.createElement("div");
+      modal.className = "wlc-card-popup-modal";
+      modal.innerHTML = `
+        <style>
+          .wlc-card-popup-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 100vw;
+            height: 100vh;
+          }
+          .wlc-card-popup-overlay {
+            position: absolute;
+            inset: 0;
+            background: transparent;
+          }
+          .wlc-card-popup-content {
+            position: relative;
+            width: 95%;
+            max-width: 480px;
+            max-height: 85vh;
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            animation: wlcCardPopupIn 0.34s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+          }
+          @keyframes wlcCardPopupIn {
+            0% { opacity: 0; transform: scale(0.78) translateY(24px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+          }
+          .wlc-card-popup-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 3;
+            width: 30px;
+            height: 30px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.22);
+            color: #ffffff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            line-height: 1;
+            padding: 0;
+          }
+          .wlc-card-popup-container {
+            max-height: 85vh;
+            overflow-y: auto;
+            background: var(--card-background-color);
+            border-radius: 28px;
+          }
+          .wlc-card-popup-modal.is-light-theme .wlc-card-popup-container {
+            background: rgba(0, 0, 0, 0.75) !important;
+            --ha-card-background: transparent !important;
+            --card-background-color: transparent !important;
+            --paper-card-background-color: transparent !important;
+            --primary-background-color: transparent !important;
+            --secondary-background-color: transparent !important;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+          }
+          .wlc-card-popup-message {
+            padding: 28px 22px;
+            color: var(--primary-text-color, #111);
+            background: var(--card-background-color, #fff);
+            font-family: var(--paper-font-body1_-_font-family, Roboto, Arial, sans-serif);
+            line-height: 1.45;
+          }
+        </style>
+        <div class="wlc-card-popup-overlay"></div>
+        <div class="wlc-card-popup-content">
+          <button class="wlc-card-popup-close" aria-label="Đóng">✕</button>
+          <div class="wlc-card-popup-container"></div>
+        </div>`;
+
+      modal.querySelector(".wlc-card-popup-overlay").addEventListener("click", () => this._closeCalendarCardPopup());
+      modal.querySelector(".wlc-card-popup-close").addEventListener("click", () => this._closeCalendarCardPopup());
+      this.shadowRoot.appendChild(modal);
+      this._cardPopupModal = modal;
+      this._syncCardPopupTheme();
+    }
+
+    _openCalendarCardPopup(date) {
+      this._ensureCalendarCardPopup();
+      const container = this._cardPopupModal.querySelector(".wlc-card-popup-container");
+      const [dd, mm, yy] = solarArgs(date || new Date());
+      const dateValue = `${yy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
+
+      if (!this._cardPopupMainCard) {
+        if (customElements.get("lich-block-am-duong-viet-nam")) {
+          this._cardPopupMainCard = document.createElement("lich-block-am-duong-viet-nam");
+          if (typeof this._cardPopupMainCard.setConfig === "function") {
+            this._cardPopupMainCard.setConfig({
+              type: "custom:lich-block-am-duong-viet-nam",
+              selected_date: dateValue,
+              initial_date: dateValue,
+              date: dateValue,
+              day: dd,
+              month: mm,
+              year: yy
+            });
+          }
+          if (this._hass) this._cardPopupMainCard.hass = this._hass;
+          container.replaceChildren(this._cardPopupMainCard);
+        } else {
+          container.innerHTML = `<div class="wlc-card-popup-message">Chưa tìm thấy thẻ <b>lich-block-am-duong-viet-nam</b>. Hãy bảo đảm file thẻ lịch chính đã được nạp trong Resources của Home Assistant.</div>`;
+        }
+      } else {
+        if (typeof this._cardPopupMainCard.setConfig === "function") {
+          this._cardPopupMainCard.setConfig({
+            type: "custom:lich-block-am-duong-viet-nam",
+            selected_date: dateValue,
+            initial_date: dateValue,
+            date: dateValue,
+            day: dd,
+            month: mm,
+            year: yy
+          });
+        }
+        if (this._hass) this._cardPopupMainCard.hass = this._hass;
+      }
+
+      this._syncCardPopupTheme();
+      this._cardPopupModal.style.display = "flex";
+    }
+
+    _closeCalendarCardPopup() {
+      if (this._cardPopupModal) this._cardPopupModal.style.display = "none";
     }
 
     _cellHtml(date, offsetFromCenter) {
@@ -946,7 +1099,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
           <div class="wlc-weekday">${WEEKDAY_SHORT[dow]}</div>
           <div class="wlc-solar${dd === 1 ? " is-first-solar" : ""}${dd >= 10 ? " is-two-solar" : ""}">${formatSolarInWeekHtml(date)}</div>
           <span class="wlc-today-marker" aria-hidden="true"></span>
-          <div class="wlc-lunar">${formatLunarInWeekHtml(lunar, isToday)}</div>
+          <div class="wlc-lunar">${formatLunarInWeekHtml(lunar, isCenter)}</div>
           ${centerBottom}
         </button>`;
     }
@@ -1023,7 +1176,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
           .wlc-row {
             position: relative;
             display: grid;
-            grid-template-columns: clamp(6px, 1.8cqw, 14px) repeat(7, minmax(0, 1fr)) clamp(6px, 1.8cqw, 14px);
+            grid-template-columns: clamp(8px, 2cqw, 18px) repeat(7, minmax(0, 1fr)) clamp(8px, 2cqw, 18px);
             align-items: stretch;
             width: 100%;
             min-width: 0;
@@ -1044,10 +1197,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
             border-radius: 8px;
             padding: 0;
             margin: 0;
-            font-size: clamp(10px, 2.7cqw, 18px);
+            font-size: clamp(10px, 2.6cqw, 18px);
             line-height: 1;
             width: 100%;
-            height: clamp(18px, 4.8cqw, 34px);
+            height: clamp(18px, 4.7cqw, 32px);
             align-self: center;
             display: flex;
             align-items: center;
@@ -1297,6 +1450,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
             max-width: 100%;
             min-width: 0;
             overflow: visible;
+            position: relative;
             color: var(--wlc-lunar-day-color);
             font-size: clamp(13px, 3.9cqw, 29px);
             line-height: 1.04;
@@ -1311,19 +1465,21 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
           }
 
           .wlc-lunar-text {
-            position: relative;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 1.3em;
+            line-height: inherit;
           }
 
           .wlc-lunar-month-emoji {
-            position: relative;
-            display: inline-block;
-            margin-left: 0.1em;
-            top: -0.55em;
-            font-size: 0.56em;
+            position: absolute;
+            left: calc(50% + 0.88em);
+            top: -0.42em;
+            transform: none;
+            font-size: 0.58em;
             line-height: 1;
             pointer-events: none;
-            filter: drop-shadow(0 0 1px rgba(255,255,255,0.55));
           }
 
           .wlc-day.is-center {
@@ -1377,7 +1533,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
           @container (max-width: 420px) {
             .wlc-row {
-              grid-template-columns: clamp(5px, 1.65cqw, 10px) repeat(7, minmax(0, 1fr)) clamp(5px, 1.65cqw, 10px);
+              grid-template-columns: clamp(3px, 1.25cqw, 8px) repeat(7, minmax(0, 1fr)) clamp(3px, 1.25cqw, 8px);
               min-height: clamp(70px, 22cqw, 94px);
               padding-left: 0;
               padding-right: 0;
@@ -1401,13 +1557,13 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
             .wlc-month-spacer { font-size: clamp(7px, 2.25cqw, 10px); }
             .wlc-day.is-center .wlc-month-top { margin-top: clamp(1px, 0.35cqw, 3px); }
             .wlc-day.is-center .wlc-month-bottom { margin-bottom: clamp(1px, 0.35cqw, 3px); }
-            .wlc-nav { font-size: clamp(9px, 2.5cqw, 13px); border-radius: 6px; height: clamp(16px, 4.7cqw, 24px); }
+            .wlc-nav { font-size: clamp(9px, 2.5cqw, 14px); border-radius: 6px; height: clamp(16px, 4.6cqw, 24px); }
             .wlc-today-reset { width: clamp(14px, 4.3cqw, 20px); height: clamp(14px, 4.3cqw, 20px); font-size: clamp(8px, 2.5cqw, 12px); }
           }
 
           @container (max-width: 300px) {
             .wlc-row {
-              grid-template-columns: 5px repeat(7, minmax(0, 1fr)) 5px;
+              grid-template-columns: 3px repeat(7, minmax(0, 1fr)) 3px;
               min-height: 64px;
             }
             .wlc-day { padding: 0; }
