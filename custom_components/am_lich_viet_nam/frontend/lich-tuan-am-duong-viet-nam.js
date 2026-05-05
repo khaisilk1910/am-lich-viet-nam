@@ -1,0 +1,1504 @@
+// Lấy code âm dương từ HO NGOC DUC và https://www.xemlicham.com/
+// Phát triển thẻ dành cho Home Assistant của Nguyễn Tiến Khải - khaisilk1910
+// Lunar Calendar Custom Card for Home Assistant
+
+import { 
+  svg_12congiap, 
+  THAP_NHI_TRUC, 
+  NHI_THAP_BAT_TU, 
+  NGAY_THONG_TIN, 
+  CA_DAO_TUC_NGU 
+} from './lich-block-am-duong-viet-nam-data.js';
+
+import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-popup.js?v=2';
+
+(function(){
+  'use strict';
+
+  const PI = Math.PI;
+  function INT(d){ return Math.floor(d); }
+
+  const ABOUT = "Âm lịch Việt Nam Home Assistant - Ver 20Aug2025 © 2025 Nguyễn Tiến Khải";
+
+  const TK19 = [
+    0x30baa3, 0x56ab50, 0x422ba0, 0x2cab61, 0x52a370, 0x3c51e8, 0x60d160, 0x4ae4b0, 0x376926, 0x58daa0,
+    0x445b50, 0x3116d2, 0x562ae0, 0x3ea2e0, 0x28e2d2, 0x4ec950, 0x38d556, 0x5cb520, 0x46b690, 0x325da4,
+    0x5855d0, 0x4225d0, 0x2ca5b3, 0x52a2b0, 0x3da8b7, 0x60a950, 0x4ab4a0, 0x35b2a5, 0x5aad50, 0x4455b0,
+    0x302b74, 0x562570, 0x4052f9, 0x6452b0, 0x4e6950, 0x386d56, 0x5e5aa0, 0x46ab50, 0x3256d4, 0x584ae0,
+    0x42a570, 0x2d4553, 0x50d2a0, 0x3be8a7, 0x60d550, 0x4a5aa0, 0x34ada5, 0x5a95d0, 0x464ae0, 0x2eaab4,
+    0x54a4d0, 0x3ed2b8, 0x64b290, 0x4cb550, 0x385757, 0x5e2da0, 0x4895d0, 0x324d75, 0x5849b0, 0x42a4b0,
+    0x2da4b3, 0x506a90, 0x3aad98, 0x606b50, 0x4c2b60, 0x359365, 0x5a9370, 0x464970, 0x306964, 0x52e4a0,
+    0x3cea6a, 0x62da90, 0x4e5ad0, 0x392ad6, 0x5e2ae0, 0x4892e0, 0x32cad5, 0x56c950, 0x40d4a0, 0x2bd4a3,
+    0x50b690, 0x3a57a7, 0x6055b0, 0x4c25d0, 0x3695b5, 0x5a92b0, 0x44a950, 0x2ed954, 0x54b4a0, 0x3cb550,
+    0x286b52, 0x4e55b0, 0x3a2776, 0x5e2570, 0x4852b0, 0x32aaa5, 0x56e950, 0x406aa0, 0x2abaa3, 0x50ab50
+  ];
+
+  const TK20 = [
+    0x3c4bd8, 0x624ae0, 0x4ca570, 0x3854d5, 0x5cd260, 0x44d950, 0x315554, 0x5656a0, 0x409ad0, 0x2a55d2,
+    0x504ae0, 0x3aa5b6, 0x60a4d0, 0x48d250, 0x33d255, 0x58b540, 0x42d6a0, 0x2cada2, 0x5295b0, 0x3f4977,
+    0x644970, 0x4ca4b0, 0x36b4b5, 0x5c6a50, 0x466d50, 0x312b54, 0x562b60, 0x409570, 0x2c52f2, 0x504970,
+    0x3a6566, 0x5ed4a0, 0x48ea50, 0x336a95, 0x585ad0, 0x442b60, 0x2f86e3, 0x5292e0, 0x3dc8d7, 0x62c950,
+    0x4cd4a0, 0x35d8a6, 0x5ab550, 0x4656a0, 0x31a5b4, 0x5625d0, 0x4092d0, 0x2ad2b2, 0x50a950, 0x38b557,
+    0x5e6ca0, 0x48b550, 0x355355, 0x584da0, 0x42a5b0, 0x2f4573, 0x5452b0, 0x3ca9a8, 0x60e950, 0x4c6aa0,
+    0x36aea6, 0x5aab50, 0x464b60, 0x30aae4, 0x56a570, 0x405260, 0x28f263, 0x4ed940, 0x38db47, 0x5cd6a0,
+    0x4896d0, 0x344dd5, 0x5a4ad0, 0x42a4d0, 0x2cd4b4, 0x52b250, 0x3cd558, 0x60b540, 0x4ab5a0, 0x3755a6,
+    0x5c95b0, 0x4649b0, 0x30a974, 0x56a4b0, 0x40aa50, 0x29aa52, 0x4e6d20, 0x39ad47, 0x5eab60, 0x489370,
+    0x344af5, 0x5a4970, 0x4464b0, 0x2c74a3, 0x50ea50, 0x3d6a58, 0x6256a0, 0x4aaad0, 0x3696d5, 0x5c92e0
+  ];
+
+  const TK21 = [
+    0x46c960, 0x2ed954, 0x54d4a0, 0x3eda50, 0x2a7552, 0x4e56a0, 0x38a7a7, 0x5ea5d0, 0x4a92b0, 0x32aab5,
+    0x58a950, 0x42b4a0, 0x2cbaa4, 0x50ad50, 0x3c55d9, 0x624ba0, 0x4ca5b0, 0x375176, 0x5c5270, 0x466930,
+    0x307934, 0x546aa0, 0x3ead50, 0x2a5b52, 0x504b60, 0x38a6e6, 0x5ea4e0, 0x48d260, 0x32ea65, 0x56d520,
+    0x40daa0, 0x2d56a3, 0x5256d0, 0x3c4afb, 0x6249d0, 0x4ca4d0, 0x37d0b6, 0x5ab250, 0x44b520, 0x2edd25,
+    0x54b5a0, 0x3e55d0, 0x2a55b2, 0x5049b0, 0x3aa577, 0x5ea4b0, 0x48aa50, 0x33b255, 0x586d20, 0x40ad60,
+    0x2d4b63, 0x525370, 0x3e49e8, 0x60c970, 0x4c54b0, 0x3768a6, 0x5ada50, 0x445aa0, 0x2fa6a4, 0x54aad0,
+    0x4052e0, 0x28d2e3, 0x4ec950, 0x38d557, 0x5ed4a0, 0x46d950, 0x325d55, 0x5856a0, 0x42a6d0, 0x2c55d4,
+    0x5252b0, 0x3ca9b8, 0x62a930, 0x4ab490, 0x34b6a6, 0x5aad50, 0x4655a0, 0x2eab64, 0x54a570, 0x4052b0,
+    0x2ab173, 0x4e6930, 0x386b37, 0x5e6aa0, 0x48ad50, 0x332ad5, 0x582b60, 0x42a570, 0x2e52e4, 0x50d160,
+    0x3ae958, 0x60d520, 0x4ada90, 0x355aa6, 0x5a56d0, 0x462ae0, 0x30a9d4, 0x54a2d0, 0x3ed150, 0x28e952
+  ];
+
+  const TK22 = [
+    0x4eb520, 0x38d727, 0x5eada0, 0x4a55b0, 0x362db5, 0x5a45b0, 0x44a2b0, 0x2eb2b4, 0x54a950, 0x3cb559,
+    0x626b20, 0x4cad50, 0x385766, 0x5c5370, 0x484570, 0x326574, 0x5852b0, 0x406950, 0x2a7953, 0x505aa0,
+    0x3baaa7, 0x5ea6d0, 0x4a4ae0, 0x35a2e5, 0x5aa550, 0x42d2a0, 0x2de2a4, 0x52d550, 0x3e5abb, 0x6256a0,
+    0x4c96d0, 0x3949b6, 0x5e4ab0, 0x46a8d0, 0x30d4b5, 0x56b290, 0x40b550, 0x2a6d52, 0x504da0, 0x3b9567,
+    0x609570, 0x4a49b0, 0x34a975, 0x5a64b0, 0x446a90, 0x2cba94, 0x526b50, 0x3e2b60, 0x28ab61, 0x4c9570,
+    0x384ae6, 0x5cd160, 0x46e4a0, 0x2eed25, 0x54da90, 0x405b50, 0x2c36d3, 0x502ae0, 0x3a93d7, 0x6092d0,
+    0x4ac950, 0x32d556, 0x58b4a0, 0x42b690, 0x2e5d94, 0x5255b0, 0x3e25fa, 0x6425b0, 0x4e92b0, 0x36aab6,
+    0x5c6950, 0x4674a0, 0x31b2a5, 0x54ad50, 0x4055a0, 0x2aab73, 0x522570, 0x3a5377, 0x6052b0, 0x4a6950,
+    0x346d56, 0x585aa0, 0x42ab50, 0x2e56d4, 0x544ae0, 0x3ca570, 0x2864d2, 0x4cd260, 0x36eaa6, 0x5ad550,
+    0x465aa0, 0x30ada5, 0x5695d0, 0x404ad0, 0x2aa9b3, 0x50a4d0, 0x3ad2b7, 0x5eb250, 0x48b540, 0x33d556
+  ];
+
+  const CAN = ["Giáp","Ất","Bính","Đinh","Mậu","Kỷ","Canh","Tân","Nhâm","Quý"];
+  const CHI = ["Tý","Sửu","Dần","Mão","Thìn","Tỵ","Ngọ","Mùi","Thân","Dậu","Tuất","Hợi"];
+  const CHI_EMOJI = ["🐭","🐂","🐯","🐱","🐲","🐍","🐴","🐐","🐵","🐔","🐶","🐷"];
+  const TUAN = ["Chủ Nhật","Thứ Hai","Thứ Ba","Thứ Tư","Thứ Năm","Thứ Sáu","Thứ Bảy"];
+  const TUAN_EN = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const GIO_HD = ["110100101100","001101001011","110011010010","101100110100","001011001101","010010110011"]; 
+  const TIETKHI = ["Xuân Phân","Thanh Minh","Cốc Vũ","Lập Hạ","Tiểu Mãn","Mang Chủng","Hạ Chí","Tiểu Thử","Đại Thử","Lập Thu","Xử Thử","Bạch Lộ","Thu Phân","Hàn lộ","Sương Giáng","Lập đông","Tiểu Tuyết","Đại Tuyết","Đông Chí","Tiểu Hàn","Đại Hàn","Lập Xuân","Vũ Thủy","Kinh Trập"];
+
+  const NGAY_LE_DL = ["1/1","9/1","3/2","14/2","26/2","27/2","8/3","20/3","22/3","26/3","31/3","1/4","30/4","1/5","7/5","12/5","19/5","1/6","18/6","21/6","28/6","11/7","27/7","28/7","19/8","2/9","10/9","1/10","10/10","13/10","16/10","17/10","20/10","31/10","9/11","19/11","20/11","23/11","28/11","29/11","1/12","19/12","25/12","22/12"];
+  const NGAY_LE_DL_STRING = ["Tết Dương lịch","Truyền thống HS-SV","Thành lập Đảng","Lễ tình nhân","Vía Thần Tài","Thầy thuốc Việt Nam","Quốc tế Phụ nữ","Quốc tế Hạnh phúc","Nước sạch Thế giới","Thành lập Đoàn TNCS Hồ Chí Minh","Lễ Phục Sinh","Cá tháng Tư","Giải phóng Miền Nam","Quốc tế Lao động","Chiến thắng Điện Biên Phủ","Ngày của Mẹ","Ngày sinh Chủ tịch Hồ Chí Minh","Quốc tế Thiếu Nhi","Ngày của Cha","Báo chí Việt Nam","Gia đình Việt Nam","Dân số thế giới","Thương binh liệt sĩ","Thành lập công đoàn VN","Cách mạng Tháng 8","Quốc Khánh","Thành lập MTTQ Việt Nam","Quốc tế người cao tuổi","Giải phóng Thủ Đô","Doanh nhân Việt Nam","Lương thực thế giới","Quốc tế xóa nghèo","Phụ nữ Việt Nam","Halloween","Pháp luật Việt Nam","Quốc tế Nam giới","Nhà giáo Việt Nam","Thành lập Hội chữ thập đỏ","Lễ Tạ Ơn","Black Friday","Phòng chống AIDS","Toàn quốc kháng chiến","Lễ Giáng Sinh","Thành lập Quân đội nhân dân"];
+  const NGAY_LE_AL = ["1/1","2/1","3/1","15/1","3/3","10/3","15/4","5/5","7/7","15/7","15/8","9/9","10/10","15/10","23/12"];
+  const NGAY_LE_AL_STRING = ["Mùng Một Tết","Mùng 2 Tết","Mùng 3 Tết","Tết Nguyên Tiêu","Tết Hàn Thực","Giỗ tổ Hùng Vương","Lễ Phật Đản","Tết Đoan Ngọ","Lễ Thất Tịch","Lễ Vu Lan","Tết Trung Thu","Tết Trùng Cửu","Tết Trùng Thập","Tết Hạ Nguyên","Ông Táo Về Trời"];
+
+  function getUniqueDailyContent(sourceArray, storageKey = 'cadao_tracker') {
+    if (!sourceArray || sourceArray.length === 0) return "";
+    const _todayObj = new Date();
+    const _dateStr = _todayObj.getFullYear() + "" + (_todayObj.getMonth() + 1) + "" + _todayObj.getDate();
+    let storedData;
+    try { storedData = JSON.parse(localStorage.getItem(storageKey)) || {}; } 
+    catch (e) { storedData = {}; }
+
+    if (storedData.date !== _dateStr) { storedData = { date: _dateStr, shownIndices: [] }; }
+    const totalItems = sourceArray.length;
+    const availableIndices = [];
+
+    for (let i = 0; i < totalItems; i++) {
+        if (!storedData.shownIndices.includes(i)) availableIndices.push(i);
+    }
+
+    let _selectedIndex;
+    if (availableIndices.length === 0) {
+        _selectedIndex = Math.floor(Math.random() * totalItems);
+        storedData.shownIndices = [_selectedIndex];
+    } else {
+        const randomPointer = Math.floor(Math.random() * availableIndices.length);
+        _selectedIndex = availableIndices[randomPointer];
+        storedData.shownIndices.push(_selectedIndex);
+    }
+
+    localStorage.setItem(storageKey, JSON.stringify(storedData));
+    let content = sourceArray[_selectedIndex];
+    return content ? content.replace(/\n/g, '<br>') : "";
+  }
+
+  function jdn(dd, mm, yy){
+    let a = INT((14 - mm) / 12);
+    let y = yy + 4800 - a;
+    let m = mm + 12 * a - 3;
+    let jd = dd + INT((153*m+2)/5) + 365*y + INT(y/4) - INT(y/100) + INT(y/400) - 32045;
+    return jd;
+  }
+
+  function jdn2dateFunc(jd){
+    let Z, A, alpha, B, C, D, E, dd, mm, yyyy;
+    Z = jd;
+    if (Z < 2299161) { A = Z; } else { alpha = INT((Z-1867216.25)/36524.25); A = Z + 1 + alpha - INT(alpha/4); }
+    B = A + 1524; C = INT((B-122.1)/365.25); D = INT(365.25*C); E = INT((B-D)/30.6001);
+    dd = INT(B - D - INT(30.6001*E));
+    if (E < 14) mm = E - 1; else mm = E - 13;
+    if (mm < 3) yyyy = C - 4715; else yyyy = C - 4716;
+    return [dd, mm, yyyy];
+  }
+
+  function decodeLunarYear(yy, k){
+    let monthLengths = [29,30];
+    let regularMonths = new Array(12);
+    let offsetOfTet = k >> 17;
+    let leapMonth = k & 0xf;
+    let leapMonthLength = monthLengths[(k >> 16) & 0x1];
+    let solarNY = jdn(1,1,yy);
+    let currentJD = solarNY + offsetOfTet;
+    let j = k >> 4;
+    for (let i=0;i<12;i++){ regularMonths[12 - i - 1] = monthLengths[j & 0x1]; j >>= 1; }
+    let ly = [];
+    if (leapMonth === 0){
+      for (let mm=1; mm<=12; mm++){ ly.push(new LunarDate(1, mm, yy, 0, currentJD)); currentJD += regularMonths[mm-1]; }
+    } else {
+      for (let mm=1; mm<=leapMonth; mm++){ ly.push(new LunarDate(1, mm, yy, 0, currentJD)); currentJD += regularMonths[mm-1]; }
+      ly.push(new LunarDate(1, leapMonth, yy, 1, currentJD)); currentJD += leapMonthLength;
+      for (let mm=leapMonth+1; mm<=12; mm++){ ly.push(new LunarDate(1, mm, yy, 0, currentJD)); currentJD += regularMonths[mm-1]; }
+    }
+    return ly;
+  }
+
+  function getYearInfo(yyyy){
+    let yearCode;
+    if (yyyy < 1900) yearCode = TK19[yyyy - 1800];
+    else if (yyyy < 2000) yearCode = TK20[yyyy - 1900];
+    else if (yyyy < 2100) yearCode = TK21[yyyy - 2000];
+    else yearCode = TK22[yyyy - 2100];
+    return decodeLunarYear(yyyy, yearCode);
+  }
+
+  function LunarDate(dd, mm, yy, leap, jd){ this.day = dd; this.month = mm; this.year = yy; this.leap = leap; this.jd = jd; }
+
+  const FIRST_DAY = jdn(25,1,1800);
+  const LAST_DAY = jdn(31,12,2199);
+
+  function findLunarDate(jd, ly){
+    if (jd > LAST_DAY || jd < FIRST_DAY || ly[0].jd > jd) return new LunarDate(0,0,0,0,jd);
+    let i = ly.length-1;
+    while (jd < ly[i].jd) i--;
+    let off = jd - ly[i].jd;
+    return new LunarDate(ly[i].day + off, ly[i].month, ly[i].year, ly[i].leap, jd);
+  }
+
+  function getLunarDate(dd, mm, yyyy){
+    let ly = getYearInfo(yyyy);
+    let jd = jdn(dd, mm, yyyy);
+    if (jd < ly[0].jd) ly = getYearInfo(yyyy - 1);
+    return findLunarDate(jd, ly);
+  }
+
+  function SunLongitude(jd){
+    let T = (jd - 2451545.0) / 36525;
+    let T2 = T*T;
+    let dr = PI/180;
+    let M = 357.52910 + 35999.05030*T - 0.0001559*T2 - 0.00000048*T*T2;
+    let L0 = 280.46645 + 36000.76983*T + 0.0003032*T2;
+    let DL = (1.914600 - 0.004817*T - 0.000014*T2)*Math.sin(dr*M);
+    DL = DL + (0.019993 - 0.000101*T)*Math.sin(2*dr*M) + 0.000290*Math.sin(3*dr*M);
+    let L = (L0 + DL) * dr;
+    L = L - PI*2*INT(L/(PI*2));
+    return L;
+  }
+  function getSunLongitude(dayNumber, timeZone){
+    return INT(SunLongitude(dayNumber - 0.5 - timeZone/24.0) / PI * 12);
+  }
+
+  function getYearCanChi(year){ return CAN[(year+6) % 10] + " " + CHI[(year+8) % 12]; }
+  function getCanHour0(jdnv){ return CAN[((jdnv-1)*2) % 10]; }
+  
+  function getCanChi(lunar){
+    let dayName = CAN[(lunar.jd + 9) % 10] + " " + CHI[(lunar.jd+1)%12];
+    let monthName = CAN[(lunar.year*12 + lunar.month + 3) % 10] + " " + CHI[(lunar.month+1)%12];
+    if (lunar.leap === 1) monthName += " (nhuận)";
+    let yearName = getYearCanChi(lunar.year);
+    return [dayName, monthName, yearName];
+  }
+
+  function getDayName(lunarDate){
+    if (lunarDate.day === 0) return "";
+    const cc = getCanChi(lunarDate);
+    return "Ngày " + cc[0] + ", tháng " + cc[1] + ", năm " + cc[2];
+  }
+
+  function getGioHoangDao(jd){
+    const chiOfDay = (jd + 1) % 12;
+    const gioHD = GIO_HD[chiOfDay % 6];
+    let ret = ""; let count = 0;
+    for (let i=0; i<12; i++){
+      if (gioHD.charAt(i) === '1'){
+        ret += CHI[i] + " " + CHI_EMOJI[i] + ' <b style="color: var(--popup-accent);">(' + ((i*2+23)%24) + '-' + ((i*2+1)%24) + 'h)</b>';
+        if (count++ < 5) ret += ", ";
+      }
+    }
+    return ret;
+  }
+
+  function getGioHacDao(jd){
+    const chiOfDay = (jd + 1) % 12;
+    const gioHD = GIO_HD[chiOfDay % 6]; 
+    let ret = ""; let count = 0;
+    for (let i=0; i<12; i++){
+      if (gioHD.charAt(i) === '0'){ 
+        ret += '<b style="color: var(--color-warn);">' + CHI[i] + '</b>' + " " + CHI_EMOJI[i] + ' <b style="color: var(--color-warn);">(' + ((i*2+23)%24) + '-' + ((i*2+1)%24) + 'h)</b>';
+        if (count++ < 5) ret += ", ";
+      }
+    }
+    return ret;
+  }
+
+	function getSvgConGiap(chiIndex) {
+    const svgString = svg_12congiap[chiIndex] || ""; 
+    return svgString.replace('<svg', '<svg style="width: 100%; height: 100%;"');
+  }
+
+	function getCanChiNgay(jd) {
+		const can = CAN[(jd + 9) % 10];
+		const chi = CHI[(jd + 1) % 12];
+		return [can, chi];
+	}
+
+	const HUONG = { DONG_BAC: "Đông Bắc", TAY_BAC: "Tây Bắc", TAY_NAM: "Tây Nam", CHINH_NAM: "Chính Nam", DONG_NAM: "Đông Nam", CHINH_DONG: "Chính Đông", CHINH_BAC: "Chính Bắc", CHINH_TAY: "Chính Tây" };
+	const HY_THAN_RULES = { [HUONG.DONG_BAC]: ["Giáp", "Kỷ"], [HUONG.TAY_BAC]: ["Ất", "Canh"], [HUONG.TAY_NAM]: ["Bính", "Tân"], [HUONG.CHINH_NAM]: ["Đinh", "Nhâm"], [HUONG.DONG_NAM]: ["Mậu", "Quý"] };
+	const TAI_THAN_RULES = { [HUONG.DONG_NAM]: ["Giáp", "Ất"], [HUONG.CHINH_DONG]: ["Bính", "Đinh"], [HUONG.CHINH_BAC]: ["Mậu"], [HUONG.CHINH_NAM]: ["Kỷ"], [HUONG.TAY_NAM]: ["Canh", "Tân"], [HUONG.CHINH_TAY]: ["Nhâm"], [HUONG.TAY_BAC]: ["Quý"] };
+	
+	const HAC_THAN_FREE = new Set(["QuýTỵ", "GiápNgọ", "ẤtMùi", "BínhThân", "ĐinhDậu", "MậuTuất", "KỷHợi", "CanhTý", "TânSửu", "NhâmDần", "QuýMão", "GiápThìn", "ẤtTỵ", "BínhNgọ", "ĐinhMùi", "MậuThân"]);
+
+	const HAC_THAN_MAP = new Map([
+		["KỷDậu", HUONG.DONG_BAC], ["CanhTuất", HUONG.DONG_BAC], ["TânHợi", HUONG.DONG_BAC], ["NhâmTý", HUONG.DONG_BAC], ["QuýSửu", HUONG.DONG_BAC], ["GiápDần", HUONG.DONG_BAC],
+		["ẤtMão", HUONG.CHINH_DONG], ["BínhThìn", HUONG.CHINH_DONG], ["ĐinhTỵ", HUONG.CHINH_DONG], ["MậuNgọ", HUONG.CHINH_DONG], ["KỷMùi", HUONG.CHINH_DONG],
+		["CanhThân", HUONG.DONG_NAM], ["TânDậu", HUONG.DONG_NAM], ["NhâmTuất", HUONG.DONG_NAM], ["QuýHợi", HUONG.DONG_NAM], ["GiápTý", HUONG.DONG_NAM], ["ẤtSửu", HUONG.DONG_NAM],
+		["BínhDần", HUONG.CHINH_NAM], ["ĐinhMão", HUONG.CHINH_NAM], ["MậuThìn", HUONG.CHINH_NAM], ["KỷTỵ", HUONG.CHINH_NAM], ["CanhNgọ", HUONG.CHINH_NAM],
+		["TânMùi", HUONG.TAY_NAM], ["NhâmThân", HUONG.TAY_NAM], ["QuýDậu", HUONG.TAY_NAM], ["GiápTuất", HUONG.TAY_NAM], ["ẤtHợi", HUONG.TAY_NAM], ["BínhTý", HUONG.TAY_NAM],
+		["ĐinhSửu", HUONG.CHINH_TAY], ["MậuDần", HUONG.CHINH_TAY], ["KỷMão", HUONG.CHINH_TAY], ["CanhThìn", HUONG.CHINH_TAY], ["TânTỵ", HUONG.CHINH_TAY],
+		["NhâmNgọ", HUONG.TAY_BAC], ["QuýMùi", HUONG.TAY_BAC], ["GiápThân", HUONG.TAY_BAC], ["ẤtDậu", HUONG.TAY_BAC], ["BínhTuất", HUONG.TAY_BAC], ["ĐinhHợi", HUONG.TAY_BAC],
+		["MậuTý", HUONG.CHINH_BAC], ["KỷSửu", HUONG.CHINH_BAC], ["CanhDần", HUONG.CHINH_BAC], ["TânMão", HUONG.CHINH_BAC], ["NhâmThìn", HUONG.CHINH_BAC]
+	]);
+
+	function getHuongXuatHanh(jd) {
+		const cc = getCanChiNgay(jd);
+		const can = cc[0];
+		const chi = cc[1];
+		const canChi = `${can}${chi}`;
+		const findDirection = (rules, canNgay) => {
+				for (const [direction, cans] of Object.entries(rules)) {
+						if (cans.includes(canNgay)) return direction;
+				}
+				return "Không rõ";
+		};
+		const hyThan = findDirection(HY_THAN_RULES, can);
+		const taiThan = findDirection(TAI_THAN_RULES, can);
+		
+		let hacThan;
+		if (HAC_THAN_FREE.has(canChi)) {
+				hacThan = "— Tránh xuất hành hướng Lên Trời gặp Hạc Thần (xấu)";
+		} else {
+				hacThan = HAC_THAN_MAP.get(canChi) || "Không rõ";
+		}
+		
+		let tot = `Hỷ Thần: <b style="color: var(--color-good, #4caf50);">${hyThan}</b> - Tài Thần: <b style="color: var(--color-good, #4caf50);">${taiThan}</b>`;
+		let xau = `Tránh: <b style="color: var(--color-warn, #f44336);">${hacThan}</b>`;
+		return `${tot} | ${xau}`;
+	}
+
+  function getThanSat(lunarDate) {
+	  const TRUC_ORDER = ["Kiến","Trừ","Mãn","Bình","Định","Chấp","Phá","Nguy","Thành","Thu","Khai","Bế"];
+    const st_index = getSunLongitude(lunarDate.jd, 7);
+    const month_chi_list = [3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,0,0,1,1,2,2,3];
+    const month_chi_index = month_chi_list[st_index];
+    const day_chi_index = (lunarDate.jd + 1) % 12;
+    const duty_index = (day_chi_index - month_chi_index+12) % 12;
+	  const trucName = TRUC_ORDER[duty_index];
+	  const trucInfo = THAP_NHI_TRUC[trucName];
+
+    const saoNames = Object.keys(NHI_THAP_BAT_TU);
+    const jd_ref = 2451545;
+    const mansion_ref_index = 16;
+    const day_diff = lunarDate.jd - jd_ref;
+    
+    // FIX: Phép toán Modulo phải trả về giá trị dương khi day_diff là số âm (VD: năm < 2000)
+    const current_mansion_index = ((mansion_ref_index + day_diff) % 28 + 28) % 28;
+    
+    const saoName = saoNames[current_mansion_index];
+    const saoInfo = NHI_THAP_BAT_TU[saoName];
+
+		const cc = getCanChi(lunarDate);
+		const ngayCC = cc[0];
+		const napAm = NGAY_THONG_TIN[ngayCC];
+		let thongTin = "";
+    if (napAm) {
+        let rawString = napAm.moTa + "\n" + napAm.chiTiet.join("\n");
+        thongTin = rawString.replace(/\n/g, '<br>');
+		} else {
+			thongTin = "Không có dữ liệu cho ngày này.";
+		}
+
+    const EMOJI_TRUC = {"Kiến":"🚪","Trừ":"✂️","Mãn":"🌕","Bình":"⚖️","Định":"📜","Chấp":"✍️","Phá":"💥","Nguy":"⚠️","Thành":"🏰","Thu":"🌾","Khai":"🔑","Bế":"🔒"};
+    const EMOJI_SAO = {"Giác":"🐉","Cang":"🦄","Đê":"🏞️","Phòng":"🏠","Tâm":"❤️","Vĩ":"🦚","Cơ":"🧵","Đẩu":"🛶","Ngưu":"🐂","Nữ":"👩","Hư":"🌫️","Nguy":"⚠️","Thất":"7️⃣","Bích":"💎","Khuê":"📚","Lâu":"🏯","Vị":"🍽️","Mão":"🐇","Tất":"🧦","Chủy":"👄","Sâm":"🌱","Tỉnh":"💧","Quỷ":"👹","Liễu":"🌿","Tinh":"⭐","Trương":"📜","Dực":"🪽","Chẩn":"🩺"};
+
+    return {
+      truc: { name: trucName, info: trucInfo, emoji: EMOJI_TRUC[trucName] || "" },
+      sao: { name: saoName, info: saoInfo, emoji: EMOJI_SAO[saoName] || "" },
+      napAm: thongTin
+    };
+  }
+
+  // ==========================================
+  // WEEKLY LUNAR/SOLAR CARD
+  // Custom element: lich-tuan-am-duong-viet-nam
+  // ==========================================
+  const WEEKDAY_SHORT = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+  const LUNAR_MONTH_NAMES = [
+    "Tháng Giêng", "Tháng Hai", "Tháng Ba", "Tháng Tư", "Tháng Năm", "Tháng Sáu",
+    "Tháng Bảy", "Tháng Tám", "Tháng Chín", "Tháng Mười", "Tháng Mười Một", "Tháng Chạp"
+  ];
+
+  const DEFAULT_WEEKLY_CONFIG = {
+    text_color: "#000000",
+    normal_day_color: "#000000",
+    month_solar_color: "#000000",
+    month_lunar_color: "#000000",
+    weekday_color: "#000000",
+    solar_day_color: "#000000",
+    lunar_day_color: "#000000",
+    center_text_color: "#000000",
+    center_month_solar_color: "#000000",
+    center_month_lunar_color: "#000000",
+    center_weekday_color: "#000000",
+    center_solar_day_color: "#000000",
+    center_lunar_day_color: "#000000",
+    center_background_color: "",
+    center_background_opacity: 100,
+    saturday_color: "#00a85a",
+    sunday_color: "#ef1722",
+    arrow_color: "#c7eaff",
+    center_gradient_top: "rgba(229, 246, 255, 0.72)",
+    center_gradient_bottom: "rgba(136, 191, 225, 0.82)",
+    center_gradient: "",
+    card_background_color: "",
+    card_background_opacity: 0,
+    card_background: "transparent",
+    popup_theme: "default",
+    popup_opacity: 95
+  };
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function addDays(date, days) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days, 12, 0, 0, 0);
+  }
+
+  function sameSolarDate(a, b) {
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  }
+
+  function solarArgs(date) {
+    return [date.getDate(), date.getMonth() + 1, date.getFullYear()];
+  }
+
+  function formatSolarInWeekHtml(date) {
+    const day = date.getDate();
+    if (day === 1) {
+      return `<span class="wlc-solar-first"><span class="wlc-solar-main">1</span><span class="wlc-solar-month">/${date.getMonth() + 1}</span></span>`;
+    }
+    return `<span class="wlc-solar-number">${day}</span>`;
+  }
+
+  function formatLunarInWeek(lunarDate) {
+    return lunarDate.day === 1 ? `${lunarDate.day}/${lunarDate.month}` : `${lunarDate.day}`;
+  }
+
+  function getLunarMonthLength(lunarDate) {
+    if (!lunarDate || lunarDate.day === 0) return 29;
+    const yearInfo = getYearInfo(lunarDate.year);
+    const monthIndex = yearInfo.findIndex((item) => item.month === lunarDate.month && item.leap === lunarDate.leap);
+    if (monthIndex < 0) return 29;
+    const nextMonth = yearInfo[monthIndex + 1] || getYearInfo(lunarDate.year + 1)[0];
+    return nextMonth.jd - yearInfo[monthIndex].jd;
+  }
+
+  function lunarMonthLengthEmoji(lunarDate) {
+    return getLunarMonthLength(lunarDate) === 30 ? "🌕" : "🌙";
+  }
+
+  function formatLunarInWeekHtml(lunarDate, showMonthEmoji = false) {
+    const lunarText = `<span class="wlc-lunar-text">${escapeHtml(formatLunarInWeek(lunarDate))}</span>`;
+    if (!showMonthEmoji) return lunarText;
+    return `${lunarText}<span class="wlc-lunar-month-emoji" title="${getLunarMonthLength(lunarDate)} ngày">${lunarMonthLengthEmoji(lunarDate)}</span>`;
+  }
+
+  function solarMonthTitle(date) {
+    return `Tháng ${date.getMonth() + 1}`;
+  }
+
+  function lunarMonthTitle(lunarDate) {
+    const monthName = LUNAR_MONTH_NAMES[lunarDate.month - 1] || `Tháng ${lunarDate.month}`;
+    return lunarDate.leap ? `${monthName} nhuận` : monthName;
+  }
+
+  function clampNumber(value, fallback, min, max) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.min(max, Math.max(min, n));
+  }
+
+
+  function hasConfigValue(config, name) {
+    const value = config && config[name];
+    return value !== undefined && value !== null && String(value).trim() !== "";
+  }
+
+  function optionalCssValue(config, name, fallback = "") {
+    const value = config && config[name];
+    if (value !== undefined && value !== null && String(value).trim() !== "") return String(value).trim();
+    return fallback;
+  }
+
+  function cssValue(config, name, fallbackName = "text_color") {
+    const value = config && config[name];
+    if (value !== undefined && value !== null && String(value).trim() !== "") return String(value).trim();
+    const fallback = config && config[fallbackName];
+    if (fallback !== undefined && fallback !== null && String(fallback).trim() !== "") return String(fallback).trim();
+    return DEFAULT_WEEKLY_CONFIG[name] || DEFAULT_WEEKLY_CONFIG[fallbackName] || "#000000";
+  }
+
+  function applyOpacityToCssColor(value, opacityPercent = 100) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    if (raw.toLowerCase() === "transparent") return "transparent";
+
+    const opacity = clampNumber(opacityPercent, 100, 0, 100) / 100;
+    const hex3 = raw.match(/^#([0-9a-fA-F]{3})$/);
+    const hex6 = raw.match(/^#([0-9a-fA-F]{6})$/);
+
+    if (hex3) {
+      const h = hex3[1].split("").map(ch => ch + ch).join("");
+      const r = parseInt(h.slice(0, 2), 16);
+      const g = parseInt(h.slice(2, 4), 16);
+      const b = parseInt(h.slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
+
+    if (hex6) {
+      const h = hex6[1];
+      const r = parseInt(h.slice(0, 2), 16);
+      const g = parseInt(h.slice(2, 4), 16);
+      const b = parseInt(h.slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
+
+    const rgb = raw.match(/^rgb\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)\s*\)$/i);
+    if (rgb) return `rgba(${rgb[1]}, ${rgb[2]}, ${rgb[3]}, ${opacity})`;
+
+    const rgba = raw.match(/^rgba\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+|[0-9.]+%)\s*\)$/i);
+    if (rgba) return `rgba(${rgba[1]}, ${rgba[2]}, ${rgba[3]}, ${opacity})`;
+
+    // Với hsl(), color-mix(), gradient hoặc var(--...), giữ nguyên để người dùng tự kiểm soát opacity trong giá trị CSS.
+    return raw;
+  }
+
+  function centerBackgroundValue(config) {
+    const custom = optionalCssValue(config, "center_gradient", "");
+    if (custom) return custom;
+
+    const solid = optionalCssValue(config, "center_background_color", "");
+    if (solid) return solid;
+
+    const top = cssValue(config, "center_gradient_top", "center_gradient_top");
+    const bottom = cssValue(config, "center_gradient_bottom", "center_gradient_bottom");
+    return `linear-gradient(180deg, ${top}, ${bottom})`;
+  }
+
+  function cardBackgroundValue(config) {
+    const color = optionalCssValue(config, "card_background_color", "");
+    if (color) return applyOpacityToCssColor(color, config.card_background_opacity);
+
+    const custom = optionalCssValue(config, "card_background", "");
+    if (custom) return custom;
+
+    return "transparent";
+  }
+
+  function arrowBackgroundValue(config) {
+    return "transparent";
+  }
+
+  function hexForColorInput(value, fallback = "#000000") {
+    const raw = String(value || "").trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(raw)) return raw;
+    if (/^#[0-9a-fA-F]{3}$/.test(raw)) {
+      return "#" + raw.slice(1).split("").map(ch => ch + ch).join("");
+    }
+    return fallback;
+  }
+
+  function fireConfigChanged(element, config) {
+    element.dispatchEvent(new CustomEvent("config-changed", {
+      detail: { config },
+      bubbles: true,
+      composed: true
+    }));
+  }
+
+  class WeeklyLunarCalendarCardEditor extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+      this._config = { ...DEFAULT_WEEKLY_CONFIG };
+    }
+
+    set hass(hass) {
+      this._hass = hass;
+    }
+
+    setConfig(config) {
+      this._config = { ...DEFAULT_WEEKLY_CONFIG, ...(config || {}) };
+      if (config && config.type) this._config.type = config.type;
+      this._render();
+    }
+
+    _get(name) {
+      return this._config[name] ?? DEFAULT_WEEKLY_CONFIG[name] ?? "";
+    }
+
+    _setValue(name, value) {
+      const next = { ...this._config, [name]: value };
+      if (!next.type) next.type = "custom:lich-tuan-am-duong-viet-nam";
+      this._config = next;
+      fireConfigChanged(this, next);
+    }
+
+    _colorField(name, label, help = "") {
+      const fallback = hexForColorInput(DEFAULT_WEEKLY_CONFIG[name], "#000000");
+      const value = escapeHtml(this._get(name));
+      const pickerValue = hexForColorInput(this._get(name), fallback);
+      return `
+        <label class="field color-field">
+          <span class="label">${escapeHtml(label)}</span>
+          ${help ? `<span class="help">${escapeHtml(help)}</span>` : ""}
+          <div class="color-row">
+            <input class="picker" type="color" data-color-field="${escapeHtml(name)}" value="${pickerValue}">
+            <input class="text" type="text" data-field="${escapeHtml(name)}" value="${value}" placeholder="#000000 hoặc var(--primary-text-color)">
+          </div>
+        </label>`;
+    }
+
+    _textField(name, label, placeholder = "", help = "") {
+      return `
+        <label class="field">
+          <span class="label">${escapeHtml(label)}</span>
+          ${help ? `<span class="help">${escapeHtml(help)}</span>` : ""}
+          <input class="text full" type="text" data-field="${escapeHtml(name)}" value="${escapeHtml(this._get(name))}" placeholder="${escapeHtml(placeholder)}">
+        </label>`;
+    }
+
+    _numberField(name, label, min, max, help = "") {
+      return `
+        <label class="field">
+          <span class="label">${escapeHtml(label)}</span>
+          ${help ? `<span class="help">${escapeHtml(help)}</span>` : ""}
+          <input class="text full" type="number" min="${min}" max="${max}" data-field="${escapeHtml(name)}" value="${escapeHtml(this._get(name))}">
+        </label>`;
+    }
+
+    _rangeField(name, label, min, max, help = "") {
+      const value = clampNumber(this._get(name), DEFAULT_WEEKLY_CONFIG[name] ?? min, min, max);
+      return `
+        <label class="field">
+          <span class="label">${escapeHtml(label)}</span>
+          ${help ? `<span class="help">${escapeHtml(help)}</span>` : ""}
+          <div class="range-row">
+            <input class="range" type="range" min="${min}" max="${max}" data-field="${escapeHtml(name)}" data-range-peer="${escapeHtml(name)}" value="${escapeHtml(value)}">
+            <input class="text range-number" type="number" min="${min}" max="${max}" data-field="${escapeHtml(name)}" data-range-peer="${escapeHtml(name)}" value="${escapeHtml(value)}">
+          </div>
+        </label>`;
+    }
+
+    _selectField(name, label, options, help = "") {
+      const current = String(this._get(name));
+      const opts = options.map(([value, text]) => `<option value="${escapeHtml(value)}" ${value === current ? "selected" : ""}>${escapeHtml(text)}</option>`).join("");
+      return `
+        <label class="field">
+          <span class="label">${escapeHtml(label)}</span>
+          ${help ? `<span class="help">${escapeHtml(help)}</span>` : ""}
+          <select class="text full" data-field="${escapeHtml(name)}">${opts}</select>
+        </label>`;
+    }
+
+    _render() {
+      if (!this.shadowRoot) return;
+      this.shadowRoot.innerHTML = `
+        <style>
+          :host { display: block; }
+          .editor {
+            display: grid;
+            gap: 14px;
+            color: var(--primary-text-color);
+            font-family: var(--paper-font-body1_-_font-family, Roboto, Arial, sans-serif);
+          }
+          .section {
+            border: 1px solid var(--divider-color, rgba(0,0,0,0.12));
+            border-radius: 12px;
+            padding: 12px;
+            display: grid;
+            gap: 12px;
+            background: var(--card-background-color, #fff);
+          }
+          .section-title {
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: 0.01em;
+          }
+          .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+          }
+          .field {
+            display: grid;
+            gap: 6px;
+            min-width: 0;
+          }
+          .label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--secondary-text-color, #666);
+          }
+          .help {
+            font-size: 11px;
+            line-height: 1.35;
+            color: var(--secondary-text-color, #777);
+          }
+          .color-row {
+            display: grid;
+            grid-template-columns: 44px minmax(0, 1fr);
+            gap: 8px;
+            align-items: center;
+          }
+          .picker {
+            width: 44px;
+            height: 38px;
+            padding: 0;
+            border: 1px solid var(--divider-color, rgba(0,0,0,0.12));
+            border-radius: 8px;
+            background: transparent;
+            cursor: pointer;
+          }
+          .text {
+            box-sizing: border-box;
+            width: 100%;
+            min-height: 38px;
+            border: 1px solid var(--divider-color, rgba(0,0,0,0.12));
+            border-radius: 8px;
+            padding: 8px 10px;
+            color: var(--primary-text-color, #111);
+            background: var(--secondary-background-color, #fff);
+            font: inherit;
+          }
+          .range-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 78px;
+            gap: 10px;
+            align-items: center;
+          }
+          .range {
+            width: 100%;
+            accent-color: var(--primary-color, #03a9f4);
+          }
+          .range-number {
+            text-align: center;
+          }
+          .full { width: 100%; }
+          .note {
+            font-size: 12px;
+            color: var(--secondary-text-color, #666);
+            line-height: 1.45;
+          }
+        </style>
+        <div class="editor">
+          <div class="section">
+            <div class="section-title">Màu nội dung ngày thường trong tuần</div>
+            <div class="grid">
+              ${this._colorField("text_color", "Màu chữ chung")}
+              ${this._colorField("normal_day_color", "Màu nhanh T2 - T6", "Nếu đặt màu này, T2-T6 sẽ dùng chung màu cho Thứ, ngày dương và ngày âm.")}
+              ${this._colorField("weekday_color", "Thứ trong tuần")}
+              ${this._colorField("solar_day_color", "Ngày dương")}
+              ${this._colorField("lunar_day_color", "Ngày âm")}
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Tiêu đề tháng âm / dương</div>
+            <div class="grid">
+              ${this._colorField("month_solar_color", "Tiêu đề tháng dương")}
+              ${this._colorField("month_lunar_color", "Tiêu đề tháng âm")}
+              ${this._colorField("center_month_solar_color", "Tháng dương trong khung hôm nay")}
+              ${this._colorField("center_month_lunar_color", "Tháng âm trong khung hôm nay")}
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Khung hôm nay ở giữa</div>
+            <div class="grid">
+              ${this._colorField("center_background_color", "Màu nền khung hôm nay", "Để trống nếu muốn dùng gradient trên/dưới.")}
+              ${this._rangeField("center_background_opacity", "Độ trong suốt nền khung hôm nay (%)", 0, 100, "0 là trong suốt, 100 là đậm hoàn toàn.")}
+              ${this._colorField("center_text_color", "Màu chữ chung ô giữa")}
+              ${this._colorField("center_weekday_color", "Thứ ô giữa")}
+              ${this._colorField("center_solar_day_color", "Ngày dương ô giữa")}
+              ${this._colorField("center_lunar_day_color", "Ngày âm ô giữa")}
+              ${this._colorField("center_gradient_top", "Màu gradient trên", "Có thể nhập rgba(...) hoặc màu CSS trong ô chữ bên cạnh.")}
+              ${this._colorField("center_gradient_bottom", "Màu gradient dưới", "Có thể nhập rgba(...) hoặc màu CSS trong ô chữ bên cạnh.")}
+            </div>
+            ${this._textField("center_gradient", "Gradient CSS tùy chỉnh", "linear-gradient(180deg, #e5f6ff, #88bfe1)", "Nếu nhập mục này, thẻ sẽ ưu tiên dùng gradient này. Độ trong suốt vẫn chỉnh bằng mục phía trên.")}
+          </div>
+
+          <div class="section">
+            <div class="section-title">Mũi tên di chuyển</div>
+            <div class="grid">
+              ${this._colorField("arrow_color", "Màu mũi tên")}
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Màu cuối tuần</div>
+            <div class="grid">
+              ${this._colorField("saturday_color", "Màu Thứ 7")}
+              ${this._colorField("sunday_color", "Màu Chủ nhật")}
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Nền thẻ và popup</div>
+            <div class="grid">
+              ${this._colorField("card_background_color", "Màu nền thẻ", "Nếu chọn màu này, thẻ sẽ dùng màu và độ trong suốt bên dưới.")}
+              ${this._rangeField("card_background_opacity", "Độ trong suốt nền thẻ (%)", 0, 100, "0 là trong suốt, 100 là đậm hoàn toàn.")}
+              ${this._textField("card_background", "Nền thẻ CSS tùy chỉnh", "transparent hoặc rgba(255,255,255,0.2)", "Dùng khi mục Màu nền thẻ để trống.")}
+              ${this._selectField("popup_theme", "Giao diện popup", [
+                ["default", "Default"], ["theme1", "Theme 1"], ["theme2", "Theme 2"], ["theme3", "Theme 3"], ["theme4", "Theme 4"],
+                ["theme5", "Theme 5"], ["theme6", "Theme 6"], ["theme7", "Theme 7"], ["theme8", "Theme 8"], ["theme9", "Theme 9"], ["theme10", "Theme 10"]
+              ])}
+              ${this._rangeField("popup_opacity", "Độ trong suốt popup (%)", 0, 100, "0 là trong suốt, 100 là đậm hoàn toàn.")}
+            </div>
+          </div>
+
+          <div class="note">Có thể dùng mã màu HEX, rgba(...) hoặc biến CSS của Home Assistant như var(--primary-text-color). Ô chọn màu dùng cho HEX; ô nhập bên cạnh cho phép nhập thủ công giá trị CSS.</div>
+        </div>`;
+
+      this.shadowRoot.querySelectorAll("[data-field]").forEach((el) => {
+        const eventName = el.type === "range" ? "input" : "change";
+        el.addEventListener(eventName, (event) => {
+          const target = event.currentTarget;
+          let value = target.value;
+          if (target.type === "number" || target.type === "range") value = Number(value);
+          if (target.dataset.rangePeer) {
+            this.shadowRoot.querySelectorAll(`[data-range-peer="${target.dataset.rangePeer}"]`).forEach((peer) => {
+              if (peer !== target) peer.value = value;
+            });
+          }
+          this._setValue(target.dataset.field, value);
+        });
+      });
+
+      this.shadowRoot.querySelectorAll("[data-color-field]").forEach((el) => {
+        el.addEventListener("input", (event) => {
+          const target = event.currentTarget;
+          this._setValue(target.dataset.colorField, target.value);
+          const textInput = this.shadowRoot.querySelector(`[data-field="${target.dataset.colorField}"]`);
+          if (textInput) textInput.value = target.value;
+        });
+      });
+    }
+  }
+
+  class WeeklyLunarCalendarCard extends HTMLElement {
+    static getStubConfig() {
+      return {
+        type: "custom:lich-tuan-am-duong-viet-nam",
+        text_color: "#000000",
+        normal_day_color: "#000000",
+        month_solar_color: "#000000",
+        month_lunar_color: "#000000",
+        weekday_color: "#000000",
+        solar_day_color: "#000000",
+        lunar_day_color: "#000000",
+        center_text_color: "#000000",
+        center_month_solar_color: "#000000",
+        center_month_lunar_color: "#000000",
+        center_weekday_color: "#000000",
+        center_solar_day_color: "#000000",
+        center_lunar_day_color: "#000000",
+        center_background_color: "",
+        center_background_opacity: 100,
+        saturday_color: "#00a85a",
+        sunday_color: "#ef1722",
+        arrow_color: "#c7eaff",
+        center_gradient_top: "rgba(229, 246, 255, 0.72)",
+        center_gradient_bottom: "rgba(136, 191, 225, 0.82)",
+        card_background_color: "",
+        card_background_opacity: 0,
+        card_background: "transparent",
+        popup_theme: "default",
+        popup_opacity: 95
+      };
+    }
+
+    static getConfigElement() {
+      return document.createElement("lich-tuan-am-duong-viet-nam-editor");
+    }
+
+    constructor() {
+      super();
+      this._offsetDays = 0;
+      this._lastTodayKey = "";
+      this._timer = null;
+    }
+
+    connectedCallback() {
+      this._startAutoRefresh();
+    }
+
+    disconnectedCallback() {
+      if (this._timer) {
+        clearInterval(this._timer);
+        this._timer = null;
+      }
+    }
+
+    setConfig(config) {
+      this.config = { ...DEFAULT_WEEKLY_CONFIG, ...(config || {}) };
+      if (!this.shadowRoot) this.attachShadow({ mode: "open" });
+      if (!this.card) {
+        this.card = document.createElement("ha-card");
+        this.shadowRoot.appendChild(this.card);
+      }
+      this.card.style.background = cardBackgroundValue(this.config);
+      this.card.style.border = this.config.border || "none";
+      this.card.style.boxShadow = this.config.box_shadow || "none";
+      this.card.style.borderRadius = this.config.border_radius || "var(--ha-card-border-radius, 14px)";
+      injectPopupDOM();
+      this._render();
+      this._startAutoRefresh();
+    }
+
+    set hass(hass) {
+      this._hass = hass;
+      injectPopupDOM();
+      const key = new Date().toDateString();
+      if (key !== this._lastTodayKey) {
+        this._lastTodayKey = key;
+        this._render();
+      }
+    }
+
+    getCardSize() {
+      return 1;
+    }
+
+    _startAutoRefresh() {
+      if (this._timer) return;
+      this._timer = setInterval(() => {
+        const key = new Date().toDateString();
+        if (key !== this._lastTodayKey) {
+          this._lastTodayKey = key;
+          this._render();
+        }
+      }, 60 * 1000);
+    }
+
+    _centerDate() {
+      return addDays(new Date(), this._offsetDays);
+    }
+
+    _showPopup(date) {
+      injectPopupDOM();
+      const [dd, mm, yy] = solarArgs(date);
+      const theme = this.config.popup_theme || "default";
+      const opacity = clampNumber(this.config.popup_opacity, 95, 0, 100);
+      if (typeof window.haShowDayPopup === "function") {
+        window.haShowDayPopup(dd, mm, yy, theme, opacity);
+      }
+    }
+
+    _cellHtml(date, offsetFromCenter) {
+      const [dd, mm, yy] = solarArgs(date);
+      const lunar = getLunarDate(dd, mm, yy);
+      const dow = date.getDay();
+      const isCenter = offsetFromCenter === 0;
+      const isToday = sameSolarDate(date, new Date());
+      const classNames = ["wlc-day"];
+      if (isCenter) classNames.push("is-center");
+      if (isToday) classNames.push("is-today");
+      if (dow === 6) classNames.push("is-saturday");
+      if (dow === 0) classNames.push("is-sunday");
+      if (dow >= 1 && dow <= 5 && !isCenter && hasConfigValue(this.config, "normal_day_color")) classNames.push("is-normal");
+
+      const centerTop = isCenter ? `<div class="wlc-month wlc-month-top" title="Bấm để xem chi tiết">${escapeHtml(solarMonthTitle(date))}</div>` : `<div class="wlc-month-spacer"></div>`;
+      const centerBottom = isCenter ? `<div class="wlc-month wlc-month-bottom" title="Bấm để xem chi tiết">${escapeHtml(lunarMonthTitle(lunar))}</div>` : `<div class="wlc-month-spacer"></div>`;
+      const title = `${TUAN[dow]}, ${dd}/${mm}/${yy} - Âm lịch ${lunar.day}/${lunar.month}${lunar.leap ? " nhuận" : ""}`;
+
+      return `
+        <button class="${classNames.join(" ")}" data-offset="${offsetFromCenter}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">
+          ${centerTop}
+          <div class="wlc-weekday">${WEEKDAY_SHORT[dow]}</div>
+          <div class="wlc-solar${dd === 1 ? " is-first-solar" : ""}${dd >= 10 ? " is-two-solar" : ""}">${formatSolarInWeekHtml(date)}</div>
+          <span class="wlc-today-marker" aria-hidden="true"></span>
+          <div class="wlc-lunar">${formatLunarInWeekHtml(lunar, isToday)}</div>
+          ${centerBottom}
+        </button>`;
+    }
+
+    _render() {
+      if (!this.card) return;
+
+      const center = this._centerDate();
+      const centerLunar = getLunarDate(center.getDate(), center.getMonth() + 1, center.getFullYear());
+      const days = [];
+      for (let i = -3; i <= 3; i++) days.push(this._cellHtml(addDays(center, i), i));
+
+      const styleVars = [
+        `--wlc-text-color: ${cssValue(this.config, "text_color")}`,
+        `--wlc-normal-day-color: ${cssValue(this.config, "normal_day_color", "text_color")}`,
+        `--wlc-month-solar-color: ${cssValue(this.config, "month_solar_color")}`,
+        `--wlc-month-lunar-color: ${cssValue(this.config, "month_lunar_color")}`,
+        `--wlc-weekday-color: ${cssValue(this.config, "weekday_color")}`,
+        `--wlc-solar-day-color: ${cssValue(this.config, "solar_day_color")}`,
+        `--wlc-lunar-day-color: ${cssValue(this.config, "lunar_day_color")}`,
+        `--wlc-center-text-color: ${cssValue(this.config, "center_text_color")}`,
+        `--wlc-center-month-solar-color: ${cssValue(this.config, "center_month_solar_color", "center_text_color")}`,
+        `--wlc-center-month-lunar-color: ${cssValue(this.config, "center_month_lunar_color", "center_text_color")}`,
+        `--wlc-center-weekday-color: ${cssValue(this.config, "center_weekday_color", "center_text_color")}`,
+        `--wlc-center-solar-day-color: ${cssValue(this.config, "center_solar_day_color", "center_text_color")}`,
+        `--wlc-center-lunar-day-color: ${cssValue(this.config, "center_lunar_day_color", "center_text_color")}`,
+        `--wlc-saturday-color: ${cssValue(this.config, "saturday_color")}`,
+        `--wlc-sunday-color: ${cssValue(this.config, "sunday_color")}`,
+        `--wlc-arrow-color: ${cssValue(this.config, "arrow_color")}`,
+        `--wlc-arrow-bg: ${arrowBackgroundValue(this.config)}`,
+        `--wlc-center-bg-opacity: ${clampNumber(this.config.center_background_opacity, 100, 0, 100) / 100}`,
+        `--wlc-center-background: ${centerBackgroundValue(this.config)}`
+      ].join(";");
+
+      const detailText = `${solarMonthTitle(center)} - ${lunarMonthTitle(centerLunar)}`;
+
+      this.card.innerHTML = `
+        <style>
+          :host {
+            display: block;
+            --wlc-text-color: #000000;
+            --wlc-normal-day-color: #000000;
+            --wlc-month-solar-color: #000000;
+            --wlc-month-lunar-color: #000000;
+            --wlc-weekday-color: #000000;
+            --wlc-solar-day-color: #000000;
+            --wlc-lunar-day-color: #000000;
+            --wlc-center-text-color: #000000;
+            --wlc-center-month-solar-color: #000000;
+            --wlc-center-month-lunar-color: #000000;
+            --wlc-center-weekday-color: #000000;
+            --wlc-center-solar-day-color: #000000;
+            --wlc-center-lunar-day-color: #000000;
+            --wlc-saturday-color: #00a85a;
+            --wlc-sunday-color: #ef1722;
+            --wlc-arrow-color: #c7eaff;
+            --wlc-arrow-bg: transparent;
+            --wlc-center-bg-opacity: 1;
+            --wlc-center-background: linear-gradient(180deg, rgba(229, 246, 255, 0.72), rgba(136, 191, 225, 0.82));
+          }
+
+          .wlc-shell {
+            container-type: inline-size;
+            width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+            border-radius: inherit;
+            background: transparent;
+            color: var(--wlc-text-color);
+            font-family: Arial, Helvetica, sans-serif;
+            user-select: none;
+          }
+
+          .wlc-row {
+            position: relative;
+            display: grid;
+            grid-template-columns: clamp(6px, 1.8cqw, 14px) repeat(7, minmax(0, 1fr)) clamp(6px, 1.8cqw, 14px);
+            align-items: stretch;
+            width: 100%;
+            min-width: 0;
+            min-height: clamp(82px, 21.5cqw, 154px);
+            box-sizing: border-box;
+            padding: clamp(4px, 1.25cqw, 10px) clamp(0px, 0.35cqw, 4px);
+            overflow: hidden;
+          }
+
+          .wlc-nav {
+            min-width: 0;
+            appearance: none;
+            -webkit-appearance: none;
+            border: 0;
+            background: var(--wlc-arrow-bg);
+            color: var(--wlc-arrow-color);
+            cursor: pointer;
+            border-radius: 8px;
+            padding: 0;
+            margin: 0;
+            font-size: clamp(10px, 2.7cqw, 18px);
+            line-height: 1;
+            width: 100%;
+            height: clamp(18px, 4.8cqw, 34px);
+            align-self: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.92;
+            transition: transform 0.18s ease, opacity 0.18s ease, filter 0.18s ease;
+          }
+
+          .wlc-nav:hover,
+          .wlc-nav:focus-visible {
+            opacity: 1;
+            transform: scale(1.06);
+            filter: drop-shadow(0 0 4px rgba(126, 211, 255, 0.75));
+            outline: none;
+          }
+
+          .wlc-today-reset {
+            appearance: none;
+            -webkit-appearance: none;
+            position: absolute;
+            top: clamp(3px, 0.9cqw, 8px);
+            left: 57.14%;
+            transform: translate(-50%, 0);
+            z-index: 8;
+            width: clamp(15px, 4.2cqw, 28px);
+            height: clamp(15px, 4.2cqw, 28px);
+            border-radius: 999px;
+            border: max(1px, 0.11cqw) solid var(--wlc-arrow-color);
+            background: var(--wlc-center-background);
+            color: var(--wlc-arrow-color);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            margin: clamp(1px, 0.38cqw, 4px) 0 0 0;
+            font-size: clamp(9px, 2.55cqw, 16px);
+            line-height: 1;
+            font-weight: 700;
+            cursor: pointer;
+            opacity: 0.94;
+          }
+
+          .wlc-today-reset:hover,
+          .wlc-today-reset:focus-visible {
+            opacity: 1;
+            transform: translate(-50%, 0) scale(1.08);
+            outline: none;
+            filter: drop-shadow(0 0 4px color-mix(in srgb, var(--wlc-arrow-color) 60%, transparent));
+          }
+
+          .wlc-day {
+            appearance: none;
+            -webkit-appearance: none;
+            border: 0;
+            background: transparent;
+            position: relative;
+            overflow: hidden;
+            min-width: 0;
+            height: 100%;
+            margin: 0;
+            padding: 0 2px;
+            color: var(--wlc-text-color);
+            cursor: pointer;
+            display: grid;
+            grid-template-rows: minmax(clamp(7px, 2.05cqw, 16px), 1fr) auto auto clamp(4px, 0.95cqw, 8px) auto minmax(clamp(7px, 2.05cqw, 16px), 1fr);
+            align-items: center;
+            justify-items: center;
+            align-content: center;
+            row-gap: clamp(0px, 0.12cqw, 2px);
+            border-radius: clamp(4px, 1.2cqw, 10px);
+            transition: background 0.18s ease, transform 0.18s ease;
+            font-family: inherit;
+          }
+
+          .wlc-day:hover,
+          .wlc-day:focus-visible {
+            outline: none;
+            transform: translateY(-1px);
+          }
+
+          .wlc-day.is-center::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            border-radius: inherit;
+            background: var(--wlc-center-background);
+            opacity: var(--wlc-center-bg-opacity);
+            pointer-events: none;
+          }
+
+          .wlc-day.is-center::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            box-sizing: border-box;
+            border-radius: inherit;
+            border: max(1px, 0.12cqw) solid var(--wlc-arrow-color);
+            opacity: 0.42;
+            pointer-events: none;
+          }
+
+          .wlc-day > * {
+            position: relative;
+            z-index: 1;
+          }
+
+          .wlc-day.is-normal .wlc-weekday,
+          .wlc-day.is-normal .wlc-solar,
+          .wlc-day.is-normal .wlc-lunar {
+            color: var(--wlc-normal-day-color);
+          }
+
+          .wlc-day.is-saturday .wlc-weekday,
+          .wlc-day.is-saturday .wlc-solar,
+          .wlc-day.is-saturday .wlc-lunar {
+            color: var(--wlc-saturday-color);
+          }
+
+          .wlc-day.is-sunday .wlc-weekday,
+          .wlc-day.is-sunday .wlc-solar,
+          .wlc-day.is-sunday .wlc-lunar {
+            color: var(--wlc-sunday-color);
+          }
+
+          .wlc-today-marker {
+            width: clamp(12px, 34%, 34px);
+            height: 1px;
+            min-height: 1px;
+            max-height: 1px;
+            border-radius: 999px;
+            background: var(--wlc-arrow-color);
+            opacity: 0;
+            align-self: center;
+            justify-self: center;
+            transform: scaleX(0.86);
+            box-shadow: none;
+            pointer-events: none;
+          }
+
+          .wlc-day.is-today:not(.is-center) .wlc-today-marker {
+            opacity: 0.9;
+            box-shadow: 0 0 3px color-mix(in srgb, var(--wlc-arrow-color) 72%, transparent);
+          }
+
+          .wlc-month,
+          .wlc-month-spacer {
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: clip;
+            min-height: 1em;
+            font-size: clamp(8px, 2.25cqw, 16px);
+            line-height: 1.08;
+            font-weight: 500;
+            white-space: nowrap;
+          }
+
+          .wlc-month-top {
+            color: var(--wlc-month-solar-color);
+          }
+
+          .wlc-month-bottom {
+            color: var(--wlc-month-lunar-color);
+          }
+
+          .wlc-day.is-center .wlc-month-top {
+            margin-top: clamp(2px, 0.55cqw, 6px);
+          }
+
+          .wlc-day.is-center .wlc-month-bottom {
+            margin-bottom: clamp(2px, 0.55cqw, 6px);
+          }
+
+          .wlc-weekday {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            color: var(--wlc-weekday-color);
+            font-size: clamp(12px, 4.15cqw, 30px);
+            line-height: 1.02;
+            font-weight: 500;
+            letter-spacing: -0.03em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+          }
+
+          .wlc-solar {
+            width: 100%;
+            color: var(--wlc-solar-day-color);
+            font-size: clamp(26px, 9.1cqw, 74px);
+            line-height: 0.92;
+            height: clamp(28px, 9.2cqw, 78px);
+            font-weight: 400;
+            letter-spacing: 0;
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum" 1, "lnum" 1;
+            max-width: 100%;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            overflow: visible;
+          }
+
+          .wlc-solar-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.22em;
+            height: 1em;
+            text-align: center;
+            line-height: 0.92;
+            transform: translateX(0);
+          }
+
+          .wlc-solar-first {
+            display: inline-flex;
+            align-items: flex-start;
+            justify-content: center;
+            max-width: 100%;
+            min-width: 1.22em;
+            line-height: 0.92;
+            letter-spacing: 0;
+          }
+
+          .wlc-solar-main {
+            display: inline-block;
+          }
+
+          .wlc-solar-month {
+            display: inline-block;
+            font-size: 0.34em;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            margin-left: 0.04em;
+            margin-top: 0.12em;
+            font-weight: 400;
+          }
+
+          .wlc-lunar {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            overflow: visible;
+            color: var(--wlc-lunar-day-color);
+            font-size: clamp(13px, 3.9cqw, 29px);
+            line-height: 1.04;
+            font-weight: 400;
+            letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum" 1, "lnum" 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+          }
+
+          .wlc-lunar-text {
+            position: relative;
+            display: inline-block;
+          }
+
+          .wlc-lunar-month-emoji {
+            position: relative;
+            display: inline-block;
+            margin-left: 0.1em;
+            top: -0.55em;
+            font-size: 0.56em;
+            line-height: 1;
+            pointer-events: none;
+            filter: drop-shadow(0 0 1px rgba(255,255,255,0.55));
+          }
+
+          .wlc-day.is-center {
+            color: var(--wlc-center-text-color);
+            padding-top: clamp(3px, 0.9cqw, 8px);
+            padding-bottom: clamp(3px, 0.9cqw, 8px);
+          }
+
+          .wlc-day.is-center .wlc-month-top {
+            color: var(--wlc-center-month-solar-color);
+          }
+
+          .wlc-day.is-center .wlc-month-bottom {
+            color: var(--wlc-center-month-lunar-color);
+          }
+
+          .wlc-day.is-center .wlc-weekday {
+            color: var(--wlc-center-weekday-color);
+          }
+
+          .wlc-day.is-center .wlc-solar {
+            color: var(--wlc-center-solar-day-color);
+          }
+
+          .wlc-day.is-center .wlc-lunar {
+            color: var(--wlc-center-lunar-day-color);
+          }
+
+          .wlc-day.is-center.is-saturday .wlc-weekday,
+          .wlc-day.is-center.is-saturday .wlc-solar,
+          .wlc-day.is-center.is-saturday .wlc-lunar {
+            color: var(--wlc-saturday-color);
+          }
+
+          .wlc-day.is-center.is-sunday .wlc-weekday,
+          .wlc-day.is-center.is-sunday .wlc-solar,
+          .wlc-day.is-center.is-sunday .wlc-lunar {
+            color: var(--wlc-sunday-color);
+          }
+
+          .wlc-day.is-center .wlc-weekday,
+          .wlc-day.is-center .wlc-solar,
+          .wlc-day.is-center .wlc-lunar {
+            font-weight: 800;
+          }
+
+          .wlc-day.is-center .wlc-solar {
+            font-size: clamp(30px, 9.8cqw, 82px);
+            height: clamp(32px, 9.9cqw, 84px);
+          }
+
+          @container (max-width: 420px) {
+            .wlc-row {
+              grid-template-columns: clamp(5px, 1.65cqw, 10px) repeat(7, minmax(0, 1fr)) clamp(5px, 1.65cqw, 10px);
+              min-height: clamp(70px, 22cqw, 94px);
+              padding-left: 0;
+              padding-right: 0;
+            }
+            .wlc-day {
+              padding: 0 1px;
+              grid-template-rows: minmax(clamp(5px, 1.9cqw, 10px), 1fr) auto auto clamp(4px, 0.9cqw, 6px) auto minmax(clamp(5px, 1.9cqw, 10px), 1fr);
+              row-gap: 0;
+            }
+            .wlc-day.is-center {
+              padding-top: clamp(2px, 0.7cqw, 5px);
+              padding-bottom: clamp(2px, 0.7cqw, 5px);
+            }
+            .wlc-weekday { font-size: clamp(10px, 3.95cqw, 17px); }
+            .wlc-solar { font-size: clamp(22px, 8.45cqw, 38px); height: clamp(24px, 8.55cqw, 40px); letter-spacing: 0; }
+            .wlc-day.is-center .wlc-solar { font-size: clamp(25px, 9.05cqw, 42px); height: clamp(27px, 9.15cqw, 44px); }
+            .wlc-solar-number, .wlc-solar-first { width: 1.22em; min-width: 1.22em; }
+            .wlc-today-marker { height: 1px; max-height: 1px; width: clamp(12px, 34%, 24px); }
+            .wlc-lunar { font-size: clamp(11px, 3.7cqw, 17px); }
+            .wlc-month,
+            .wlc-month-spacer { font-size: clamp(7px, 2.25cqw, 10px); }
+            .wlc-day.is-center .wlc-month-top { margin-top: clamp(1px, 0.35cqw, 3px); }
+            .wlc-day.is-center .wlc-month-bottom { margin-bottom: clamp(1px, 0.35cqw, 3px); }
+            .wlc-nav { font-size: clamp(9px, 2.5cqw, 13px); border-radius: 6px; height: clamp(16px, 4.7cqw, 24px); }
+            .wlc-today-reset { width: clamp(14px, 4.3cqw, 20px); height: clamp(14px, 4.3cqw, 20px); font-size: clamp(8px, 2.5cqw, 12px); }
+          }
+
+          @container (max-width: 300px) {
+            .wlc-row {
+              grid-template-columns: 5px repeat(7, minmax(0, 1fr)) 5px;
+              min-height: 64px;
+            }
+            .wlc-day { padding: 0; }
+            .wlc-month,
+            .wlc-month-spacer { font-size: 7px; }
+            .wlc-day.is-center .wlc-month-top { margin-top: 1px; }
+            .wlc-day.is-center .wlc-month-bottom { margin-bottom: 1px; }
+            .wlc-weekday { font-size: 10px; }
+            .wlc-solar { font-size: clamp(18px, 7.8cqw, 24px); height: clamp(20px, 8cqw, 26px); }
+            .wlc-day.is-center .wlc-solar { font-size: clamp(20px, 8.4cqw, 27px); height: clamp(22px, 8.6cqw, 29px); }
+            .wlc-solar-number, .wlc-solar-first { width: 1.22em; min-width: 1.22em; }
+            .wlc-today-marker { height: 1px; max-height: 1px; width: 34%; }
+            .wlc-lunar { font-size: 10px; }
+            .wlc-nav { font-size: 9px; height: 16px; }
+            .wlc-today-reset { width: 13px; height: 13px; font-size: 8px; }
+          }
+        </style>
+
+        <div class="wlc-shell" style="${styleVars}" title="${escapeHtml(detailText)}">
+          <div class="wlc-row">
+            <button class="wlc-nav wlc-prev" aria-label="Lùi 1 ngày">◀</button>
+            ${days.join("")}
+            ${this._offsetDays !== 0 ? `<button class="wlc-today-reset" title="Quay về hôm nay" aria-label="Quay về hôm nay">↺</button>` : ""}
+            <button class="wlc-nav wlc-next" aria-label="Tiến 1 ngày">▶</button>
+          </div>
+        </div>`;
+
+      const prev = this.card.querySelector(".wlc-prev");
+      const next = this.card.querySelector(".wlc-next");
+      const resetToday = this.card.querySelector(".wlc-today-reset");
+      if (prev) prev.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this._offsetDays -= 1;
+        this._render();
+      });
+      if (next) next.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this._offsetDays += 1;
+        this._render();
+      });
+      if (resetToday) resetToday.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this._offsetDays = 0;
+        this._render();
+      });
+
+      this.card.querySelectorAll(".wlc-day").forEach((el) => {
+        const open = () => {
+          const offset = Number(el.dataset.offset || 0);
+          this._showPopup(addDays(center, offset));
+        };
+        el.addEventListener("click", open);
+        el.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            open();
+          }
+        });
+      });
+    }
+  }
+
+  if (!customElements.get("lich-tuan-am-duong-viet-nam-editor")) {
+    customElements.define("lich-tuan-am-duong-viet-nam-editor", WeeklyLunarCalendarCardEditor);
+  }
+
+  if (!customElements.get("lich-tuan-am-duong-viet-nam")) {
+    customElements.define("lich-tuan-am-duong-viet-nam", WeeklyLunarCalendarCard);
+  }
+
+  window.customCards = window.customCards || [];
+  window.customCards.push({
+    type: "lich-tuan-am-duong-viet-nam",
+    name: "Lịch Tuần Âm Dương",
+    description: "Thẻ tuần Âm Dương Việt Nam: hôm nay ở giữa, mũi tên xem tiến/lùi từng ngày, bấm ngày để xem popup chi tiết, có trình chỉnh màu trong UI.",
+    preview: true
+  });
+
+  // Truyền lõi tính toán cho popup dùng chung với thẻ lịch block âm dương.
+  initPopupCore({
+    jdn,
+    getLunarDate,
+    getCanChiNgay,
+    TIETKHI,
+    getSunLongitude,
+    getGioHoangDao,
+    getGioHacDao,
+    getHuongXuatHanh,
+    getThanSat,
+    CAN,
+    CHI
+  });
+
+})();
