@@ -552,6 +552,12 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       super();
       this.attachShadow({ mode: "open" });
       this._config = { ...DEFAULT_WEEKLY_CONFIG };
+      this._activeColorPicker = null;
+      this._colorOutsideHandler = null;
+      this._colorKeyHandler = null;
+      this._colorPointerDrag = null;
+      this._rangeDragField = null;
+      this._rangeDragTimer = null;
     }
 
     set hass(hass) {
@@ -559,8 +565,17 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     }
 
     setConfig(config) {
+      const isPickingColor = !!this._activeColorPicker;
+      const activeRangeField = this._rangeDragField;
       this._config = { ...DEFAULT_WEEKLY_CONFIG, ...(config || {}) };
       if (config && config.type) this._config.type = config.type;
+      // Khi đang chọn màu hoặc đang kéo slider, Home Assistant sẽ gọi setConfig sau mỗi lần áp thử.
+      // Không render lại editor lúc này để bảng màu không bị đóng và slider không bị mất thao tác kéo.
+      if (isPickingColor) return;
+      if (activeRangeField) {
+        this._syncRangeFieldUi(activeRangeField);
+        return;
+      }
       this._render();
     }
 
@@ -575,17 +590,265 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       fireConfigChanged(this, next);
     }
 
+    _syncRangeFieldUi(name, value = this._get(name)) {
+      if (!this.shadowRoot || !name) return;
+      this.shadowRoot.querySelectorAll(`[data-range-peer="${name}"]`).forEach((peer) => {
+        peer.value = value;
+      });
+    }
+
+    _beginRangeDrag(name) {
+      if (this._rangeDragTimer) {
+        clearTimeout(this._rangeDragTimer);
+        this._rangeDragTimer = null;
+      }
+      this._rangeDragField = name;
+    }
+
+    _endRangeDrag(name) {
+      if (this._rangeDragTimer) clearTimeout(this._rangeDragTimer);
+      this._rangeDragTimer = setTimeout(() => {
+        if (!name || this._rangeDragField === name) this._rangeDragField = null;
+        this._rangeDragTimer = null;
+      }, 160);
+    }
+
+
+
+    _clamp01(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return 0;
+      return Math.min(1, Math.max(0, n));
+    }
+
+    _hexToRgb(hex) {
+      const normalized = hexForColorInput(hex, "#000000");
+      return {
+        r: parseInt(normalized.slice(1, 3), 16),
+        g: parseInt(normalized.slice(3, 5), 16),
+        b: parseInt(normalized.slice(5, 7), 16)
+      };
+    }
+
+    _rgbToHex(r, g, b) {
+      const toHex = (value) => Math.round(Math.min(255, Math.max(0, value))).toString(16).padStart(2, "0");
+      return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    }
+
+    _rgbToHsv({ r, g, b }) {
+      const rn = r / 255;
+      const gn = g / 255;
+      const bn = b / 255;
+      const max = Math.max(rn, gn, bn);
+      const min = Math.min(rn, gn, bn);
+      const delta = max - min;
+      let h = 0;
+
+      if (delta !== 0) {
+        if (max === rn) h = 60 * (((gn - bn) / delta) % 6);
+        else if (max === gn) h = 60 * (((bn - rn) / delta) + 2);
+        else h = 60 * (((rn - gn) / delta) + 4);
+      }
+
+      if (h < 0) h += 360;
+      return { h, s: max === 0 ? 0 : delta / max, v: max };
+    }
+
+    _hsvToHex(h, s, v) {
+      const hue = ((Number(h) % 360) + 360) % 360;
+      const sat = this._clamp01(s);
+      const val = this._clamp01(v);
+      const c = val * sat;
+      const x = c * (1 - Math.abs(((hue / 60) % 2) - 1));
+      const m = val - c;
+      let r1 = 0;
+      let g1 = 0;
+      let b1 = 0;
+
+      if (hue < 60) [r1, g1, b1] = [c, x, 0];
+      else if (hue < 120) [r1, g1, b1] = [x, c, 0];
+      else if (hue < 180) [r1, g1, b1] = [0, c, x];
+      else if (hue < 240) [r1, g1, b1] = [0, x, c];
+      else if (hue < 300) [r1, g1, b1] = [x, 0, c];
+      else [r1, g1, b1] = [c, 0, x];
+
+      return this._rgbToHex((r1 + m) * 255, (g1 + m) * 255, (b1 + m) * 255);
+    }
+
+    _setColorFieldUi(field, value, swatchHex = null) {
+      if (!this.shadowRoot) return;
+      const fallback = hexForColorInput(DEFAULT_WEEKLY_CONFIG[field], "#000000");
+      const hex = swatchHex || hexForColorInput(value, fallback);
+      const opener = this.shadowRoot.querySelector(`[data-color-open="${field}"]`);
+      const textInput = this.shadowRoot.querySelector(`[data-field="${field}"]`);
+      const hexInput = this.shadowRoot.querySelector(`[data-color-hex="${field}"]`);
+      const preview = this.shadowRoot.querySelector(`[data-color-preview="${field}"]`);
+
+      if (opener) opener.style.setProperty("--picker-color", hex);
+      if (textInput) textInput.value = value ?? "";
+      if (hexInput) hexInput.value = hex;
+      if (preview) preview.style.background = hex;
+    }
+
+    _updateColorPickerUi(field) {
+      const state = this._activeColorPicker;
+      if (!state || state.field !== field || !this.shadowRoot) return;
+      const { h, s, v } = state.hsv;
+      const hue = ((h % 360) + 360) % 360;
+      const sv = this.shadowRoot.querySelector(`[data-color-sv="${field}"]`);
+      const svCursor = this.shadowRoot.querySelector(`[data-color-sv-cursor="${field}"]`);
+      const hueCursor = this.shadowRoot.querySelector(`[data-color-hue-cursor="${field}"]`);
+
+      if (sv) sv.style.setProperty("--current-hue", hue);
+      if (svCursor) {
+        svCursor.style.left = `${s * 100}%`;
+        svCursor.style.top = `${(1 - v) * 100}%`;
+      }
+      if (hueCursor) hueCursor.style.left = `${(hue / 360) * 100}%`;
+      this._setColorFieldUi(field, state.currentHex, state.currentHex);
+    }
+
+    _previewColorPicker(field) {
+      const state = this._activeColorPicker;
+      if (!state || state.field !== field) return;
+      state.currentHex = this._hsvToHex(state.hsv.h, state.hsv.s, state.hsv.v);
+      this._updateColorPickerUi(field);
+      this._setValue(field, state.currentHex);
+    }
+
+    _openColorPicker(field) {
+      if (!this.shadowRoot) return;
+      if (this._activeColorPicker && this._activeColorPicker.field !== field) this._closeColorPicker(false);
+
+      const wrapper = this.shadowRoot.querySelector(`[data-color-wrapper="${field}"]`);
+      if (!wrapper) return;
+
+      const originalValue = this._get(field);
+      const fallback = hexForColorInput(DEFAULT_WEEKLY_CONFIG[field], "#000000");
+      const startHex = hexForColorInput(originalValue, fallback);
+      this._activeColorPicker = {
+        field,
+        originalValue,
+        currentHex: startHex,
+        hsv: this._rgbToHsv(this._hexToRgb(startHex))
+      };
+
+      this.shadowRoot.querySelectorAll(".color-field.is-color-open").forEach((item) => item.classList.remove("is-color-open"));
+      wrapper.classList.add("is-color-open");
+      this._updateColorPickerUi(field);
+
+      if (!this._colorOutsideHandler) {
+        this._colorOutsideHandler = (event) => {
+          const active = this._activeColorPicker;
+          if (!active || !this.shadowRoot) return;
+          const path = event.composedPath ? event.composedPath() : [];
+          const panel = this.shadowRoot.querySelector(`[data-color-panel="${active.field}"]`);
+          const opener = this.shadowRoot.querySelector(`[data-color-open="${active.field}"]`);
+          if (path.includes(panel) || path.includes(opener)) return;
+          this._closeColorPicker(false);
+        };
+        window.addEventListener("pointerdown", this._colorOutsideHandler, true);
+      }
+
+      if (!this._colorKeyHandler) {
+        this._colorKeyHandler = (event) => {
+          if (!this._activeColorPicker) return;
+          if (event.key === "Escape") {
+            event.preventDefault();
+            this._closeColorPicker(false);
+          } else if (event.key === "Enter") {
+            event.preventDefault();
+            this._closeColorPicker(true);
+          }
+        };
+        window.addEventListener("keydown", this._colorKeyHandler, true);
+      }
+    }
+
+    _closeColorPicker(commit) {
+      const state = this._activeColorPicker;
+      if (!state || !this.shadowRoot) return;
+      const wrapper = this.shadowRoot.querySelector(`[data-color-wrapper="${state.field}"]`);
+      if (wrapper) wrapper.classList.remove("is-color-open");
+
+      if (commit) {
+        this._setValue(state.field, state.currentHex);
+        this._setColorFieldUi(state.field, state.currentHex, state.currentHex);
+      } else {
+        this._setValue(state.field, state.originalValue);
+        this._setColorFieldUi(state.field, state.originalValue);
+      }
+
+      this._activeColorPicker = null;
+      this._colorPointerDrag = null;
+      if (this._colorOutsideHandler) {
+        window.removeEventListener("pointerdown", this._colorOutsideHandler, true);
+        this._colorOutsideHandler = null;
+      }
+      if (this._colorKeyHandler) {
+        window.removeEventListener("keydown", this._colorKeyHandler, true);
+        this._colorKeyHandler = null;
+      }
+    }
+
+    _updateColorFromPointer(field, area, event) {
+      const state = this._activeColorPicker;
+      if (!state || state.field !== field) return;
+      event.preventDefault();
+      const rect = event.currentTarget.getBoundingClientRect();
+      const x = this._clamp01((event.clientX - rect.left) / Math.max(1, rect.width));
+      const y = this._clamp01((event.clientY - rect.top) / Math.max(1, rect.height));
+
+      if (area === "hue") {
+        state.hsv.h = x * 360;
+      } else {
+        state.hsv.s = x;
+        state.hsv.v = 1 - y;
+      }
+
+      this._previewColorPicker(field);
+    }
+
+    _updateColorFromHex(field, value) {
+      const state = this._activeColorPicker;
+      if (!state || state.field !== field) return;
+      const hex = hexForColorInput(value, "");
+      if (!hex) return;
+      state.currentHex = hex;
+      state.hsv = this._rgbToHsv(this._hexToRgb(hex));
+      this._updateColorPickerUi(field);
+      this._setValue(field, hex);
+    }
+
     _colorField(name, label, help = "") {
       const fallback = hexForColorInput(DEFAULT_WEEKLY_CONFIG[name], "#000000");
       const value = escapeHtml(this._get(name));
       const pickerValue = hexForColorInput(this._get(name), fallback);
+      const safeName = escapeHtml(name);
       return `
-        <label class="field color-field">
+        <label class="field color-field" data-color-wrapper="${safeName}">
           <span class="label">${escapeHtml(label)}</span>
           ${help ? `<span class="help">${escapeHtml(help)}</span>` : ""}
           <div class="color-row">
-            <input class="picker" type="color" data-color-field="${escapeHtml(name)}" value="${pickerValue}">
-            <input class="text" type="text" data-field="${escapeHtml(name)}" value="${value}" placeholder="#000000 hoặc var(--primary-text-color)">
+            <button class="picker color-swatch-button" type="button" data-color-open="${safeName}" style="--picker-color: ${pickerValue};" aria-label="Ch\u1ecdn m\u00e0u ${escapeHtml(label)}"></button>
+            <input class="text" type="text" data-field="${safeName}" value="${value}" placeholder="#000000 ho\u1eb7c var(--primary-text-color)">
+          </div>
+          <div class="color-picker-panel" data-color-panel="${safeName}">
+            <div class="color-picker-preview-row">
+              <span class="color-picker-preview" data-color-preview="${safeName}" style="background: ${pickerValue};"></span>
+              <input class="text color-picker-hex" type="text" data-color-hex="${safeName}" value="${pickerValue}" aria-label="M\u00e3 m\u00e0u HEX">
+            </div>
+            <div class="color-picker-sv" data-color-sv="${safeName}" style="--current-hue: 0;">
+              <span class="color-picker-sv-cursor" data-color-sv-cursor="${safeName}"></span>
+            </div>
+            <div class="color-picker-hue" data-color-hue="${safeName}">
+              <span class="color-picker-hue-cursor" data-color-hue-cursor="${safeName}"></span>
+            </div>
+            <div class="color-picker-hint">Nh\u1ea5n ho\u1eb7c k\u00e9o trong b\u1ea3ng m\u00e0u \u0111\u1ec3 \u00e1p th\u1eed, b\u1ea5m OK \u0111\u1ec3 gi\u1eef m\u00e0u.</div>
+            <div class="color-picker-actions">
+              <button type="button" class="color-picker-action" data-color-cancel="${safeName}">H\u1ee7y</button>
+              <button type="button" class="color-picker-action primary" data-color-ok="${safeName}">OK</button>
+            </div>
           </div>
         </label>`;
     }
@@ -691,6 +954,116 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
             background: transparent;
             cursor: pointer;
           }
+          .color-field {
+            position: relative;
+          }
+          .color-swatch-button {
+            appearance: none;
+            -webkit-appearance: none;
+            background: var(--picker-color, #000000);
+            box-shadow: inset 0 0 0 2px rgba(255,255,255,0.18);
+          }
+          .color-picker-panel {
+            position: absolute;
+            z-index: 50;
+            top: calc(100% + 8px);
+            left: 0;
+            display: none;
+            width: min(280px, calc(100vw - 48px));
+            box-sizing: border-box;
+            padding: 10px;
+            gap: 10px;
+            border: 1px solid var(--divider-color, rgba(0,0,0,0.18));
+            border-radius: 12px;
+            background: var(--card-background-color, #fff);
+            color: var(--primary-text-color, #111);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+          }
+          .color-field.is-color-open .color-picker-panel {
+            display: grid;
+          }
+          .color-picker-preview-row {
+            display: grid;
+            grid-template-columns: 34px minmax(0, 1fr);
+            gap: 8px;
+            align-items: center;
+          }
+          .color-picker-preview {
+            display: block;
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            border: 1px solid var(--divider-color, rgba(0,0,0,0.16));
+            box-shadow: inset 0 0 0 2px rgba(255,255,255,0.16);
+          }
+          .color-picker-hex {
+            min-height: 34px;
+          }
+          .color-picker-sv {
+            position: relative;
+            height: 150px;
+            border-radius: 10px;
+            cursor: crosshair;
+            overflow: hidden;
+            background:
+              linear-gradient(to top, #000, rgba(0,0,0,0)),
+              linear-gradient(to right, #fff, hsl(var(--current-hue, 0), 100%, 50%));
+            border: 1px solid var(--divider-color, rgba(0,0,0,0.14));
+            touch-action: none;
+          }
+          .color-picker-hue {
+            position: relative;
+            height: 18px;
+            border-radius: 999px;
+            cursor: crosshair;
+            background: linear-gradient(to right, red, yellow, lime, cyan, blue, magenta, red);
+            border: 1px solid var(--divider-color, rgba(0,0,0,0.14));
+            touch-action: none;
+          }
+          .color-picker-sv-cursor,
+          .color-picker-hue-cursor {
+            position: absolute;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.65), 0 1px 4px rgba(0,0,0,0.45);
+          }
+          .color-picker-sv-cursor {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+          }
+          .color-picker-hue-cursor {
+            top: 50%;
+            width: 8px;
+            height: 24px;
+            border-radius: 999px;
+          }
+          .color-picker-hint {
+            font-size: 11px;
+            color: var(--secondary-text-color, #777);
+            line-height: 1.35;
+          }
+          .color-picker-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+          }
+          .color-picker-action {
+            min-height: 32px;
+            padding: 0 12px;
+            border: 1px solid var(--divider-color, rgba(0,0,0,0.12));
+            border-radius: 8px;
+            color: var(--primary-text-color, #111);
+            background: var(--secondary-background-color, #fff);
+            cursor: pointer;
+            font: inherit;
+          }
+          .color-picker-action.primary {
+            color: var(--text-primary-color, #fff);
+            background: var(--primary-color, #03a9f4);
+            border-color: var(--primary-color, #03a9f4);
+          }
           .text {
             box-sizing: border-box;
             width: 100%;
@@ -710,7 +1083,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
           }
           .range {
             width: 100%;
+            min-width: 0;
             accent-color: var(--primary-color, #03a9f4);
+            cursor: pointer;
+            touch-action: pan-y;
           }
           .range-number {
             text-align: center;
@@ -795,23 +1171,103 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
         const eventName = el.type === "range" ? "input" : "change";
         el.addEventListener(eventName, (event) => {
           const target = event.currentTarget;
+          const field = target.dataset.field;
           let value = target.value;
           if (target.type === "number" || target.type === "range") value = Number(value);
+          if (target.type === "range") this._beginRangeDrag(field);
           if (target.dataset.rangePeer) {
             this.shadowRoot.querySelectorAll(`[data-range-peer="${target.dataset.rangePeer}"]`).forEach((peer) => {
               if (peer !== target) peer.value = value;
             });
           }
-          this._setValue(target.dataset.field, value);
+          this._setValue(field, value);
+          if (target.type === "range") this._syncRangeFieldUi(field, value);
+          if (field && this.shadowRoot.querySelector(`[data-color-open="${field}"]`)) {
+            const hex = hexForColorInput(value, "");
+            this._setColorFieldUi(field, value, hex || null);
+          }
         });
       });
 
-      this.shadowRoot.querySelectorAll("[data-color-field]").forEach((el) => {
+      this.shadowRoot.querySelectorAll('input.range[data-field]').forEach((el) => {
+        const field = el.dataset.field;
+        const begin = () => this._beginRangeDrag(field);
+        const end = () => this._endRangeDrag(field);
+        el.addEventListener('pointerdown', (event) => {
+          begin();
+          event.currentTarget.setPointerCapture?.(event.pointerId);
+        });
+        el.addEventListener('pointerup', end);
+        el.addEventListener('pointercancel', end);
+        el.addEventListener('change', end);
+        el.addEventListener('blur', end);
+      });
+
+      this.shadowRoot.querySelectorAll("[data-color-open]").forEach((el) => {
+        el.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          this._openColorPicker(event.currentTarget.dataset.colorOpen);
+        });
+      });
+
+      this.shadowRoot.querySelectorAll("[data-color-sv]").forEach((el) => {
+        const field = el.dataset.colorSv;
+        el.addEventListener("pointerdown", (event) => {
+          event.currentTarget.setPointerCapture?.(event.pointerId);
+          this._colorPointerDrag = { field, area: "sv", pointerId: event.pointerId };
+          this._updateColorFromPointer(field, "sv", event);
+        });
+        el.addEventListener("pointermove", (event) => {
+          const drag = this._colorPointerDrag;
+          if (!drag || drag.field !== field || drag.area !== "sv" || drag.pointerId !== event.pointerId) return;
+          this._updateColorFromPointer(field, "sv", event);
+        });
+        const stopDrag = (event) => {
+          if (this._colorPointerDrag && this._colorPointerDrag.pointerId === event.pointerId) this._colorPointerDrag = null;
+        };
+        el.addEventListener("pointerup", stopDrag);
+        el.addEventListener("pointercancel", stopDrag);
+      });
+
+      this.shadowRoot.querySelectorAll("[data-color-hue]").forEach((el) => {
+        const field = el.dataset.colorHue;
+        el.addEventListener("pointerdown", (event) => {
+          event.currentTarget.setPointerCapture?.(event.pointerId);
+          this._colorPointerDrag = { field, area: "hue", pointerId: event.pointerId };
+          this._updateColorFromPointer(field, "hue", event);
+        });
+        el.addEventListener("pointermove", (event) => {
+          const drag = this._colorPointerDrag;
+          if (!drag || drag.field !== field || drag.area !== "hue" || drag.pointerId !== event.pointerId) return;
+          this._updateColorFromPointer(field, "hue", event);
+        });
+        const stopDrag = (event) => {
+          if (this._colorPointerDrag && this._colorPointerDrag.pointerId === event.pointerId) this._colorPointerDrag = null;
+        };
+        el.addEventListener("pointerup", stopDrag);
+        el.addEventListener("pointercancel", stopDrag);
+      });
+
+      this.shadowRoot.querySelectorAll("[data-color-hex]").forEach((el) => {
         el.addEventListener("input", (event) => {
-          const target = event.currentTarget;
-          this._setValue(target.dataset.colorField, target.value);
-          const textInput = this.shadowRoot.querySelector(`[data-field="${target.dataset.colorField}"]`);
-          if (textInput) textInput.value = target.value;
+          this._updateColorFromHex(event.currentTarget.dataset.colorHex, event.currentTarget.value);
+        });
+      });
+
+      this.shadowRoot.querySelectorAll("[data-color-ok]").forEach((el) => {
+        el.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          this._closeColorPicker(true);
+        });
+      });
+
+      this.shadowRoot.querySelectorAll("[data-color-cancel]").forEach((el) => {
+        el.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          this._closeColorPicker(false);
         });
       });
     }
