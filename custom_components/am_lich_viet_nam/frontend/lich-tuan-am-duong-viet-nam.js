@@ -1449,6 +1449,94 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       if (drag.captured) event.currentTarget.releasePointerCapture?.(event.pointerId);
     }
 
+    _normalizePopupDate(date) {
+      const value = date instanceof Date && !Number.isNaN(date.getTime()) ? date : new Date();
+      return new Date(value.getFullYear(), value.getMonth(), value.getDate(), 12, 0, 0, 0);
+    }
+
+    _withForcedPopupDate(date, callback) {
+      const fixedDate = this._normalizePopupDate(date);
+      const RealDate = window.Date;
+      const fixedTime = new RealDate(
+        fixedDate.getFullYear(),
+        fixedDate.getMonth(),
+        fixedDate.getDate(),
+        12,
+        0,
+        0,
+        0
+      ).getTime();
+
+      function FakeDate(...args) {
+        if (!(this instanceof FakeDate)) {
+          if (args.length === 0) return new RealDate(fixedTime).toString();
+          return RealDate(...args);
+        }
+        if (args.length === 0) return new RealDate(fixedTime);
+        return new RealDate(...args);
+      }
+
+      Object.setPrototypeOf(FakeDate, RealDate);
+      FakeDate.prototype = RealDate.prototype;
+      FakeDate.now = () => fixedTime;
+      FakeDate.parse = RealDate.parse;
+      FakeDate.UTC = RealDate.UTC;
+
+      try {
+        window.Date = FakeDate;
+        return callback();
+      } finally {
+        window.Date = RealDate;
+      }
+    }
+
+    _ensurePopupMainCardDatePatch(mainCard) {
+      if (!mainCard || mainCard._wlcPopupDatePatchApplied) return;
+      const originalRender = mainCard._render;
+      if (typeof originalRender !== "function") return;
+
+      const owner = this;
+      mainCard._render = function(...args) {
+        const popupDate = this._wlcPopupDate;
+        if (popupDate instanceof Date && !Number.isNaN(popupDate.getTime())) {
+          this.displayMonth = popupDate.getMonth() + 1;
+          this.displayYear = popupDate.getFullYear();
+          return owner._withForcedPopupDate(popupDate, () => originalRender.apply(this, args));
+        }
+        return originalRender.apply(this, args);
+      };
+      mainCard._wlcPopupDatePatchApplied = true;
+    }
+
+    _popupMainCardConfig(dateValue, dd, mm, yy) {
+      return {
+        type: "custom:lich-block-am-duong-viet-nam",
+        selected_date: dateValue,
+        initial_date: dateValue,
+        date: dateValue,
+        day: dd,
+        month: mm,
+        year: yy,
+        popup_theme: this.config?.popup_theme || DEFAULT_WEEKLY_CONFIG.popup_theme,
+        popup_opacity: this.config?.popup_opacity ?? DEFAULT_WEEKLY_CONFIG.popup_opacity
+      };
+    }
+
+    _applyPopupMainCardDate(mainCard, popupDate, cardConfig) {
+      if (!mainCard) return;
+      const fixedDate = this._normalizePopupDate(popupDate);
+      mainCard._wlcPopupDate = fixedDate;
+      mainCard.displayMonth = fixedDate.getMonth() + 1;
+      mainCard.displayYear = fixedDate.getFullYear();
+      this._ensurePopupMainCardDatePatch(mainCard);
+
+      if (typeof mainCard.setConfig === "function") {
+        this._withForcedPopupDate(fixedDate, () => mainCard.setConfig(cardConfig));
+      }
+      if (this._hass) mainCard.hass = this._hass;
+      if (typeof mainCard._render === "function") mainCard._render();
+    }
+
     _showPopup(date) {
       this._openCalendarCardPopup(date);
     }
@@ -1558,41 +1646,21 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     _openCalendarCardPopup(date) {
       this._ensureCalendarCardPopup();
       const container = this._cardPopupModal.querySelector(".wlc-card-popup-container");
-      const [dd, mm, yy] = solarArgs(date || new Date());
+      const popupDate = this._normalizePopupDate(date || new Date());
+      const [dd, mm, yy] = solarArgs(popupDate);
       const dateValue = `${yy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
+      const popupConfig = this._popupMainCardConfig(dateValue, dd, mm, yy);
 
       if (!this._cardPopupMainCard) {
         if (customElements.get("lich-block-am-duong-viet-nam")) {
           this._cardPopupMainCard = document.createElement("lich-block-am-duong-viet-nam");
-          if (typeof this._cardPopupMainCard.setConfig === "function") {
-            this._cardPopupMainCard.setConfig({
-              type: "custom:lich-block-am-duong-viet-nam",
-              selected_date: dateValue,
-              initial_date: dateValue,
-              date: dateValue,
-              day: dd,
-              month: mm,
-              year: yy
-            });
-          }
-          if (this._hass) this._cardPopupMainCard.hass = this._hass;
+          this._applyPopupMainCardDate(this._cardPopupMainCard, popupDate, popupConfig);
           container.replaceChildren(this._cardPopupMainCard);
         } else {
           container.innerHTML = `<div class="wlc-card-popup-message">Chưa tìm thấy thẻ <b>lich-block-am-duong-viet-nam</b>. Hãy bảo đảm file thẻ lịch chính đã được nạp trong Resources của Home Assistant.</div>`;
         }
       } else {
-        if (typeof this._cardPopupMainCard.setConfig === "function") {
-          this._cardPopupMainCard.setConfig({
-            type: "custom:lich-block-am-duong-viet-nam",
-            selected_date: dateValue,
-            initial_date: dateValue,
-            date: dateValue,
-            day: dd,
-            month: mm,
-            year: yy
-          });
-        }
-        if (this._hass) this._cardPopupMainCard.hass = this._hass;
+        this._applyPopupMainCardDate(this._cardPopupMainCard, popupDate, popupConfig);
       }
 
       this._syncCardPopupTheme();
