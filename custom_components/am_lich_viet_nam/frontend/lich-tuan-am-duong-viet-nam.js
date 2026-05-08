@@ -2051,10 +2051,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
         <div class="wlc-shell" style="${styleVars}" title="${escapeHtml(detailText)}">
           <div class="wlc-row">
-            <button class="wlc-nav wlc-prev" aria-label="Lùi 1 ngày">◀</button>
+            <button class="wlc-nav wlc-prev" aria-label="Lùi 1 tuần">◀</button>
             ${days.join("")}
             ${this._offsetDays !== 0 ? `<button class="wlc-today-reset" title="Quay về hôm nay" aria-label="Quay về hôm nay">↺</button>` : ""}
-            <button class="wlc-nav wlc-next" aria-label="Tiến 1 ngày">▶</button>
+            <button class="wlc-nav wlc-next" aria-label="Tiến 1 tuần">▶</button>
           </div>
         </div>`;
 
@@ -2063,12 +2063,12 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       const resetToday = this.card.querySelector(".wlc-today-reset");
       if (prev) prev.addEventListener("click", (event) => {
         event.stopPropagation();
-        this._offsetDays -= 1;
+        this._offsetDays -= 7;
         this._render();
       });
       if (next) next.addEventListener("click", (event) => {
         event.stopPropagation();
-        this._offsetDays += 1;
+        this._offsetDays += 7;
         this._render();
       });
       if (resetToday) resetToday.addEventListener("click", (event) => {
@@ -2105,7 +2105,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
   window.customCards.push({
     type: "lich-tuan-am-duong-viet-nam",
     name: "Lịch Tuần Âm Dương",
-    description: "Thẻ tuần Âm Dương Việt Nam: hôm nay ở giữa, mũi tên xem tiến/lùi từng ngày, bấm ngày để xem popup chi tiết, có trình chỉnh màu trong UI.",
+    description: "Thẻ tuần Âm Dương Việt Nam: hôm nay ở giữa, mũi tên xem tiến/lùi từng tuần, bấm ngày để xem popup chi tiết, có trình chỉnh màu trong UI.",
     preview: true
   });
 
