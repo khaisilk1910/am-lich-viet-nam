@@ -1318,6 +1318,8 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       this._timer = null;
       this._cardPopupModal = null;
       this._cardPopupMainCard = null;
+      this._dragState = null;
+      this._suppressClickUntil = 0;
     }
 
     connectedCallback() {
@@ -1376,6 +1378,75 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
     _centerDate() {
       return addDays(new Date(), this._offsetDays);
+    }
+
+    _navigateWeeks(direction) {
+      this._offsetDays += direction * 7;
+      this._render();
+    }
+
+    _isSwipeIgnoredTarget(target) {
+      return target && target.closest && target.closest(".wlc-nav, .wlc-today-reset");
+    }
+
+    _onSwipePointerDown(event) {
+      if (event.button !== undefined && event.button !== 0) return;
+      if (event.isPrimary === false) return;
+      if (this._isSwipeIgnoredTarget(event.target)) return;
+
+      this._dragState = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        active: false,
+        captured: false
+      };
+      // Không capture pointer ngay từ đầu, vì capture ở đây có thể làm click/tap
+      // của các nút ngày bị retarget lên .wlc-shell và không mở popup.
+    }
+
+    _onSwipePointerMove(event) {
+      const drag = this._dragState;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+
+      const dx = event.clientX - drag.startX;
+      const dy = event.clientY - drag.startY;
+      const horizontalIntent = Math.abs(dx) >= 18 && Math.abs(dx) > Math.abs(dy) * 1.4;
+
+      if (horizontalIntent) {
+        drag.active = true;
+        if (!drag.captured) {
+          event.currentTarget.setPointerCapture?.(event.pointerId);
+          drag.captured = true;
+        }
+        event.preventDefault();
+      }
+    }
+
+    _onSwipePointerUp(event) {
+      const drag = this._dragState;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+
+      const dx = event.clientX - drag.startX;
+      const dy = event.clientY - drag.startY;
+      const isSwipe = drag.active && Math.abs(dx) >= 52 && Math.abs(dx) > Math.abs(dy) * 1.35;
+
+      this._dragState = null;
+      if (drag.captured) event.currentTarget.releasePointerCapture?.(event.pointerId);
+
+      if (isSwipe) {
+        event.preventDefault();
+        event.stopPropagation();
+        this._suppressClickUntil = Date.now() + 350;
+        this._navigateWeeks(dx < 0 ? 1 : -1);
+      }
+    }
+
+    _onSwipePointerCancel(event) {
+      const drag = this._dragState;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      this._dragState = null;
+      if (drag.captured) event.currentTarget.releasePointerCapture?.(event.pointerId);
     }
 
     _showPopup(date) {
@@ -1629,6 +1700,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
             color: var(--wlc-text-color);
             font-family: Arial, Helvetica, sans-serif;
             user-select: none;
+            touch-action: pan-y;
           }
 
           .wlc-row {
@@ -2063,13 +2135,11 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       const resetToday = this.card.querySelector(".wlc-today-reset");
       if (prev) prev.addEventListener("click", (event) => {
         event.stopPropagation();
-        this._offsetDays -= 7;
-        this._render();
+        this._navigateWeeks(-1);
       });
       if (next) next.addEventListener("click", (event) => {
         event.stopPropagation();
-        this._offsetDays += 7;
-        this._render();
+        this._navigateWeeks(1);
       });
       if (resetToday) resetToday.addEventListener("click", (event) => {
         event.stopPropagation();
@@ -2077,12 +2147,33 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
         this._render();
       });
 
+      const swipeShell = this.card.querySelector(".wlc-shell");
+      if (swipeShell) {
+        swipeShell.addEventListener("click", (event) => {
+          if (Date.now() < this._suppressClickUntil) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }, true);
+        swipeShell.addEventListener("pointerdown", (event) => this._onSwipePointerDown(event));
+        swipeShell.addEventListener("pointermove", (event) => this._onSwipePointerMove(event));
+        swipeShell.addEventListener("pointerup", (event) => this._onSwipePointerUp(event));
+        swipeShell.addEventListener("pointercancel", (event) => this._onSwipePointerCancel(event));
+      }
+
       this.card.querySelectorAll(".wlc-day").forEach((el) => {
         const open = () => {
           const offset = Number(el.dataset.offset || 0);
           this._showPopup(addDays(center, offset));
         };
-        el.addEventListener("click", open);
+        el.addEventListener("click", (event) => {
+          if (Date.now() < this._suppressClickUntil) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+          open();
+        });
         el.addEventListener("keydown", (event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
@@ -2105,7 +2196,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
   window.customCards.push({
     type: "lich-tuan-am-duong-viet-nam",
     name: "Lịch Tuần Âm Dương",
-    description: "Thẻ tuần Âm Dương Việt Nam: hôm nay ở giữa, mũi tên xem tiến/lùi từng tuần, bấm ngày để xem popup chi tiết, có trình chỉnh màu trong UI.",
+    description: "Thẻ tuần Âm Dương Việt Nam: hôm nay ở giữa, mũi tên hoặc kéo ngang để tiến/lùi từng tuần, bấm ngày để xem popup chi tiết, có trình chỉnh màu trong UI.",
     preview: true
   });
 
