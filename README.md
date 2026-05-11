@@ -6,8 +6,11 @@
 - Chỉnh sửa sự kiện trên UI của tích hợp dễ dàng.
 - Chỉnh sửa màu sắc hiển thị của thẻ tự động hoặc tùy ý trên giao diện dễ dàng
 - Tra cứu, qui đổi ngày âm dương dễ dàng
+- Thẻ Lịch Tuần hiển thị lịch theo tuần, vuốt hoặc nhấn nút để tiến lùi xem lịch, nhấn vào ngày để xem chi tiết ngày bất kỳ.
 
 <img width="1044" height="646" alt="image" src="https://github.com/user-attachments/assets/d65b47b3-3610-4598-bb63-69f9644de0f0" />
+
+<img width="519" height="153" alt="image" src="https://github.com/user-attachments/assets/9592c336-b3b0-49d6-9a5b-ba9daf34804c" />
 
 
 ## Cài đặt
