@@ -549,5 +549,5 @@ window.customCards.push({
     type: "lich-am-duong-bubble",
     name: "Bong Bóng Lịch Âm Dương",
     description: "Bong bóng nổi tự động co giãn, có kéo thả tự do, vạch phân cách và 10 hiệu ứng sinh động.",
-    preview: true,
+    preview: false,
 });
