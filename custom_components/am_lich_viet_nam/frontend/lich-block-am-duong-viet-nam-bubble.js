@@ -218,6 +218,8 @@ class LunarCalendarBubbleCard extends HTMLElement {
         this._isTypingGreeting = false;
         this._isHovering = false;
         this._isTouchHolding = false;
+        this._touchHoldTimer = null;
+        this._didLongPress = false;
         this._suppressNextClick = false;
         this._resizeHandler = null;
         this._placementRaf = null;
@@ -296,6 +298,7 @@ class LunarCalendarBubbleCard extends HTMLElement {
         window.clearTimeout(this._greetingTimer);
         window.clearTimeout(this._greetingHideTimer);
         window.clearTimeout(this._greetingRepeatTimer);
+        window.clearTimeout(this._touchHoldTimer);
         this.clearTypingTimers();
         if (this._resizeHandler) {
             window.removeEventListener('resize', this._resizeHandler);
@@ -537,63 +540,82 @@ class LunarCalendarBubbleCard extends HTMLElement {
         const preset = this.getChatPlacement(index);
         const svgSize = Math.max(40, Number(this.config.svg_size) || 80);
         const scale = this.clamp(svgSize / 170, 0.48, 1.55);
-        const gap = Math.round(12 * scale);
+        const gap = Math.round((window.innerWidth <= 600 ? 10 : 12) * scale);
+        const safeMargin = window.innerWidth <= 600 ? 12 : 16;
         const rect = bubble.getBoundingClientRect();
         const viewportW = window.innerWidth || document.documentElement.clientWidth || 1024;
         const viewportH = window.innerHeight || document.documentElement.clientHeight || 768;
-        const chatWidth = chat.offsetWidth || Math.round((Number(this.config.chat_width) || 245) * scale);
-        const chatHeight = chat.offsetHeight || Math.round(88 * scale);
+        const fallbackWidth = Math.round((Number(this.config.chat_width) || 245) * scale);
+        const fallbackHeight = Math.round(88 * scale);
+        const chatWidth = Math.min(chat.offsetWidth || fallbackWidth, Math.max(120, viewportW - (safeMargin * 2)));
+        const chatHeight = Math.min(chat.offsetHeight || fallbackHeight, Math.max(60, viewportH - (safeMargin * 2)));
+        const tailInset = this.clamp(Math.round(22 * scale), 14, Math.max(15, Math.round(chatWidth / 2)));
+        const tailTopInset = this.clamp(Math.round(22 * scale), 14, Math.max(15, Math.round(chatHeight / 2)));
+        const bubbleCenterX = rect.left + (rect.width / 2);
+        const bubbleCenterY = rect.top + (rect.height / 2);
+        const canPlaceLeft = rect.left - chatWidth - gap >= safeMargin;
+        const canPlaceRight = rect.right + chatWidth + gap <= viewportW - safeMargin;
         let side = 'left';
 
-        if (viewportW <= 600) {
+        if (viewportW <= 600 || preset.tail === 'bottom') {
             side = 'top';
-        } else if (rect.left < chatWidth + gap + 12) {
-            side = 'right';
-        } else if (rect.right + chatWidth + gap + 12 > viewportW) {
+        } else if (canPlaceLeft && !canPlaceRight) {
             side = 'left';
-        } else if (preset.tail === 'bottom') {
+        } else if (canPlaceRight && !canPlaceLeft) {
+            side = 'right';
+        } else if (canPlaceLeft && canPlaceRight) {
+            side = preset.tail === 'left' ? 'right' : 'left';
+        } else {
             side = 'top';
         }
 
-        const topBase = this.getPx(preset.top, 8);
-        let top = Math.round(topBase * scale);
-        top = this.clamp(top, Math.round(-26 * scale), Math.max(0, Math.round(rect.height - chatHeight - 4)));
-
-        chat.classList.remove('tail-left', 'tail-right', 'tail-bottom');
-        if (side === 'right') {
-            wrapper.style.setProperty('--chat-left', `${Math.round(rect.width + gap)}px`);
-            wrapper.style.setProperty('--chat-top', `${top}px`);
+        const clampAbsLeft = (left) => this.clamp(left, safeMargin, Math.max(safeMargin, viewportW - safeMargin - chatWidth));
+        const clampAbsTop = (top) => this.clamp(top, safeMargin, Math.max(safeMargin, viewportH - safeMargin - chatHeight));
+        const setChatPosition = (absLeft, absTop) => {
+            wrapper.style.setProperty('--chat-left', `${Math.round(absLeft - rect.left)}px`);
+            wrapper.style.setProperty('--chat-top', `${Math.round(absTop - rect.top)}px`);
             wrapper.style.setProperty('--chat-x', '0px');
             wrapper.style.setProperty('--chat-y', '0px');
-            wrapper.style.setProperty('--tail-top', `${this.clamp(Math.round(30 * scale), 18, Math.max(20, chatHeight - 20))}px`);
+        };
+
+        chat.classList.remove('tail-left', 'tail-right', 'tail-bottom', 'tail-top');
+
+        if (side === 'right') {
+            const absLeft = clampAbsLeft(rect.right + gap);
+            const topBase = this.getPx(preset.top, 8);
+            const absTop = clampAbsTop(rect.top + Math.round(topBase * scale));
+            setChatPosition(absLeft, absTop);
+            wrapper.style.setProperty('--tail-top', `${Math.round(this.clamp(bubbleCenterY - absTop, tailTopInset, Math.max(tailTopInset, chatHeight - tailTopInset)))}px`);
+            wrapper.style.setProperty('--tail-left', `${Math.round(this.clamp(bubbleCenterX - absLeft, tailInset, Math.max(tailInset, chatWidth - tailInset)))}px`);
             chat.classList.add('tail-left');
             chat.style.transformOrigin = 'left top';
-        } else if (side === 'top') {
-            const topOffset = Math.max(chatHeight + Math.round(16 * scale), Math.round(106 * scale));
-            wrapper.style.setProperty('--chat-left', '50%');
-            wrapper.style.setProperty('--chat-top', `-${topOffset}px`);
-            wrapper.style.setProperty('--chat-x', '-50%');
-            wrapper.style.setProperty('--chat-y', '0px');
-            chat.classList.add('tail-bottom');
-            chat.style.transformOrigin = 'center bottom';
-        } else {
-            wrapper.style.setProperty('--chat-left', `-${Math.round(chatWidth + gap)}px`);
-            wrapper.style.setProperty('--chat-top', `${top}px`);
-            wrapper.style.setProperty('--chat-x', '0px');
-            wrapper.style.setProperty('--chat-y', '0px');
-            wrapper.style.setProperty('--tail-top', `${this.clamp(Math.round(30 * scale), 18, Math.max(20, chatHeight - 20))}px`);
+        } else if (side === 'left') {
+            const absLeft = clampAbsLeft(rect.left - chatWidth - gap);
+            const topBase = this.getPx(preset.top, 8);
+            const absTop = clampAbsTop(rect.top + Math.round(topBase * scale));
+            setChatPosition(absLeft, absTop);
+            wrapper.style.setProperty('--tail-top', `${Math.round(this.clamp(bubbleCenterY - absTop, tailTopInset, Math.max(tailTopInset, chatHeight - tailTopInset)))}px`);
+            wrapper.style.setProperty('--tail-left', `${Math.round(this.clamp(bubbleCenterX - absLeft, tailInset, Math.max(tailInset, chatWidth - tailInset)))}px`);
             chat.classList.add('tail-right');
             chat.style.transformOrigin = 'right top';
-        }
-
-        const nextRect = chat.getBoundingClientRect();
-        if (nextRect.top < 6) {
-            const currentTop = this.getPx(wrapper.style.getPropertyValue('--chat-top'), 0);
-            wrapper.style.setProperty('--chat-top', `${Math.round(currentTop + (6 - nextRect.top))}px`);
-        }
-        if (nextRect.bottom > viewportH - 6 && side !== 'top') {
-            const currentTop = this.getPx(wrapper.style.getPropertyValue('--chat-top'), 0);
-            wrapper.style.setProperty('--chat-top', `${Math.round(currentTop - (nextRect.bottom - viewportH + 6))}px`);
+        } else {
+            let absTop = rect.top - chatHeight - gap;
+            let tailClass = 'tail-bottom';
+            if (absTop < safeMargin) {
+                absTop = rect.bottom + gap;
+                tailClass = 'tail-top';
+                if (absTop + chatHeight > viewportH - safeMargin) {
+                    absTop = safeMargin;
+                    tailClass = absTop > rect.top ? 'tail-top' : 'tail-bottom';
+                }
+            }
+            absTop = clampAbsTop(absTop);
+            const absLeft = clampAbsLeft(bubbleCenterX - (chatWidth / 2));
+            setChatPosition(absLeft, absTop);
+            wrapper.style.setProperty('--tail-left', `${Math.round(this.clamp(bubbleCenterX - absLeft, tailInset, Math.max(tailInset, chatWidth - tailInset)))}px`);
+            wrapper.style.setProperty('--tail-top', `${Math.round(this.clamp(bubbleCenterY - absTop, tailTopInset, Math.max(tailTopInset, chatHeight - tailTopInset)))}px`);
+            chat.classList.add(tailClass);
+            chat.style.transformOrigin = tailClass === 'tail-top' ? 'center top' : 'center bottom';
         }
     }
 
@@ -647,6 +669,12 @@ class LunarCalendarBubbleCard extends HTMLElement {
         const chatPaddingY = Math.round(this.clamp(12 * chatScale, 6, 20));
         const chatPaddingX = Math.round(this.clamp(16 * chatScale, 8, 26));
         const chatRadius = Math.round(this.clamp(22 * chatScale, 10, 32));
+        const mobileSvgWidth = Math.round(this.clamp(svgSize * 0.58, 40, 120));
+        const mobileStageHeight = Math.round(this.clamp(stageHeight * 0.58, 52, 190));
+        const mobileChatWidth = Math.round(this.clamp(chatWidth * 0.78, 150, 238));
+        const mobileChatFontSize = Math.round(this.clamp(chatFontSize * 0.78, 10, 14));
+        const mobileChatPaddingY = Math.round(this.clamp(chatPaddingY * 0.72, 6, 10));
+        const mobileChatPaddingX = Math.round(this.clamp(chatPaddingX * 0.72, 8, 12));
 
         this.shadowRoot.innerHTML = `
             <style>
@@ -680,6 +708,7 @@ class LunarCalendarBubbleCard extends HTMLElement {
                     --chat-padding-x: ${chatPaddingX}px;
                     --chat-radius: ${chatRadius}px;
                     --tail-top: ${Math.round(32 * chatScale)}px;
+                    --tail-left: 50%;
                 }
 
                 .tooltip {
@@ -815,12 +844,21 @@ class LunarCalendarBubbleCard extends HTMLElement {
                 }
 
                 .chat-bubble.tail-bottom::after {
-                    left: 50%;
+                    left: var(--tail-left, 50%);
                     bottom: -12px;
                     transform: translateX(-50%);
                     border-left: 10px solid transparent;
                     border-right: 10px solid transparent;
                     border-top: 13px solid var(--chat-bg);
+                }
+
+                .chat-bubble.tail-top::after {
+                    left: var(--tail-left, 50%);
+                    top: -12px;
+                    transform: translateX(-50%);
+                    border-left: 10px solid transparent;
+                    border-right: 10px solid transparent;
+                    border-bottom: 13px solid var(--chat-bg);
                 }
 
                 .greeting-main {
@@ -904,30 +942,34 @@ class LunarCalendarBubbleCard extends HTMLElement {
                 }
 
                 @media (max-width: 600px) {
-                    .avatar-stage { width: ${Math.round(svgSize * 0.82)}px; min-height: ${Math.round(stageHeight * 0.82)}px; }
-                    .svg-avatar { width: ${Math.round(svgSize * 0.82)}px; max-width: ${Math.round(svgSize * 0.82)}px; }
-                    .svg-avatar svg { max-height: ${Math.round(stageHeight * 0.82)}px; }
+                    .bubble-wrapper { align-items: center; }
+                    .tooltip { display: none; }
+                    .avatar-stage {
+                        width: ${mobileSvgWidth}px;
+                        min-height: ${mobileStageHeight}px;
+                        filter: drop-shadow(0 6px ${Math.max(6, Math.round(shadowSize * 0.55))}px ${shadowColor});
+                    }
+                    .bubble-wrapper:hover .avatar-stage { transform: scale(1.02) !important; }
+                    .svg-avatar { width: ${mobileSvgWidth}px; max-width: ${mobileSvgWidth}px; }
+                    .svg-avatar svg { max-height: ${mobileStageHeight}px; }
                     .chat-bubble {
-                        left: 50% !important;
-                        top: -112px !important;
-                        width: min(var(--chat-width), 78vw);
-                        font-size: ${Math.max(13, Math.round(chatFontSize * 0.9))}px;
-                        padding: ${Math.max(9, Math.round(chatPaddingY * 0.9))}px ${Math.max(12, Math.round(chatPaddingX * 0.9))}px;
-                        transform-origin: center bottom;
-                        transform: translate(-50%, 14px) scale(0.96) !important;
+                        width: min(${mobileChatWidth}px, calc(100vw - 24px));
+                        max-width: calc(100vw - 24px);
+                        font-size: ${mobileChatFontSize}px;
+                        padding: ${mobileChatPaddingY}px ${mobileChatPaddingX}px;
+                        border-radius: ${Math.max(10, Math.round(chatRadius * 0.62))}px;
+                        transform: translate(var(--chat-x), 12px) scale(0.96);
+                        line-height: 1.25;
                     }
-                    .chat-bubble.show { transform: translate(-50%, 0) scale(1) !important; }
-                    .chat-bubble::after {
-                        left: 50% !important;
-                        right: auto !important;
-                        top: auto !important;
-                        bottom: -12px !important;
-                        transform: translateX(-50%) !important;
-                        border-left: 10px solid transparent !important;
-                        border-right: 10px solid transparent !important;
-                        border-top: 13px solid var(--chat-bg) !important;
-                        border-bottom: 0 !important;
+                    .chat-bubble.show { transform: translate(var(--chat-x), var(--chat-y)) scale(1); }
+                    .greeting-main { margin-bottom: 4px; }
+                    .greeting-row {
+                        gap: 5px;
+                        padding: 0.30em 0.40em;
+                        margin-top: 3px;
+                        grid-template-columns: 1.35em 1fr;
                     }
+                    .chat-icon { width: 1.35em; height: 1.35em; font-size: 0.78em; }
                 }
             </style>
 
@@ -1000,6 +1042,7 @@ class LunarCalendarBubbleCard extends HTMLElement {
         window.clearTimeout(this._greetingTimer);
         window.clearTimeout(this._greetingHideTimer);
         window.clearTimeout(this._greetingRepeatTimer);
+        window.clearTimeout(this._touchHoldTimer);
         this.clearTypingTimers();
         const chat = this.shadowRoot.getElementById('chatBubble');
         if (!chat) return;
@@ -1066,44 +1109,71 @@ class LunarCalendarBubbleCard extends HTMLElement {
             document.removeEventListener('touchend', dragEnd);
         };
 
-        const touchHoldStart = (e) => {
-            this._isTouchHolding = true;
-            this._isHovering = true;
-            this.requestChatPlacementUpdate();
-            window.clearTimeout(this._greetingHideTimer);
-            if (this.config.greeting_enabled) {
-                this.showGreeting({ restartTyping: true });
-            }
+        const startTouchHoldTimer = (e) => {
+            const point = e.touches && e.touches[0] ? e.touches[0] : null;
+            if (!point) return;
+            const startX = point.clientX;
+            const startY = point.clientY;
+            this._didLongPress = false;
+            this._isTouchHolding = false;
+            window.clearTimeout(this._touchHoldTimer);
+            this._touchHoldTimer = window.setTimeout(() => {
+                this._didLongPress = true;
+                this._isTouchHolding = true;
+                this._isHovering = true;
+                this.requestChatPlacementUpdate();
+                window.clearTimeout(this._greetingHideTimer);
+                window.clearTimeout(this._greetingRepeatTimer);
+                if (this.config.greeting_enabled) {
+                    this.showGreeting({ restartTyping: true });
+                }
+            }, 450);
+
+            const cancelIfMoved = (moveEvent) => {
+                const movePoint = moveEvent.touches && moveEvent.touches[0] ? moveEvent.touches[0] : null;
+                if (!movePoint || this._didLongPress) return;
+                if (Math.abs(movePoint.clientX - startX) > 10 || Math.abs(movePoint.clientY - startY) > 10) {
+                    window.clearTimeout(this._touchHoldTimer);
+                    document.removeEventListener('touchmove', cancelIfMoved);
+                }
+            };
+            document.addEventListener('touchmove', cancelIfMoved, { passive: true });
+            document.addEventListener('touchend', () => document.removeEventListener('touchmove', cancelIfMoved), { once: true });
+            document.addEventListener('touchcancel', () => document.removeEventListener('touchmove', cancelIfMoved), { once: true });
         };
 
-        const touchHoldEnd = () => {
-            if (!this._isTouchHolding) return;
-            this._isTouchHolding = false;
-            this._isHovering = false;
-            this.hideGreeting();
-            this._suppressNextClick = true;
-            window.setTimeout(() => { this._suppressNextClick = false; }, 450);
+        const finishTouchHold = () => {
+            window.clearTimeout(this._touchHoldTimer);
+            if (this._didLongPress || this._isTouchHolding) {
+                this._isTouchHolding = false;
+                this._isHovering = false;
+                this.hideGreeting();
+                this._suppressNextClick = true;
+                window.setTimeout(() => { this._suppressNextClick = false; }, 450);
+                if (this.config.greeting_repeat_enabled) this.scheduleNextRepeatedGreeting();
+            }
         };
 
         bubble.addEventListener('mousedown', dragStart);
         bubble.addEventListener('touchstart', (e) => {
-            touchHoldStart(e);
+            startTouchHoldTimer(e);
             dragStart(e);
-            document.addEventListener('touchend', touchHoldEnd, { once: true });
-            document.addEventListener('touchcancel', touchHoldEnd, { once: true });
+            document.addEventListener('touchend', finishTouchHold, { once: true });
+            document.addEventListener('touchcancel', finishTouchHold, { once: true });
         }, { passive: false });
         bubble.addEventListener('mouseenter', () => {
+            if (this._isTouchHolding) return;
             this._isHovering = true;
             this.requestChatPlacementUpdate();
-            if (this.getGreetingTimeoutMs() > 0) {
-                window.clearTimeout(this._greetingHideTimer);
-                this.showGreeting({ restartTyping: true });
-            }
+            window.clearTimeout(this._greetingHideTimer);
+            window.clearTimeout(this._greetingRepeatTimer);
+            this.showGreeting({ restartTyping: true });
         });
         bubble.addEventListener('mouseleave', () => {
             this._isHovering = false;
-            if (this.getGreetingTimeoutMs() > 0 && !isDragging) {
+            if (!isDragging && !this._isTouchHolding) {
                 this.hideGreeting();
+                if (this.config.greeting_repeat_enabled) this.scheduleNextRepeatedGreeting();
             }
         });
         bubble.addEventListener('click', (e) => {
