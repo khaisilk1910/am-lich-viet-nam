@@ -221,6 +221,12 @@ class LunarCalendarBubbleCard extends HTMLElement {
         this._touchHoldTimer = null;
         this._didLongPress = false;
         this._suppressNextClick = false;
+        this._systemMonitorPinned = false;
+        this._systemMonitorCycleIndex = 0;
+        this._systemMonitorCycleTimer = null;
+        this._systemMonitorCycleAppliedIndex = -1;
+        this._extraStates = {};
+        this._extraStatesRequested = false;
         this._resizeHandler = null;
         this._placementRaf = null;
     }
@@ -260,7 +266,19 @@ class LunarCalendarBubbleCard extends HTMLElement {
             shadow_opacity: 0.3,
             shadow_size: 15,
             divider_color: '#388e3c',
-            divider_thickness: 1.5
+            divider_thickness: 1.5,
+            system_monitor_enabled: true,
+            system_monitor_button_enabled: true,
+            system_monitor_hover_enabled: true,
+            system_monitor_initial_visible: true,
+            system_monitor_cycle_enabled: true,
+            system_monitor_cycle_seconds: 3,
+            system_monitor_display_style: 'ring',
+            system_monitor_temp_max: 100,
+            system_sensor_cpu: 'sensor.system_monitor_processor_use',
+            system_sensor_ram: 'sensor.system_monitor_memory_usage',
+            system_sensor_temp: 'sensor.system_monitor_processor_temperature',
+            system_sensor_disk: 'sensor.system_monitor_disk_usage'
         };
     }
 
@@ -275,7 +293,12 @@ class LunarCalendarBubbleCard extends HTMLElement {
             const legacyTimeout = Number(config.greeting_timeout) || 0;
             mergedConfig.greeting_timeout_s = legacyTimeout > 120 ? Math.round(legacyTimeout / 1000) : legacyTimeout;
         }
+        mergedConfig.system_monitor_cycle_seconds = this.clamp(Number(mergedConfig.system_monitor_cycle_seconds) || 3, 0.5, 120);
+        mergedConfig.system_monitor_display_style = ['ring', 'bar'].includes(mergedConfig.system_monitor_display_style) ? mergedConfig.system_monitor_display_style : 'ring';
         this.config = mergedConfig;
+        this._systemMonitorPinned = !!mergedConfig.system_monitor_initial_visible;
+        this._systemMonitorCycleIndex = 0;
+        this._systemMonitorCycleAppliedIndex = -1;
         this.render();
     }
 
@@ -283,6 +306,8 @@ class LunarCalendarBubbleCard extends HTMLElement {
         this._hass = hass;
         if (this.mainCard) this.mainCard.hass = hass;
         this.updateDates();
+        this.updateSystemMonitor();
+        this.loadAllStatesOnce();
 
         const modal = this.shadowRoot.getElementById('modal');
         if (modal) {
@@ -299,6 +324,7 @@ class LunarCalendarBubbleCard extends HTMLElement {
         window.clearTimeout(this._greetingHideTimer);
         window.clearTimeout(this._greetingRepeatTimer);
         window.clearTimeout(this._touchHoldTimer);
+        this.stopSystemMonitorCycle();
         this.clearTypingTimers();
         if (this._resizeHandler) {
             window.removeEventListener('resize', this._resizeHandler);
@@ -399,6 +425,63 @@ class LunarCalendarBubbleCard extends HTMLElement {
         return Number.isFinite(parsed) ? parsed : fallback;
     }
 
+    getFloatingPanelScale() {
+        const svgSize = Math.max(40, Number(this.config?.svg_size) || 80);
+        const viewportW = window.innerWidth || document.documentElement.clientWidth || 1024;
+        const svgScale = this.clamp(svgSize / 170, 0.55, 1.22);
+        const screenScale = viewportW <= 360 ? 0.72 : viewportW <= 430 ? 0.80 : viewportW <= 600 ? 0.88 : 1;
+        return this.clamp(svgScale * screenScale, 0.48, 1.18);
+    }
+
+    applySystemMonitorResponsiveVars(panel) {
+        if (!panel) return 1;
+        const scale = this.getFloatingPanelScale();
+        const cycle = this.isSystemMonitorCycleMode();
+        const ring = cycle && this.getSystemMonitorDisplayStyle() === 'ring';
+        panel.style.setProperty('--monitor-scale', String(scale));
+        const cycleBase = ring ? 96 : 74;
+        const ringLayout = this.getSystemMonitorRingLayout();
+        const cycleSize = ring
+            ? ringLayout.cycleSize
+            : Math.round(this.clamp((cycle ? cycleBase : 80) * scale, cycle ? 62 : 68, cycle ? 90 : 96));
+        const ringSize = ring ? ringLayout.ringSize : Math.round(this.clamp(cycleSize - 34, 48, 78));
+        panel.style.setProperty('--monitor-metric-min', `${Math.round((cycle ? (ring ? 56 : 50) : 64) * scale)}px`);
+        panel.style.setProperty('--monitor-col-gap', `${Math.round((cycle ? 0 : 14) * scale)}px`);
+        panel.style.setProperty('--monitor-row-gap', `${Math.round((cycle ? 0 : 10) * scale)}px`);
+        panel.style.setProperty('--monitor-pad-y', `${Math.max(4, Math.round((cycle ? (ring ? 7 : 4) : 12) * scale))}px`);
+        panel.style.setProperty('--monitor-pad-x', `${Math.max(5, Math.round((cycle ? (ring ? 7 : 5) : 15) * scale))}px`);
+        panel.style.setProperty('--monitor-cycle-inner-gap', `${Math.max(3, Math.round((ring ? 5 : 3) * scale))}px`);
+        panel.style.setProperty('--monitor-radius', `${Math.round((cycle ? 11 : 24) * scale)}px`);
+        panel.style.setProperty('--monitor-icon-size', `${Math.max(14, Math.round((cycle ? (ring ? 14 : 18) : 18) * scale))}px`);
+        panel.style.setProperty('--monitor-label-size', `${Math.max(8, Math.round((cycle ? 9 : 10) * scale))}px`);
+        panel.style.setProperty('--monitor-value-size', `${Math.max(17, Math.round((cycle ? (ring ? 19 : 21) : 18) * scale))}px`);
+        panel.style.setProperty('--monitor-track-h', `${Math.max(3, Math.round((cycle ? 4 : 5) * scale))}px`);
+        panel.style.setProperty('--monitor-track-w', `${Math.round(this.clamp(cycleSize - 26, 42, 70))}px`);
+        panel.style.setProperty('--monitor-cycle-size', `${cycleSize}px`);
+        panel.style.setProperty('--monitor-ring-size', `${ringSize}px`);
+        panel.style.setProperty('--monitor-ring-thickness', `${ring ? ringLayout.thickness : Math.max(5, Math.round(7 * scale))}px`);
+        panel.style.setProperty('--monitor-ring-content-size', `${ring ? ringLayout.contentSize : Math.max(24, ringSize - (Math.max(5, Math.round(7 * scale)) * 2) - 8)}px`);
+        panel.style.setProperty('--monitor-empty-min', `${Math.round(148 * scale)}px`);
+        return scale;
+    }
+
+    applyChatResponsiveVars(chat) {
+        if (!chat || !this.config) return 1;
+        const svgSize = Math.max(40, Number(this.config.svg_size) || 80);
+        const viewportW = window.innerWidth || document.documentElement.clientWidth || 1024;
+        const svgScale = this.clamp(svgSize / 170, 0.48, 1.55);
+        const screenScale = viewportW <= 360 ? 0.72 : viewportW <= 430 ? 0.80 : viewportW <= 600 ? 0.88 : 1;
+        const scale = this.clamp(svgScale * screenScale, 0.44, 1.45);
+        const maxWidth = Math.max(132, viewportW - (viewportW <= 600 ? 20 : 32));
+        const width = Math.min(Math.round(Math.max(170, Number(this.config.chat_width) || 245) * scale), maxWidth);
+        chat.style.setProperty('--chat-width', `${width}px`);
+        chat.style.setProperty('--chat-font-size', `${Math.round(this.clamp(16 * scale, 9, 24))}px`);
+        chat.style.setProperty('--chat-padding-y', `${Math.round(this.clamp(12 * scale, 5, 20))}px`);
+        chat.style.setProperty('--chat-padding-x', `${Math.round(this.clamp(16 * scale, 7, 26))}px`);
+        chat.style.setProperty('--chat-radius', `${Math.round(this.clamp(22 * scale, 9, 32))}px`);
+        return scale;
+    }
+
     getGreetingLines() {
         const info = this.getDateInfo();
         return {
@@ -411,19 +494,470 @@ class LunarCalendarBubbleCard extends HTMLElement {
 
     getChatStyleVars(chatBg) {
         const selected = CHAT_STYLE_MAP[this.config.chat_style] || CHAT_STYLE_MAP.glass_light;
-        const replaceBg = (value) => String(value || '').replace(/CHAT_BG/g, chatBg);
+        const opacity = this.clamp(Number(this.config.chat_bg_opacity), 0, 1);
+        const multiplyRgbaOpacity = (value, factor = opacity) => String(value || '').replace(
+            /rgba\((\s*\d+\s*),(\s*\d+\s*),(\s*\d+\s*),(\s*(?:0|1|0?\.\d+)\s*)\)/gi,
+            (match, r, g, b, a) => {
+                const alpha = Math.max(0, Math.min(1, Number.parseFloat(a) || 0));
+                return `rgba(${r.trim()}, ${g.trim()}, ${b.trim()}, ${Math.max(0, Math.min(1, alpha * factor)).toFixed(3).replace(/0+$/, '').replace(/\.$/, '')})`;
+            }
+        );
+        const replaceBg = (value, useOpacity = true) => {
+            const replaced = String(value || '').replace(/CHAT_BG/g, chatBg);
+            return useOpacity ? multiplyRgbaOpacity(replaced) : replaced;
+        };
         return {
             background: replaceBg(selected.background),
-            border: replaceBg(selected.border),
-            shadow: replaceBg(selected.shadow),
+            border: replaceBg(selected.border, false),
+            shadow: replaceBg(selected.shadow, false),
             rowBg: replaceBg(selected.rowBg),
-            rowBorder: replaceBg(selected.rowBorder),
+            rowBorder: replaceBg(selected.rowBorder, false),
             headerBg: replaceBg(selected.headerBg),
             iconBg: replaceBg(selected.iconBg),
-            iconColor: replaceBg(selected.iconColor),
+            iconColor: replaceBg(selected.iconColor, false),
             beforeBg: replaceBg(selected.beforeBg),
             accent: replaceBg(selected.accent)
         };
+    }
+
+
+    escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    getMetricIconSvg(type) {
+        const icons = {
+            cpu: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 9h3M4 15h3M17 9h3M17 15h3M9 4v3M15 4v3M9 17v3M15 17v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+            ram: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="16" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 10v4M11 10v4M15 10v4M8 17v3M12 17v3M16 17v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+            temp: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 14.76V5a4 4 0 0 0-8 0v9.76a6 6 0 1 0 8 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10 9v7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+            disk: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 9h8M8 15h.01M12 15h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+            monitor: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 20h6M12 16v4M7 11l2 2 3-5 2 6 2-3h1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+        };
+        return icons[type] || icons.monitor;
+    }
+
+    normalizeEntityId(entityId) {
+        return String(entityId ?? '')
+            .trim()
+            .replace(/[​-‍﻿]/g, '')
+            .replace(/^['"]|['"]$/g, '')
+            .replace(/\s+/g, '')
+            .toLowerCase();
+    }
+
+    getHassObject() {
+        if (this._hass) return this._hass;
+        const homeAssistant = document.querySelector('home-assistant');
+        if (homeAssistant?.hass) return homeAssistant.hass;
+        const candidates = [
+            document.querySelector('home-assistant-main'),
+            document.querySelector('ha-panel-lovelace'),
+            document.querySelector('hui-root')
+        ];
+        for (const candidate of candidates) {
+            if (candidate?.hass) return candidate.hass;
+        }
+        return null;
+    }
+
+    getAllStatesMap() {
+        const hass = this.getHassObject();
+        const out = {};
+        const addStates = (states) => {
+            Object.entries(states || {}).forEach(([id, stateObj]) => {
+                const normalizedId = this.normalizeEntityId(id);
+                if (id) out[id] = stateObj;
+                if (normalizedId) out[normalizedId] = stateObj;
+                const stateEntityId = this.normalizeEntityId(stateObj?.entity_id);
+                if (stateEntityId) out[stateEntityId] = stateObj;
+            });
+        };
+        addStates(hass?.states);
+        addStates(this._extraStates);
+        return out;
+    }
+
+    async loadAllStatesOnce() {
+        if (!this._hass?.callWS || this._extraStatesRequested) return;
+        this._extraStatesRequested = true;
+        try {
+            const statesList = await this._hass.callWS({ type: 'get_states' });
+            if (Array.isArray(statesList)) {
+                this._extraStates = statesList.reduce((acc, item) => {
+                    if (item?.entity_id) {
+                        acc[item.entity_id] = item;
+                        acc[this.normalizeEntityId(item.entity_id)] = item;
+                    }
+                    return acc;
+                }, {});
+                this.updateSystemMonitor();
+            }
+        } catch (err) {
+            console.warn('Cannot load full Home Assistant states for system monitor:', err);
+        }
+    }
+
+    getSystemMonitorAliasCandidates(key) {
+        const map = {
+            ram: ['sensor.system_monitor_memory_usage', 'sensor.system_monitor_memory_use_percent', 'sensor.system_monitor_memory_use', 'sensor.memory_use_percent', 'sensor.memory_usage', 'sensor.ram_usage'],
+            cpu: ['sensor.system_monitor_processor_use', 'sensor.system_monitor_cpu_usage', 'sensor.processor_use', 'sensor.cpu_usage', 'sensor.cpu_use_percent'],
+            disk: ['sensor.system_monitor_disk_usage', 'sensor.system_monitor_disk_use_percent', 'sensor.disk_use_percent', 'sensor.disk_usage', 'sensor.disk_use'],
+            temp: ['sensor.system_monitor_processor_temperature', 'sensor.processor_temperature', 'sensor.cpu_temperature', 'sensor.system_monitor_cpu_temperature', 'sensor.temperature_cpu']
+        };
+        return (map[key] || []).map((id) => this.normalizeEntityId(id));
+    }
+
+    findStateByExactId(states, entityId) {
+        const normalized = this.normalizeEntityId(entityId);
+        if (!normalized) return null;
+        if (states[normalized]) return { entityId: normalized, stateObj: states[normalized] };
+        for (const [id, stateObj] of Object.entries(states || {})) {
+            const normalizedKey = this.normalizeEntityId(id);
+            const normalizedStateEntityId = this.normalizeEntityId(stateObj?.entity_id);
+            if (normalizedKey === normalized || normalizedStateEntityId === normalized) {
+                return { entityId: normalizedStateEntityId || normalizedKey || normalized, stateObj };
+            }
+        }
+        return null;
+    }
+
+    findStateByMetricKey(states, key) {
+        const rules = {
+            ram: [['memory', 'ram'], ['usage', 'use', 'percent', 'used']],
+            cpu: [['processor', 'cpu'], ['usage', 'use', 'percent', 'load']],
+            disk: [['disk', 'storage'], ['usage', 'use', 'percent', 'used']],
+            temp: [['temperature', 'temp'], ['processor', 'cpu']]
+        };
+        const groups = rules[key];
+        if (!groups) return null;
+        const candidates = Object.keys(states)
+            .filter((id) => id.startsWith('sensor.'))
+            .map((id) => {
+                const friendly = states[id]?.attributes?.friendly_name || '';
+                const unit = states[id]?.attributes?.unit_of_measurement || '';
+                const text = `${id} ${friendly} ${unit}`.toLowerCase();
+                const matched = groups.every((group) => group.some((token) => text.includes(token)));
+                const systemScore = text.includes('system_monitor') ? -4 : 0;
+                const unitScore = key === 'temp' && (unit.includes('°') || unit.toLowerCase().includes('c')) ? -2 : 0;
+                return { id, matched, score: systemScore + unitScore + text.length / 1000 };
+            })
+            .filter((item) => item.matched)
+            .sort((a, b) => a.score - b.score);
+        const best = candidates[0]?.id;
+        return best ? { entityId: best, stateObj: states[best] } : null;
+    }
+
+    getStateObjForEntity(entityId, key = '') {
+        const normalizedId = this.normalizeEntityId(entityId);
+        const states = this.getAllStatesMap();
+        if (!normalizedId) return { entityId: '', stateObj: null };
+        const exact = this.findStateByExactId(states, normalizedId);
+        return exact || { entityId: normalizedId, stateObj: null };
+    }
+
+    getSystemMonitorItems() {
+        return [
+            { key: 'ram', label: 'RAM', entity: this.normalizeEntityId(this.config.system_sensor_ram), color: '#74e83b', fallbackUnit: '%', max: 100, icon: this.getMetricIconSvg('ram') },
+            { key: 'cpu', label: 'CPU', entity: this.normalizeEntityId(this.config.system_sensor_cpu), color: '#18a8ff', fallbackUnit: '%', max: 100, icon: this.getMetricIconSvg('cpu') },
+            { key: 'disk', label: 'DISK', entity: this.normalizeEntityId(this.config.system_sensor_disk), color: '#a78bfa', fallbackUnit: '%', max: 100, icon: this.getMetricIconSvg('disk') },
+            { key: 'temp', label: 'TEMP', entity: this.normalizeEntityId(this.config.system_sensor_temp), color: '#ff8a00', fallbackUnit: '°C', max: Number(this.config.system_monitor_temp_max) || 100, icon: this.getMetricIconSvg('temp') }
+        ].filter((item) => item.entity);
+    }
+
+    getSensorDisplayInfo(item) {
+        const { entityId: resolvedEntityId, stateObj } = this.getStateObjForEntity(item.entity, item.key);
+        const rawState = stateObj?.state;
+        const normalized = String(rawState ?? '').trim().toLowerCase();
+        const unavailable = !stateObj || rawState === undefined || rawState === null || ['unknown', 'unavailable', 'none', 'null', ''].includes(normalized);
+        const unit = stateObj?.attributes?.unit_of_measurement || item.fallbackUnit || '';
+        const numeric = Number.parseFloat(String(rawState ?? '').replace(',', '.'));
+        const hasNumber = Number.isFinite(numeric);
+        const max = Math.max(1, Number(item.max) || 100);
+        const percent = hasNumber ? this.clamp((numeric / max) * 100, 0, 100) : 0;
+        let value = '--';
+
+        if (!unavailable) {
+            if (hasNumber) {
+                const rounded = Math.abs(numeric) >= 100 || Number.isInteger(numeric)
+                    ? Math.round(numeric).toString()
+                    : numeric.toFixed(1).replace(/\.0$/, '');
+                value = `${rounded}${unit}`;
+            } else {
+                value = `${rawState}${unit ? ` ${unit}` : ''}`;
+            }
+        }
+
+        return { value, percent, unavailable, resolvedEntityId: resolvedEntityId || item.entity };
+    }
+
+    getSystemMonitorCycleSeconds() {
+        const seconds = Number(this.config?.system_monitor_cycle_seconds);
+        return Number.isFinite(seconds) ? this.clamp(seconds, 0.5, 120) : 3;
+    }
+
+    isSystemMonitorCycleMode() {
+        return !!this.config?.system_monitor_cycle_enabled;
+    }
+
+    getSystemMonitorDisplayStyle() {
+        const style = String(this.config?.system_monitor_display_style || 'ring').trim().toLowerCase();
+        return ['ring', 'bar'].includes(style) ? style : 'ring';
+    }
+
+    getSystemMonitorRingLayout() {
+        const scale = this.getFloatingPanelScale();
+        const cycleSize = Math.round(this.clamp(96 * scale, 82, 116));
+        const ringSize = Math.round(this.clamp(cycleSize - 34, 48, 78));
+        const thickness = Math.max(5, Math.round(7 * scale));
+        const contentSize = Math.max(24, ringSize - (thickness * 2) - Math.round(8 * scale));
+        return { scale, cycleSize, ringSize, thickness, contentSize };
+    }
+
+    getSystemMonitorRingValueFontSize(value) {
+        const text = String(value ?? '--').trim() || '--';
+        const { scale, contentSize } = this.getSystemMonitorRingLayout();
+        const base = Math.max(15, Math.round(19 * scale));
+        const len = text.length;
+        let size = base;
+
+        if (len >= 6) size = Math.floor(contentSize * 0.38);
+        else if (len === 5) size = Math.floor(contentSize * 0.44);
+        else if (len === 4) size = Math.floor(contentSize * 0.52);
+        else size = Math.floor(contentSize * 0.58);
+
+        return this.clamp(size, Math.max(10, Math.round(12 * scale)), base);
+    }
+
+    stopSystemMonitorCycle() {
+        if (this._systemMonitorCycleTimer) {
+            window.clearTimeout(this._systemMonitorCycleTimer);
+            window.clearInterval(this._systemMonitorCycleTimer);
+            this._systemMonitorCycleTimer = null;
+        }
+    }
+
+    startSystemMonitorCycle() {
+        this.stopSystemMonitorCycle();
+        this.applySystemMonitorCycleState({ restartProgress: true });
+        if (!this.config?.system_monitor_enabled || !this.isSystemMonitorCycleMode()) return;
+        if (this.getSystemMonitorItems().length <= 1) return;
+
+        const tick = () => {
+            if (!this.config?.system_monitor_enabled || !this.isSystemMonitorCycleMode()) {
+
+                this.stopSystemMonitorCycle();
+                return;
+            }
+            const itemCount = this.getSystemMonitorItems().length;
+            if (itemCount <= 1) {
+                this.applySystemMonitorCycleState({ restartProgress: false });
+                this.stopSystemMonitorCycle();
+                return;
+            }
+            this._systemMonitorCycleIndex = (this._systemMonitorCycleIndex + 1) % itemCount;
+            this.applySystemMonitorCycleState({ restartProgress: true, direction: 'next' });
+            this._systemMonitorCycleTimer = window.setTimeout(tick, Math.round(this.getSystemMonitorCycleSeconds() * 1000));
+        };
+
+        this._systemMonitorCycleTimer = window.setTimeout(tick, Math.round(this.getSystemMonitorCycleSeconds() * 1000));
+    }
+
+    resetSystemMonitorProgressAnimation(panel) {
+        // The rotating single-sensor view no longer shows dots or countdown bars.
+    }
+
+    applySystemMonitorCycleState(options = {}) {
+        const panel = this.shadowRoot?.getElementById('systemMonitorPanel');
+        if (!panel) return;
+        const items = this.getSystemMonitorItems();
+        const itemCount = items.length;
+        const cycleMode = this.isSystemMonitorCycleMode() && itemCount > 0;
+        panel.classList.toggle('cycle-mode', cycleMode);
+        panel.classList.toggle('display-ring', this.getSystemMonitorDisplayStyle() === 'ring');
+        panel.classList.toggle('display-bar', this.getSystemMonitorDisplayStyle() === 'bar');
+        panel.style.setProperty('--cycle-duration', `${this.getSystemMonitorCycleSeconds()}s`);
+        if (!cycleMode) {
+            this._systemMonitorCycleAppliedIndex = -1;
+            panel.querySelectorAll('.system-monitor-metric').forEach((metric) => metric.classList.remove('is-active'));
+            return;
+        }
+        this._systemMonitorCycleIndex = itemCount ? this._systemMonitorCycleIndex % itemCount : 0;
+        const activeItem = items[this._systemMonitorCycleIndex];
+        if (activeItem?.color) panel.style.setProperty('--active-metric-color', activeItem.color);
+        panel.dataset.activeSystemIndex = String(this._systemMonitorCycleIndex);
+        panel.querySelectorAll('.system-monitor-metric').forEach((metric, index) => {
+            metric.classList.toggle('is-active', index === this._systemMonitorCycleIndex);
+        });
+        const indexChanged = this._systemMonitorCycleAppliedIndex !== this._systemMonitorCycleIndex;
+        this._systemMonitorCycleAppliedIndex = this._systemMonitorCycleIndex;
+        if (options.restartProgress !== false && indexChanged) {
+            this.resetSystemMonitorProgressAnimation(panel);
+        }
+        this.updateSystemMonitorPlacement();
+    }
+
+    getSystemMonitorPanelMarkup() {
+        if (!this.config.system_monitor_enabled) return '';
+        const items = this.getSystemMonitorItems();
+        const showClass = this._systemMonitorPinned ? ' show' : '';
+        const cycleMode = this.isSystemMonitorCycleMode() && items.length > 0;
+        const cycleClass = cycleMode ? ' cycle-mode' : '';
+        const displayStyleClass = ` display-${this.getSystemMonitorDisplayStyle()}`;
+        const activeIndex = items.length ? this._systemMonitorCycleIndex % items.length : 0;
+        const metrics = items.map((item, index) => {
+            const info = this.getSensorDisplayInfo(item);
+            const title = info.resolvedEntityId && info.resolvedEntityId !== item.entity ? `${item.label}: ${item.entity} → ${info.resolvedEntityId}` : `${item.label}: ${item.entity}`;
+            const activeClass = cycleMode && index === activeIndex ? ' is-active' : '';
+            return `
+                        <div class="system-monitor-metric ${info.unavailable ? 'is-unavailable' : ''}${activeClass}" data-system-key="${this.escapeHtml(item.key)}" data-system-index="${index}" title="${this.escapeHtml(title)}" style="--metric-color: ${item.color}; --metric-percent: ${info.percent}%; --metric-deg: ${Math.round(info.percent * 3.6)}deg; --metric-ring-font-size: ${this.getSystemMonitorRingValueFontSize(info.value)}px;">
+                            <div class="system-monitor-head"><span class="system-monitor-icon">${item.icon}</span><span class="system-monitor-label">${this.escapeHtml(item.label)}</span></div>
+                            <div class="system-monitor-value">${this.escapeHtml(info.value)}</div>
+                            <div class="system-monitor-ring"><span class="system-monitor-ring-value">${this.escapeHtml(info.value)}</span></div>
+                            <div class="system-monitor-track"><span class="system-monitor-fill"></span></div>
+                        </div>`;
+        }).join('');
+        const empty = '<div class="system-monitor-empty">Chưa chọn sensor</div>';
+
+        return `<div class="system-monitor-panel${showClass}${cycleClass}${displayStyleClass}" id="systemMonitorPanel" aria-live="polite" style="--cycle-duration: ${this.getSystemMonitorCycleSeconds()}s; --monitor-scale: ${this.getFloatingPanelScale()};">
+                        ${metrics || empty}
+                    </div>`;
+    }
+
+    getSystemMonitorToggleMarkup() {
+        if (!this.config.system_monitor_enabled || !this.config.system_monitor_button_enabled) return '';
+        return `<div class="system-monitor-button-row" id="systemMonitorButtonRow">
+                    <button class="system-monitor-toggle ${this._systemMonitorPinned ? 'active' : ''}" id="systemMonitorToggle" title="Ẩn/hiện thông tin hệ thống" aria-label="Ẩn/hiện thông tin hệ thống" type="button">${this.getMetricIconSvg('monitor')}</button>
+                </div>`;
+    }
+
+    updateSystemMonitor() {
+        if (!this.config?.system_monitor_enabled) return;
+        const panel = this.shadowRoot?.getElementById('systemMonitorPanel');
+        if (!panel) return;
+        this.getSystemMonitorItems().forEach((item) => {
+            const metric = panel.querySelector(`[data-system-key="${item.key}"]`);
+            if (!metric) return;
+            const info = this.getSensorDisplayInfo(item);
+            const valueEl = metric.querySelector('.system-monitor-value');
+            const fillEl = metric.querySelector('.system-monitor-fill');
+            if (valueEl) valueEl.textContent = info.value;
+            const ringValueEl = metric.querySelector('.system-monitor-ring-value');
+            if (ringValueEl) ringValueEl.textContent = info.value;
+            if (fillEl) fillEl.style.width = `${info.percent}%`;
+            metric.style.setProperty('--metric-percent', `${info.percent}%`);
+            metric.style.setProperty('--metric-deg', `${Math.round(info.percent * 3.6)}deg`);
+            metric.style.setProperty('--metric-ring-font-size', `${this.getSystemMonitorRingValueFontSize(info.value)}px`);
+            metric.classList.toggle('is-unavailable', !!info.unavailable);
+            metric.title = info.resolvedEntityId && info.resolvedEntityId !== item.entity ? `${item.label}: ${item.entity} → ${info.resolvedEntityId}` : `${item.label}: ${item.entity}`;
+        });
+        this.applySystemMonitorCycleState({ restartProgress: false });
+        this.updateSystemMonitorPlacement();
+    }
+
+    showSystemMonitor(pin = false) {
+        if (!this.config?.system_monitor_enabled) return;
+        const panel = this.shadowRoot.getElementById('systemMonitorPanel');
+        const toggle = this.shadowRoot.getElementById('systemMonitorToggle');
+        if (!panel) return;
+        if (pin) this._systemMonitorPinned = true;
+        panel.classList.add('show');
+        toggle?.classList.add('active');
+        this.updateSystemMonitor();
+        if (this.isSystemMonitorCycleMode() && !this._systemMonitorCycleTimer) this.startSystemMonitorCycle();
+        this.updateSystemMonitorPlacement();
+    }
+
+    hideSystemMonitor(force = false) {
+        const panel = this.shadowRoot.getElementById('systemMonitorPanel');
+        const toggle = this.shadowRoot.getElementById('systemMonitorToggle');
+        if (!panel) return;
+        if (this._systemMonitorPinned && !force) return;
+        this._systemMonitorPinned = false;
+        panel.classList.remove('show');
+        toggle?.classList.remove('active');
+    }
+
+    toggleSystemMonitor() {
+        const panel = this.shadowRoot.getElementById('systemMonitorPanel');
+        if (!panel) return;
+        if (panel.classList.contains('show') && this._systemMonitorPinned) {
+            this.hideSystemMonitor(true);
+        } else {
+            this.showSystemMonitor(true);
+        }
+    }
+
+    getRectOverlapArea(a, b, margin = 0) {
+        if (!a || !b) return 0;
+        const left = Math.max(a.left, b.left - margin);
+        const right = Math.min(a.right, b.right + margin);
+        const top = Math.max(a.top, b.top - margin);
+        const bottom = Math.min(a.bottom, b.bottom + margin);
+        return Math.max(0, right - left) * Math.max(0, bottom - top);
+    }
+
+    updateSystemMonitorPlacement() {
+        const panel = this.shadowRoot?.getElementById('systemMonitorPanel');
+        const bubble = this.shadowRoot?.getElementById('bubble');
+        if (!panel || !bubble) return;
+
+        this.applySystemMonitorResponsiveVars(panel);
+
+        const viewportW = window.innerWidth || document.documentElement.clientWidth || 1024;
+        const viewportH = window.innerHeight || document.documentElement.clientHeight || 768;
+        const safe = viewportW <= 600 ? 10 : 14;
+        const gap = Math.round((viewportW <= 600 ? 10 : 12) * this.getFloatingPanelScale());
+        const bubbleRect = bubble.getBoundingClientRect();
+        const rectForMeasure = panel.getBoundingClientRect();
+        const panelW = Math.min(rectForMeasure.width || panel.offsetWidth || 236, Math.max(120, viewportW - safe * 2));
+        const panelH = Math.min(rectForMeasure.height || panel.offsetHeight || 118, Math.max(56, viewportH - safe * 2));
+        const centerX = bubbleRect.left + (bubbleRect.width / 2);
+
+        const clampLeft = (left) => this.clamp(left, safe, Math.max(safe, viewportW - safe - panelW));
+        const clampTop = (top) => this.clamp(top, safe, Math.max(safe, viewportH - safe - panelH));
+
+        // Sensor panel is fixed above the SVG. When the SVG is close to the screen edge,
+        // the panel remains above it but shifts left/right so no content is cut off.
+        const preferredLeft = centerX - (panelW / 2);
+        const preferredTop = bubbleRect.top - panelH - gap;
+        const left = clampLeft(preferredLeft);
+        const top = clampTop(preferredTop);
+        const anchorX = this.clamp(centerX - left, 16, Math.max(16, panelW - 16));
+
+        panel.style.left = `${Math.round(left)}px`;
+        panel.style.top = `${Math.round(top)}px`;
+        panel.style.maxWidth = `${Math.max(120, viewportW - safe * 2)}px`;
+        panel.style.maxHeight = `${Math.max(56, viewportH - safe * 2)}px`;
+        panel.style.transformOrigin = `${Math.round(anchorX)}px bottom`;
+        panel.style.setProperty('--monitor-hide-transform', 'translateY(-8px) scale(0.96)');
+        panel.style.setProperty('--monitor-show-transform', 'translate(0, 0) scale(1)');
+        panel.dataset.placement = 'top';
+    }
+
+    setupSystemMonitorControls() {
+        const button = this.shadowRoot.getElementById('systemMonitorToggle');
+        const panel = this.shadowRoot.getElementById('systemMonitorPanel');
+        const stopBubble = (event) => {
+            event.stopPropagation();
+        };
+        if (panel) {
+            panel.addEventListener('mousedown', stopBubble);
+            panel.addEventListener('touchstart', stopBubble, { passive: true });
+            panel.addEventListener('click', stopBubble);
+        }
+        if (!button) return;
+        button.addEventListener('mousedown', stopBubble);
+        button.addEventListener('touchstart', stopBubble, { passive: true });
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            this.toggleSystemMonitor();
+        });
     }
 
 
@@ -521,6 +1055,9 @@ class LunarCalendarBubbleCard extends HTMLElement {
         } else {
             this.setGreetingFullText();
         }
+        if (this.shadowRoot.getElementById('systemMonitorPanel')?.classList.contains('show')) {
+            window.requestAnimationFrame(() => this.updateSystemMonitorPlacement());
+        }
     }
 
     hideGreeting() {
@@ -536,87 +1073,45 @@ class LunarCalendarBubbleCard extends HTMLElement {
         const chat = this.shadowRoot.getElementById('chatBubble');
         if (!wrapper || !bubble || !chat) return;
 
-        const index = this.getSelectedSvgIndex();
-        const preset = this.getChatPlacement(index);
-        const svgSize = Math.max(40, Number(this.config.svg_size) || 80);
-        const scale = this.clamp(svgSize / 170, 0.48, 1.55);
-        const gap = Math.round((window.innerWidth <= 600 ? 10 : 12) * scale);
-        const safeMargin = window.innerWidth <= 600 ? 12 : 16;
-        const rect = bubble.getBoundingClientRect();
+        const scale = this.applyChatResponsiveVars(chat);
         const viewportW = window.innerWidth || document.documentElement.clientWidth || 1024;
         const viewportH = window.innerHeight || document.documentElement.clientHeight || 768;
+        const safeMargin = viewportW <= 600 ? 10 : 16;
+        const gap = Math.round((viewportW <= 600 ? 8 : 12) * scale);
+        const rect = bubble.getBoundingClientRect();
+        const chatRect = chat.getBoundingClientRect();
         const fallbackWidth = Math.round((Number(this.config.chat_width) || 245) * scale);
         const fallbackHeight = Math.round(88 * scale);
-        const chatWidth = Math.min(chat.offsetWidth || fallbackWidth, Math.max(120, viewportW - (safeMargin * 2)));
-        const chatHeight = Math.min(chat.offsetHeight || fallbackHeight, Math.max(60, viewportH - (safeMargin * 2)));
-        const tailInset = this.clamp(Math.round(22 * scale), 14, Math.max(15, Math.round(chatWidth / 2)));
-        const tailTopInset = this.clamp(Math.round(22 * scale), 14, Math.max(15, Math.round(chatHeight / 2)));
+        const chatWidth = Math.min(chatRect.width || chat.offsetWidth || fallbackWidth, Math.max(120, viewportW - (safeMargin * 2)));
+        const chatHeight = Math.min(chatRect.height || chat.offsetHeight || fallbackHeight, Math.max(60, viewportH - (safeMargin * 2)));
         const bubbleCenterX = rect.left + (rect.width / 2);
         const bubbleCenterY = rect.top + (rect.height / 2);
-        const canPlaceLeft = rect.left - chatWidth - gap >= safeMargin;
-        const canPlaceRight = rect.right + chatWidth + gap <= viewportW - safeMargin;
-        let side = 'left';
+        const tailInset = this.clamp(Math.round(22 * scale), 12, Math.max(14, Math.round(chatWidth / 2)));
+        const tailTopInset = this.clamp(Math.round(22 * scale), 12, Math.max(14, Math.round(chatHeight / 2)));
 
-        if (viewportW <= 600 || preset.tail === 'bottom') {
-            side = 'top';
-        } else if (canPlaceLeft && !canPlaceRight) {
-            side = 'left';
-        } else if (canPlaceRight && !canPlaceLeft) {
-            side = 'right';
-        } else if (canPlaceLeft && canPlaceRight) {
-            side = preset.tail === 'left' ? 'right' : 'left';
-        } else {
-            side = 'top';
-        }
+        const leftSpace = rect.left - safeMargin - gap;
+        const rightSpace = viewportW - safeMargin - rect.right - gap;
+        let side = rightSpace >= chatWidth || rightSpace >= leftSpace ? 'right' : 'left';
+        if (leftSpace >= chatWidth && rightSpace < chatWidth) side = 'left';
 
         const clampAbsLeft = (left) => this.clamp(left, safeMargin, Math.max(safeMargin, viewportW - safeMargin - chatWidth));
         const clampAbsTop = (top) => this.clamp(top, safeMargin, Math.max(safeMargin, viewportH - safeMargin - chatHeight));
-        const setChatPosition = (absLeft, absTop) => {
-            wrapper.style.setProperty('--chat-left', `${Math.round(absLeft - rect.left)}px`);
-            wrapper.style.setProperty('--chat-top', `${Math.round(absTop - rect.top)}px`);
-            wrapper.style.setProperty('--chat-x', '0px');
-            wrapper.style.setProperty('--chat-y', '0px');
-        };
+        let absLeft = side === 'right' ? rect.right + gap : rect.left - chatWidth - gap;
+        absLeft = clampAbsLeft(absLeft);
+        const absTop = clampAbsTop(bubbleCenterY - (chatHeight / 2));
+
+        wrapper.style.setProperty('--chat-left', `${Math.round(absLeft - rect.left)}px`);
+        wrapper.style.setProperty('--chat-top', `${Math.round(absTop - rect.top)}px`);
+        wrapper.style.setProperty('--chat-x', '0px');
+        wrapper.style.setProperty('--chat-y', '0px');
+        wrapper.style.setProperty('--tail-top', `${Math.round(this.clamp(bubbleCenterY - absTop, tailTopInset, Math.max(tailTopInset, chatHeight - tailTopInset)))}px`);
+        wrapper.style.setProperty('--tail-left', `${Math.round(this.clamp(bubbleCenterX - absLeft, tailInset, Math.max(tailInset, chatWidth - tailInset)))}px`);
 
         chat.classList.remove('tail-left', 'tail-right', 'tail-bottom', 'tail-top');
-
-        if (side === 'right') {
-            const absLeft = clampAbsLeft(rect.right + gap);
-            const topBase = this.getPx(preset.top, 8);
-            const absTop = clampAbsTop(rect.top + Math.round(topBase * scale));
-            setChatPosition(absLeft, absTop);
-            wrapper.style.setProperty('--tail-top', `${Math.round(this.clamp(bubbleCenterY - absTop, tailTopInset, Math.max(tailTopInset, chatHeight - tailTopInset)))}px`);
-            wrapper.style.setProperty('--tail-left', `${Math.round(this.clamp(bubbleCenterX - absLeft, tailInset, Math.max(tailInset, chatWidth - tailInset)))}px`);
-            chat.classList.add('tail-left');
-            chat.style.transformOrigin = 'left top';
-        } else if (side === 'left') {
-            const absLeft = clampAbsLeft(rect.left - chatWidth - gap);
-            const topBase = this.getPx(preset.top, 8);
-            const absTop = clampAbsTop(rect.top + Math.round(topBase * scale));
-            setChatPosition(absLeft, absTop);
-            wrapper.style.setProperty('--tail-top', `${Math.round(this.clamp(bubbleCenterY - absTop, tailTopInset, Math.max(tailTopInset, chatHeight - tailTopInset)))}px`);
-            wrapper.style.setProperty('--tail-left', `${Math.round(this.clamp(bubbleCenterX - absLeft, tailInset, Math.max(tailInset, chatWidth - tailInset)))}px`);
-            chat.classList.add('tail-right');
-            chat.style.transformOrigin = 'right top';
-        } else {
-            let absTop = rect.top - chatHeight - gap;
-            let tailClass = 'tail-bottom';
-            if (absTop < safeMargin) {
-                absTop = rect.bottom + gap;
-                tailClass = 'tail-top';
-                if (absTop + chatHeight > viewportH - safeMargin) {
-                    absTop = safeMargin;
-                    tailClass = absTop > rect.top ? 'tail-top' : 'tail-bottom';
-                }
-            }
-            absTop = clampAbsTop(absTop);
-            const absLeft = clampAbsLeft(bubbleCenterX - (chatWidth / 2));
-            setChatPosition(absLeft, absTop);
-            wrapper.style.setProperty('--tail-left', `${Math.round(this.clamp(bubbleCenterX - absLeft, tailInset, Math.max(tailInset, chatWidth - tailInset)))}px`);
-            wrapper.style.setProperty('--tail-top', `${Math.round(this.clamp(bubbleCenterY - absTop, tailTopInset, Math.max(tailTopInset, chatHeight - tailTopInset)))}px`);
-            chat.classList.add(tailClass);
-            chat.style.transformOrigin = tailClass === 'tail-top' ? 'center top' : 'center bottom';
-        }
+        chat.classList.add(side === 'right' ? 'tail-left' : 'tail-right');
+        chat.style.transformOrigin = side === 'right' ? 'left center' : 'right center';
+        chat.dataset.placement = side;
+        this.updateSystemMonitorPlacement();
     }
 
     requestChatPlacementUpdate() {
@@ -629,6 +1124,7 @@ class LunarCalendarBubbleCard extends HTMLElement {
 
     render() {
         if (!this.config) return;
+        this.stopSystemMonitorCycle();
         this.style.display = 'block';
 
         const posCSS = this.config.position === 'top-right'
@@ -658,7 +1154,7 @@ class LunarCalendarBubbleCard extends HTMLElement {
         const shadowSize = Math.max(0, Number(this.config.shadow_size) || 15);
         const shadowColor = this.getRGBA(this.config.shadow_color, this.config.shadow_opacity);
         const glowColor = this.getRGBA(this.config.chat_border_color, 0.65);
-        const chatBgBase = this.getRGBA(this.config.chat_bg_color || '#ffffff', this.clamp(Number(this.config.chat_bg_opacity), 0, 1));
+        const chatBgBase = this.getRGBA(this.config.chat_bg_color || '#ffffff', 1);
         const chatStyle = this.getChatStyleVars(chatBgBase);
         const chatBg = chatStyle.background;
         const chatText = this.config.chat_text_color || '#111827';
@@ -678,7 +1174,24 @@ class LunarCalendarBubbleCard extends HTMLElement {
 
         this.shadowRoot.innerHTML = `
             <style>
-                :host { display: block; position: fixed; z-index: 999; width: 0; height: 0; }
+                :host {
+                    display: block;
+                    position: fixed;
+                    z-index: 999;
+                    width: 0;
+                    height: 0;
+                    --chat-bg: ${chatBg};
+                    --chat-border-color: ${chatStyle.border};
+                    --chat-shadow: ${chatStyle.shadow};
+                    --chat-row-bg: ${chatStyle.rowBg};
+                    --chat-row-border: ${chatStyle.rowBorder};
+                    --chat-header-bg: ${chatStyle.headerBg};
+                    --chat-icon-bg: ${chatStyle.iconBg};
+                    --chat-icon-color: ${chatStyle.iconColor};
+                    --chat-before-bg: ${chatStyle.beforeBg};
+                    --chat-accent: ${chatStyle.accent};
+                    --chat-text-color: ${chatText};
+                }
 
                 .bubble-wrapper {
                     position: fixed;
@@ -743,8 +1256,9 @@ class LunarCalendarBubbleCard extends HTMLElement {
                     width: ${svgSize}px;
                     min-height: ${stageHeight}px;
                     display: flex;
-                    align-items: flex-end;
-                    justify-content: center;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: flex-end;
                     cursor: grab;
                     user-select: none;
                     animation: ${animations[this.config.animation_type] || animations.float};
@@ -923,6 +1437,275 @@ class LunarCalendarBubbleCard extends HTMLElement {
                 .greeting-date, .greeting-lunar { min-height: 1.28em; }
                 .greeting-lunar { font-weight: 700; }
 
+
+                .system-monitor-button-row {
+                    width: 100%;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    margin-top: 4px;
+                    pointer-events: none;
+                    position: relative;
+                    z-index: 8;
+                }
+
+                .system-monitor-toggle {
+                    position: relative;
+                    width: 24px;
+                    height: 24px;
+                    border: 1px solid rgba(255,255,255,0.24);
+                    border-radius: 999px;
+                    color: #dbeafe;
+                    background: linear-gradient(145deg, rgba(15,23,42,0.92), rgba(51,65,85,0.78));
+                    box-shadow: 0 7px 16px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.16);
+                    backdrop-filter: blur(10px) saturate(1.15);
+                    -webkit-backdrop-filter: blur(10px) saturate(1.15);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transform: translate(0, 0);
+                    cursor: pointer;
+                    pointer-events: auto;
+                    z-index: 8;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+                }
+
+                .system-monitor-toggle svg { width: 14px; height: 14px; display: block; }
+                .system-monitor-toggle:hover, .system-monitor-toggle.active {
+                    transform: translate(0, 0) scale(1.08);
+                    background: linear-gradient(145deg, rgba(14,165,233,0.95), rgba(37,99,235,0.82));
+                    box-shadow: 0 12px 28px rgba(14,165,233,0.28), inset 0 1px 0 rgba(255,255,255,0.22);
+                }
+
+                .system-monitor-panel {
+                    position: fixed;
+                    left: 14px;
+                    top: 14px;
+                    display: grid;
+                    grid-template-columns: repeat(2, minmax(var(--monitor-metric-min, 64px), 1fr));
+                    align-items: center;
+                    column-gap: var(--monitor-col-gap, 14px);
+                    row-gap: var(--monitor-row-gap, 10px);
+                    width: max-content;
+                    max-width: min(260px, calc(100vw - 28px));
+                    max-height: calc(100vh - 28px);
+                    overflow: visible;
+                    padding: var(--monitor-pad-y, 12px) var(--monitor-pad-x, 15px);
+                    border-radius: var(--monitor-radius, 24px);
+                    color: var(--chat-text-color, #f8fafc);
+                    background: var(--chat-bg);
+                    border: 1px solid var(--chat-border-color);
+                    box-shadow: var(--chat-shadow);
+                    backdrop-filter: blur(15px) saturate(1.22);
+                    -webkit-backdrop-filter: blur(15px) saturate(1.22);
+                    opacity: 0;
+                    transform: var(--monitor-hide-transform, translateY(10px) scale(0.96));
+                    transform-origin: center top;
+                    transition: opacity 0.26s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), left 0.18s ease, top 0.18s ease;
+                    pointer-events: none;
+                    z-index: 10020;
+                    box-sizing: border-box;
+                }
+
+                .system-monitor-panel::before {
+                    content: '';
+                    position: absolute;
+                    inset: 0;
+                    border-radius: inherit;
+                    background: var(--chat-before-bg);
+                    pointer-events: none;
+                    z-index: 0;
+                }
+
+                .system-monitor-panel > * {
+                    position: relative;
+                    z-index: 1;
+                }
+
+                .system-monitor-panel.show {
+                    opacity: 1;
+                    transform: var(--monitor-show-transform, translate(0, 0) scale(1));
+                    pointer-events: auto;
+                }
+
+                .system-monitor-metric {
+                    min-width: var(--monitor-metric-min, 64px);
+                    display: grid;
+                    grid-template-rows: auto auto auto;
+                    gap: 5px;
+                    opacity: 0.98;
+                    padding: 0.42em 0.52em;
+                    border-radius: calc(var(--monitor-radius, 24px) * 0.55);
+                    background: var(--chat-row-bg);
+                    border: 1px solid var(--chat-row-border);
+                    box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
+                    box-sizing: border-box;
+                }
+
+                .system-monitor-metric.is-unavailable { opacity: 0.52; }
+                .system-monitor-head { display: flex; align-items: center; gap: 5px; min-height: var(--monitor-icon-size, 18px); }
+                .system-monitor-icon { width: var(--monitor-icon-size, 18px); height: var(--monitor-icon-size, 18px); color: var(--metric-color); filter: drop-shadow(0 0 5px var(--metric-color)); overflow: visible; flex: 0 0 auto; }
+                .system-monitor-icon svg { width: var(--monitor-icon-size, 18px); height: var(--monitor-icon-size, 18px); display: block; overflow: visible; }
+                .system-monitor-label { font-size: var(--monitor-label-size, 10px); line-height: 1; font-weight: 800; letter-spacing: 0.04em; color: currentColor; opacity: 0.78; }
+                .system-monitor-value { font-size: var(--monitor-value-size, 18px); line-height: 1; font-weight: 850; letter-spacing: -0.03em; color: currentColor; text-shadow: 0 1px 8px rgba(0,0,0,0.12); }
+                .system-monitor-track { width: 100%; height: var(--monitor-track-h, 5px); border-radius: 999px; overflow: hidden; background: var(--chat-row-border); box-shadow: inset 0 1px 2px rgba(0,0,0,0.14); }
+                .system-monitor-fill { display: block; width: var(--metric-percent); height: 100%; border-radius: inherit; background: var(--metric-color); box-shadow: 0 0 10px var(--metric-color); transition: width 0.35s ease; }
+                .system-monitor-ring {
+                    display: none;
+                    position: relative;
+                    width: var(--monitor-ring-size, 58px);
+                    height: var(--monitor-ring-size, 58px);
+                    border-radius: 999px;
+                    align-items: center;
+                    justify-content: center;
+                    background: transparent;
+                    box-shadow: none;
+                    isolation: isolate;
+                    overflow: visible;
+                }
+
+                .system-monitor-ring::before {
+                    content: '';
+                    position: absolute;
+                    inset: 0;
+                    border-radius: inherit;
+                    background: conic-gradient(
+                        var(--metric-color) 0deg var(--metric-deg, 0deg),
+                        var(--monitor-ring-rest, rgba(148, 163, 184, 0.24)) var(--metric-deg, 0deg) 360deg
+                    );
+                    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--monitor-ring-thickness, 6px)), #000 0);
+                    mask: radial-gradient(farthest-side, transparent calc(100% - var(--monitor-ring-thickness, 6px)), #000 0);
+                    filter: drop-shadow(0 0 6px var(--metric-color));
+                    z-index: 0;
+                }
+
+                .system-monitor-ring::after {
+                    content: '';
+                    position: absolute;
+                    inset: calc(var(--monitor-ring-thickness, 6px) + 2px);
+                    border-radius: inherit;
+                    background: transparent;
+                    box-shadow: inset 0 0 10px rgba(15, 23, 42, 0.10);
+                    z-index: 0;
+                    pointer-events: none;
+                }
+
+                .system-monitor-ring-value {
+                    position: relative;
+                    z-index: 1;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: calc(var(--monitor-ring-size, 58px) - (var(--monitor-ring-thickness, 6px) * 2) - 8px);
+                    height: calc(var(--monitor-ring-size, 58px) - (var(--monitor-ring-thickness, 6px) * 2) - 8px);
+                    max-width: calc(var(--monitor-ring-size, 58px) - (var(--monitor-ring-thickness, 6px) * 2) - 8px);
+                    max-height: calc(var(--monitor-ring-size, 58px) - (var(--monitor-ring-thickness, 6px) * 2) - 8px);
+                    color: currentColor;
+                    font-size: var(--metric-ring-font-size, var(--monitor-value-size, 18px));
+                    line-height: 0.92;
+                    font-weight: 900;
+                    letter-spacing: -0.065em;
+                    text-align: center;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-shadow: 0 1px 9px rgba(0,0,0,0.30), 0 0 8px rgba(0,0,0,0.18);
+                }
+                .system-monitor-empty { min-width: var(--monitor-empty-min, 148px); font-size: var(--monitor-label-size, 12px); color: currentColor; opacity: 0.74; }
+
+                .system-monitor-panel.cycle-mode {
+                    display: block;
+                    width: min(var(--monitor-cycle-size, 74px), calc(100vw - 28px));
+                    height: min(var(--monitor-cycle-size, 74px), calc(100vh - 28px));
+                    min-width: min(62px, calc(100vw - 28px));
+                    min-height: min(62px, calc(100vh - 28px));
+                    overflow: hidden;
+                    padding: var(--monitor-pad-y, 4px) var(--monitor-pad-x, 5px);
+                    border-radius: var(--monitor-radius, 10px);
+                    aspect-ratio: 1 / 1;
+                }
+
+                .system-monitor-panel.cycle-mode .system-monitor-metric {
+                    display: none;
+                    min-width: 0;
+                    width: 100%;
+                    height: 100%;
+                    grid-template-rows: auto auto auto;
+                    align-content: center;
+                    align-items: center;
+                    justify-items: center;
+                    justify-content: center;
+                    text-align: center;
+                    gap: var(--monitor-cycle-inner-gap, 3px);
+                    will-change: transform, opacity, filter;
+                    padding: 0;
+                    background: transparent;
+                    border: 0;
+                    box-shadow: none;
+                }
+
+                .system-monitor-panel.cycle-mode .system-monitor-metric.is-active {
+                    display: grid;
+                    animation: monitorMetricIn 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+                }
+
+                .system-monitor-panel.cycle-mode .system-monitor-head {
+                    min-height: calc(var(--monitor-icon-size, 18px) + 1px);
+                    gap: 5px;
+                    justify-content: center;
+                    align-items: center;
+                    width: 100%;
+                    overflow: visible;
+                }
+                .system-monitor-panel.cycle-mode .system-monitor-icon,
+                .system-monitor-panel.cycle-mode .system-monitor-icon svg { width: var(--monitor-icon-size, 18px); height: var(--monitor-icon-size, 18px); overflow: visible; }
+                .system-monitor-panel.cycle-mode .system-monitor-label { font-size: var(--monitor-label-size, 10px); letter-spacing: 0.04em; line-height: 1; }
+                .system-monitor-panel.cycle-mode .system-monitor-value { font-size: var(--monitor-value-size, 21px); line-height: 0.96; letter-spacing: -0.04em; align-self: center; justify-self: center; margin: 0; }
+                .system-monitor-panel.cycle-mode .system-monitor-track { height: var(--monitor-track-h, 4px); width: var(--monitor-track-w, 54px); max-width: 100%; align-self: center; justify-self: center; margin-top: 0; }
+
+                .system-monitor-panel.cycle-mode.display-ring .system-monitor-metric {
+                    grid-template-rows: auto 1fr;
+                    gap: var(--monitor-cycle-inner-gap, 5px);
+                    align-content: center;
+                    justify-items: center;
+                    --monitor-ring-inner-bg: transparent;
+                }
+
+                .system-monitor-panel.cycle-mode.display-ring .system-monitor-head {
+                    justify-content: flex-start;
+                    justify-self: stretch;
+                    min-height: var(--monitor-icon-size, 14px);
+                    gap: 4px;
+                    padding: 0 1px;
+                    box-sizing: border-box;
+                }
+
+                .system-monitor-panel.cycle-mode.display-ring .system-monitor-icon,
+                .system-monitor-panel.cycle-mode.display-ring .system-monitor-icon svg {
+                    width: var(--monitor-icon-size, 14px);
+                    height: var(--monitor-icon-size, 14px);
+                }
+
+                .system-monitor-panel.cycle-mode.display-ring .system-monitor-value,
+                .system-monitor-panel.cycle-mode.display-ring .system-monitor-track { display: none; }
+                .system-monitor-panel.cycle-mode.display-ring .system-monitor-ring { display: flex; }
+
+                .system-monitor-cycle-footer,
+                .system-monitor-cycle-dots,
+                .system-monitor-cycle-dot,
+                .system-monitor-cycle-progress,
+                .system-monitor-cycle-progress span { display: none !important; }
+
+                @keyframes monitorMetricIn {
+                    0% { opacity: 0; transform: translateX(8px) translateY(4px) scale(0.96); filter: blur(4px); }
+                    62% { opacity: 1; transform: translateX(-1px) translateY(0) scale(1.015); filter: blur(0); }
+                    100% { opacity: 1; transform: translateX(0) translateY(0) scale(1); filter: blur(0); }
+                }
+
+                @keyframes monitorCycleProgress {
+                    from { transform: scaleX(0); }
+                    to { transform: scaleX(1); }
+                }
+
                 .modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10000; display: none; align-items: center; justify-content: center; }
                 .modal-overlay { position: absolute; width: 100%; height: 100%; background: transparent; }
                 .modal-content { position: relative; width: 95%; max-width: 480px; max-height: 85vh; border-radius: 28px; animation: popInModal 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; box-shadow: 0 25px 50px rgba(0,0,0,0.5); overflow: hidden; }
@@ -970,6 +1753,42 @@ class LunarCalendarBubbleCard extends HTMLElement {
                         grid-template-columns: 1.35em 1fr;
                     }
                     .chat-icon { width: 1.35em; height: 1.35em; font-size: 0.78em; }
+                    .system-monitor-button-row { margin-top: 4px; }
+                    .system-monitor-toggle {
+                        width: 22px;
+                        height: 22px;
+                    }
+                    .system-monitor-toggle:hover, .system-monitor-toggle.active { transform: translate(0, 0) scale(1.06); }
+                    .system-monitor-panel {
+                        grid-template-columns: repeat(2, minmax(var(--monitor-metric-min, 56px), 1fr));
+                        column-gap: var(--monitor-col-gap, 10px);
+                        row-gap: var(--monitor-row-gap, 8px);
+                        max-width: calc(100vw - 20px);
+                        padding: var(--monitor-pad-y, 10px) var(--monitor-pad-x, 12px);
+                        border-radius: var(--monitor-radius, 20px);
+                        overflow: visible;
+                    }
+                    .system-monitor-metric { min-width: var(--monitor-metric-min, 48px); }
+                    .system-monitor-value { font-size: var(--monitor-value-size, 16px); }
+                    .system-monitor-label { font-size: var(--monitor-label-size, 9px); }
+                    .system-monitor-panel.cycle-mode {
+                        width: min(var(--monitor-cycle-size, 72px), calc(100vw - 20px));
+                        height: min(var(--monitor-cycle-size, 72px), calc(100vh - 20px));
+                        min-width: min(62px, calc(100vw - 20px));
+                        min-height: min(62px, calc(100vh - 20px));
+                        padding: var(--monitor-pad-y, 4px) var(--monitor-pad-x, 5px);
+                        border-radius: var(--monitor-radius, 10px);
+                        aspect-ratio: 1 / 1;
+                    }
+                    .system-monitor-panel.cycle-mode .system-monitor-metric { gap: var(--monitor-cycle-inner-gap, 3px); align-content: center; justify-items: center; }
+                    .system-monitor-panel.cycle-mode .system-monitor-head { justify-content: center; min-height: calc(var(--monitor-icon-size, 18px) + 1px); overflow: visible; }
+                    .system-monitor-panel.cycle-mode .system-monitor-value { font-size: var(--monitor-value-size, 20px); line-height: 0.96; align-self: center; justify-self: center; margin: 0; }
+                    .system-monitor-panel.cycle-mode .system-monitor-icon,
+                    .system-monitor-panel.cycle-mode .system-monitor-icon svg { width: var(--monitor-icon-size, 18px); height: var(--monitor-icon-size, 18px); overflow: visible; }
+                    .system-monitor-panel.cycle-mode .system-monitor-track { height: var(--monitor-track-h, 4px); width: var(--monitor-track-w, 54px); max-width: 100%; align-self: center; justify-self: center; margin-top: 0; }
+                    .system-monitor-panel.cycle-mode.display-ring .system-monitor-value,
+                    .system-monitor-panel.cycle-mode.display-ring .system-monitor-track { display: none; }
+                    .system-monitor-panel.cycle-mode.display-ring .system-monitor-ring { display: flex; }
                 }
             </style>
 
@@ -983,7 +1802,9 @@ class LunarCalendarBubbleCard extends HTMLElement {
                         <div class="greeting-row"><span class="chat-icon emoji-icon">🌙</span><span class="greeting-lunar" id="greetingLunar"></span></div>
                     </div>
                 </div>
+                ${this.getSystemMonitorToggleMarkup()}
             </div>
+            ${this.getSystemMonitorPanelMarkup()}
 
             <div class="modal" id="modal">
                 <div class="modal-overlay" id="overlay"></div>
@@ -995,6 +1816,9 @@ class LunarCalendarBubbleCard extends HTMLElement {
         `;
 
         this.setupDragAndDrop();
+        this.setupSystemMonitorControls();
+        this.updateSystemMonitor();
+        this.startSystemMonitorCycle();
         this.shadowRoot.getElementById('overlay')?.addEventListener('click', () => this.closeModal());
         this.shadowRoot.getElementById('close')?.addEventListener('click', () => this.closeModal());
         if (this._resizeHandler) window.removeEventListener('resize', this._resizeHandler);
@@ -1127,6 +1951,9 @@ class LunarCalendarBubbleCard extends HTMLElement {
                 if (this.config.greeting_enabled) {
                     this.showGreeting({ restartTyping: true });
                 }
+                if (this.config.system_monitor_hover_enabled) {
+                    this.showSystemMonitor(false);
+                }
             }, 450);
 
             const cancelIfMoved = (moveEvent) => {
@@ -1148,6 +1975,7 @@ class LunarCalendarBubbleCard extends HTMLElement {
                 this._isTouchHolding = false;
                 this._isHovering = false;
                 this.hideGreeting();
+                if (this.config.system_monitor_hover_enabled) this.hideSystemMonitor();
                 this._suppressNextClick = true;
                 window.setTimeout(() => { this._suppressNextClick = false; }, 450);
                 if (this.config.greeting_repeat_enabled) this.scheduleNextRepeatedGreeting();
@@ -1168,11 +1996,13 @@ class LunarCalendarBubbleCard extends HTMLElement {
             window.clearTimeout(this._greetingHideTimer);
             window.clearTimeout(this._greetingRepeatTimer);
             this.showGreeting({ restartTyping: true });
+            if (this.config.system_monitor_hover_enabled) this.showSystemMonitor(false);
         });
         bubble.addEventListener('mouseleave', () => {
             this._isHovering = false;
             if (!isDragging && !this._isTouchHolding) {
                 this.hideGreeting();
+                if (this.config.system_monitor_hover_enabled) this.hideSystemMonitor();
                 if (this.config.greeting_repeat_enabled) this.scheduleNextRepeatedGreeting();
             }
         });
@@ -1221,12 +2051,341 @@ class LunarCalendarBubbleCard extends HTMLElement {
 }
 
 class LunarCalendarBubbleEditor extends HTMLElement {
+    constructor() {
+        super();
+        this._extraStates = {};
+        this._extraStatesRequested = false;
+        this._registrySensorIds = [];
+        this._registryRequested = false;
+        this._entityInputDispatchTimer = null;
+    }
+
+    set hass(hass) {
+        this._hass = hass;
+        this.updateEntityPickers();
+        this.loadAllStatesOnce();
+    }
+
+    escapeAttribute(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    normalizeEntityId(entityId) {
+        return String(entityId ?? '')
+            .trim()
+            .replace(/[​-‍﻿]/g, '')
+            .replace(/^['"]|['"]$/g, '')
+            .replace(/\s+/g, '')
+            .toLowerCase();
+    }
+
+    getDefaultSystemSensorMap() {
+        return {
+            system_sensor_ram: 'sensor.system_monitor_memory_usage',
+            system_sensor_cpu: 'sensor.system_monitor_processor_use',
+            system_sensor_disk: 'sensor.system_monitor_disk_usage',
+            system_sensor_temp: 'sensor.system_monitor_processor_temperature'
+        };
+    }
+
+    getMetricKeyForInput(id) {
+        return ({ system_sensor_ram: 'ram', system_sensor_cpu: 'cpu', system_sensor_disk: 'disk', system_sensor_temp: 'temp' })[id] || '';
+    }
+
+    getHassObject() {
+        if (this._hass) return this._hass;
+        const homeAssistant = document.querySelector('home-assistant');
+        if (homeAssistant?.hass) return homeAssistant.hass;
+        const candidates = [
+            document.querySelector('home-assistant-main'),
+            document.querySelector('ha-panel-lovelace'),
+            document.querySelector('hui-root')
+        ];
+        for (const candidate of candidates) {
+            if (candidate?.hass) return candidate.hass;
+        }
+        return null;
+    }
+
+    getAllStatesMap() {
+        const hass = this.getHassObject();
+        const out = {};
+        const addStates = (states) => {
+            Object.entries(states || {}).forEach(([id, stateObj]) => {
+                const normalizedId = this.normalizeEntityId(id);
+                if (id) out[id] = stateObj;
+                if (normalizedId) out[normalizedId] = stateObj;
+                const stateEntityId = this.normalizeEntityId(stateObj?.entity_id);
+                if (stateEntityId) out[stateEntityId] = stateObj;
+            });
+        };
+        addStates(hass?.states);
+        addStates(this._extraStates);
+        return out;
+    }
+
+    async loadAllStatesOnce() {
+        if (!this._hass?.callWS || this._extraStatesRequested) return;
+        this._extraStatesRequested = true;
+        try {
+            const statesList = await this._hass.callWS({ type: 'get_states' });
+            if (Array.isArray(statesList)) {
+                this._extraStates = statesList.reduce((acc, item) => {
+                    if (item?.entity_id) {
+                        acc[item.entity_id] = item;
+                        acc[this.normalizeEntityId(item.entity_id)] = item;
+                    }
+                    return acc;
+                }, {});
+                this.updateEntityPickers();
+            }
+        } catch (err) {
+            console.warn('Cannot load all Home Assistant states for sensor selector:', err);
+        }
+    }
+
+    async loadSensorRegistryOnce() {
+        if (!this._hass?.callWS || this._registryRequested) return;
+        this._registryRequested = true;
+        try {
+            const entities = await this._hass.callWS({ type: 'config/entity_registry/list' });
+            if (Array.isArray(entities)) {
+                this._registrySensorIds = entities
+                    .map((entity) => this.normalizeEntityId(entity?.entity_id))
+                    .filter((entityId) => entityId.startsWith('sensor.'));
+                this.updateEntityPickers();
+            }
+        } catch (err) {
+            console.warn('Cannot load entity registry for sensor selector:', err);
+        }
+    }
+
+    updateSensorDatalist() {
+        const datalist = this.querySelector('#system_sensor_entities');
+        if (datalist) datalist.innerHTML = this.getSensorOptions();
+    }
+
+    getSensorEntityIds() {
+        const ids = new Set(Object.values(this.getDefaultSystemSensorMap()).map((id) => this.normalizeEntityId(id)));
+        ['system_sensor_ram', 'system_sensor_cpu', 'system_sensor_disk', 'system_sensor_temp'].forEach((key) => {
+            const value = this.normalizeEntityId(this.config?.[key]);
+            if (value) ids.add(value);
+        });
+
+        const stateIds = Object.keys(this.getAllStatesMap());
+        const entityRegistryIds = Object.keys(this._hass?.entities || {});
+        [...stateIds, ...entityRegistryIds, ...(this._registrySensorIds || [])].forEach((entityId) => {
+            const normalized = this.normalizeEntityId(entityId);
+            if (normalized.startsWith('sensor.')) ids.add(normalized);
+        });
+
+        const preferred = Object.values(this.getDefaultSystemSensorMap()).map((id) => this.normalizeEntityId(id));
+        return Array.from(ids)
+            .filter((entityId) => entityId.startsWith('sensor.'))
+            .sort((a, b) => {
+                const aPreferred = preferred.includes(a) ? 0 : 1;
+                const bPreferred = preferred.includes(b) ? 0 : 1;
+                if (aPreferred !== bPreferred) return aPreferred - bPreferred;
+                const aSystem = a.includes('system_monitor') ? 0 : 1;
+                const bSystem = b.includes('system_monitor') ? 0 : 1;
+                if (aSystem !== bSystem) return aSystem - bSystem;
+                return a.localeCompare(b);
+            });
+    }
+
+    getSystemMonitorAliasCandidates(key) {
+        const map = {
+            ram: ['sensor.system_monitor_memory_usage', 'sensor.system_monitor_memory_use_percent', 'sensor.system_monitor_memory_use', 'sensor.memory_use_percent', 'sensor.memory_usage', 'sensor.ram_usage'],
+            cpu: ['sensor.system_monitor_processor_use', 'sensor.system_monitor_cpu_usage', 'sensor.processor_use', 'sensor.cpu_usage', 'sensor.cpu_use_percent'],
+            disk: ['sensor.system_monitor_disk_usage', 'sensor.system_monitor_disk_use_percent', 'sensor.disk_use_percent', 'sensor.disk_usage', 'sensor.disk_use'],
+            temp: ['sensor.system_monitor_processor_temperature', 'sensor.processor_temperature', 'sensor.cpu_temperature', 'sensor.system_monitor_cpu_temperature', 'sensor.temperature_cpu']
+        };
+        return (map[key] || []).map((entityId) => this.normalizeEntityId(entityId));
+    }
+
+    findStateByExactId(states, entityId) {
+        const normalized = this.normalizeEntityId(entityId);
+        if (!normalized) return null;
+        if (states[normalized]) return { entityId: normalized, stateObj: states[normalized] };
+        for (const [id, stateObj] of Object.entries(states || {})) {
+            const normalizedKey = this.normalizeEntityId(id);
+            const normalizedStateEntityId = this.normalizeEntityId(stateObj?.entity_id);
+            if (normalizedKey === normalized || normalizedStateEntityId === normalized) {
+                return { entityId: normalizedStateEntityId || normalizedKey || normalized, stateObj };
+            }
+        }
+        return null;
+    }
+
+    findStateByMetricKey(states, key) {
+        const rules = {
+            ram: [['memory', 'ram'], ['usage', 'use', 'percent', 'used']],
+            cpu: [['processor', 'cpu'], ['usage', 'use', 'percent', 'load']],
+            disk: [['disk', 'storage'], ['usage', 'use', 'percent', 'used']],
+            temp: [['temperature', 'temp'], ['processor', 'cpu']]
+        };
+        const groups = rules[key];
+        if (!groups) return null;
+        const candidates = Object.keys(states)
+            .filter((id) => id.startsWith('sensor.'))
+            .map((id) => {
+                const friendly = states[id]?.attributes?.friendly_name || '';
+                const unit = states[id]?.attributes?.unit_of_measurement || '';
+                const text = `${id} ${friendly} ${unit}`.toLowerCase();
+                const matched = groups.every((group) => group.some((token) => text.includes(token)));
+                const systemScore = text.includes('system_monitor') ? -4 : 0;
+                const unitScore = key === 'temp' && (unit.includes('°') || unit.toLowerCase().includes('c')) ? -2 : 0;
+                return { id, matched, score: systemScore + unitScore + text.length / 1000 };
+            })
+            .filter((item) => item.matched)
+            .sort((a, b) => a.score - b.score);
+        const best = candidates[0]?.id;
+        return best ? { entityId: best, stateObj: states[best] } : null;
+    }
+
+    getEntityStateResult(entityId, inputId = '') {
+        const normalized = this.normalizeEntityId(entityId);
+        const states = this.getAllStatesMap();
+        if (!normalized) return { entityId: '', stateObj: null };
+        const exact = this.findStateByExactId(states, normalized);
+        return exact || { entityId: normalized, stateObj: null };
+    }
+
+    getEntityState(entityId, inputId = '') {
+        return this.getEntityStateResult(entityId, inputId).stateObj;
+    }
+
+    getSensorLabel(entityId) {
+        const stateObj = this.getEntityState(entityId);
+        const friendly = stateObj?.attributes?.friendly_name || '';
+        return friendly && friendly !== entityId ? `${friendly} (${entityId})` : entityId;
+    }
+
+    getSensorOptions() {
+        return this.getSensorEntityIds()
+            .slice(0, 5000)
+            .map((entityId) => `<option value="${this.escapeAttribute(entityId)}" label="${this.escapeAttribute(this.getSensorLabel(entityId))}"></option>`)
+            .join('');
+    }
+
+    getSensorSelectOptions(currentValue = '') {
+        const current = this.normalizeEntityId(currentValue || '');
+        const ids = this.getSensorEntityIds();
+        const hasCurrent = current && ids.includes(current);
+        const first = '<option value="">-- Chọn nhanh / hoặc gõ để tìm --</option>';
+        const missing = current && !hasCurrent
+            ? `<option value="${this.escapeAttribute(current)}" selected>${this.escapeAttribute(current)} (đang nhập)</option>`
+            : '';
+        const options = ids.slice(0, 300).map((entityId) => {
+            const selected = entityId === current ? ' selected' : '';
+            return `<option value="${this.escapeAttribute(entityId)}"${selected}>${this.escapeAttribute(this.getSensorLabel(entityId))}</option>`;
+        }).join('');
+        return `${first}${missing}${options}`;
+    }
+
+    getEntityPickerMarkup(id, value, placeholder) {
+        const defaultEntity = this.normalizeEntityId(placeholder || this.getDefaultSystemSensorMap()[id] || 'sensor.entity_id');
+        const currentValue = this.normalizeEntityId(value || defaultEntity);
+        const safeValue = this.escapeAttribute(currentValue || '');
+        const safePlaceholder = this.escapeAttribute(defaultEntity || 'sensor.entity_id');
+        return `<input class="entity-input system-sensor-input" type="text" id="${id}" placeholder="${safePlaceholder}" value="${safeValue}" autocomplete="off" autocapitalize="off" spellcheck="false">
+                        <div class="entity-state-preview" id="${id}_state"></div>`;
+    }
+
+    getMatchingSensorEntityIds(query = '') {
+        const normalizedQuery = String(query || '').trim().toLowerCase();
+        const tokens = normalizedQuery.split(/\s+/).filter(Boolean);
+        const ids = this.getSensorEntityIds();
+        if (!tokens.length) {
+            const defaults = Object.values(this.getDefaultSystemSensorMap()).map((id) => this.normalizeEntityId(id));
+            return ids.filter((id) => defaults.includes(id) || id.includes('system_monitor')).slice(0, 80);
+        }
+        return ids.filter((entityId) => {
+            const friendly = this.getEntityState(entityId)?.attributes?.friendly_name || '';
+            const haystack = `${entityId} ${friendly}`.toLowerCase();
+            return tokens.every((token) => haystack.includes(token));
+        }).slice(0, 100);
+    }
+
+    updateEntitySuggestions(id) {
+        const input = this.querySelector(`#${id}`);
+        const box = this.querySelector(`#${id}_suggestions`);
+        if (!input || !box) return;
+        const searchText = String(input.value || '').replace(/^sensor\./, '').replace(/_/g, ' ');
+        const matches = this.getMatchingSensorEntityIds(searchText);
+        if (!matches.length) {
+            box.innerHTML = '<div class="entity-suggestion-empty">Không thấy sensor phù hợp. Có thể nhập trực tiếp entity_id rồi lưu.</div>';
+            return;
+        }
+        box.innerHTML = matches.map((entityId) => {
+            const stateObj = this.getEntityState(entityId);
+            const stateText = stateObj ? `${stateObj.state}${stateObj.attributes?.unit_of_measurement || ''}` : 'chưa có state';
+            return `<button type="button" class="entity-suggestion-item" data-input-id="${id}" data-entity="${this.escapeAttribute(entityId)}">
+                        <span>${this.escapeAttribute(this.getSensorLabel(entityId))}</span>
+                        <small>${this.escapeAttribute(stateText)}</small>
+                    </button>`;
+        }).join('');
+    }
+
+    updateAllEntitySuggestions() {
+        ['system_sensor_ram', 'system_sensor_cpu', 'system_sensor_disk', 'system_sensor_temp'].forEach((id) => this.updateEntitySuggestions(id));
+    }
+
+    updateEntityPickerStates() {
+        ['system_sensor_ram', 'system_sensor_cpu', 'system_sensor_disk', 'system_sensor_temp'].forEach((id) => {
+            const input = this.querySelector(`#${id}`);
+            const preview = this.querySelector(`#${id}_state`);
+            if (!input || !preview) return;
+            const entityId = this.normalizeEntityId(input.value);
+            const result = this.getEntityStateResult(entityId, id);
+            const stateObj = result.stateObj;
+            if (!entityId) {
+                preview.textContent = 'Chưa nhập entity_id.';
+                preview.classList.remove('ok');
+                preview.classList.add('missing');
+            } else if (stateObj) {
+                const unit = stateObj.attributes?.unit_of_measurement || '';
+                const resolved = result.entityId && result.entityId !== entityId ? ` qua ${result.entityId}` : '';
+                preview.textContent = `Đã nhận state${resolved}: ${stateObj.state}${unit ? ` ${unit}` : ''}`;
+                preview.classList.add('ok');
+                preview.classList.remove('missing');
+            } else {
+                const total = Object.keys(this.getAllStatesMap()).length;
+                preview.textContent = `Chưa lấy được state cho ${entityId} (${total} state đã tải). Kiểm tra lại entity_id trong Developer Tools > States.`;
+                preview.classList.remove('ok');
+                preview.classList.add('missing');
+            }
+        });
+    }
+
+    updateEntityPickers() {
+        ['system_sensor_ram', 'system_sensor_cpu', 'system_sensor_disk', 'system_sensor_temp'].forEach((id) => {
+            const input = this.querySelector(`#${id}`);
+            const current = this.normalizeEntityId(input?.value || this.config?.[id] || this.getDefaultSystemSensorMap()[id] || '');
+            if (input && current && !input.value) input.value = current;
+        });
+        this.updateEntityPickerStates();
+    }
+
+    getEntityPickerValue(id) {
+        const input = this.querySelector(`#${id}`);
+        const value = this.normalizeEntityId(input?.value || this.getDefaultSystemSensorMap()[id] || '');
+        return value;
+    }
+
     setConfig(config) {
         const mergedConfig = { ...LunarCalendarBubbleCard.getStubConfig(), ...config };
         if (config.greeting_timeout_s === undefined && config.greeting_timeout !== undefined) {
             const legacyTimeout = Number(config.greeting_timeout) || 0;
             mergedConfig.greeting_timeout_s = legacyTimeout > 120 ? Math.round(legacyTimeout / 1000) : legacyTimeout;
         }
+        mergedConfig.system_monitor_cycle_seconds = Math.min(120, Math.max(0.5, Number(mergedConfig.system_monitor_cycle_seconds) || 3));
+        mergedConfig.system_monitor_display_style = ['ring', 'bar'].includes(mergedConfig.system_monitor_display_style) ? mergedConfig.system_monitor_display_style : 'ring';
         this.config = mergedConfig;
         this.render();
     }
@@ -1262,12 +2421,19 @@ class LunarCalendarBubbleEditor extends HTMLElement {
                 .field label { font-size: 12px; font-weight: 700; color: var(--primary-text-color); }
                 .input-group { display: flex; align-items: center; gap: 10px; }
                 input[type="color"] { width: 38px; height: 38px; border: none; border-radius: 50%; cursor: pointer; padding: 0; background: none; }
-                input[type="number"], input[type="range"], select { padding: 8px; border-radius: 6px; border: 1px solid var(--divider-color); flex: 1; color: var(--primary-text-color); background: var(--card-background-color); }
+                input[type="number"], input[type="range"], select, .entity-input { padding: 8px; border-radius: 6px; border: 1px solid var(--divider-color); flex: 1; color: var(--primary-text-color); background: var(--card-background-color); }
+                input[type="text"], .entity-input { padding: 8px; border-radius: 6px; border: 1px solid var(--divider-color); color: var(--primary-text-color); background: var(--card-background-color); }
+                .entity-input { width: 100%; box-sizing: border-box; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+                .entity-state-preview { margin-top: 5px; font-size: 11px; line-height: 1.35; color: var(--secondary-text-color); overflow-wrap: anywhere; }
+                .entity-state-preview.ok { color: var(--success-color, #138a36); font-weight: 700; }
+                .entity-state-preview.missing { color: var(--warning-color, #9a6700); }
                 .value-badge { font-family: monospace; font-size: 11px; background: var(--divider-color); padding: 3px 7px; border-radius: 5px; min-width: 48px; text-align: center; color: var(--primary-text-color); }
                 .checkbox-group { display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 6px; }
                 .checkbox-group input { width: 16px; height: 16px; accent-color: var(--primary-color); cursor: pointer; }
                 .checkbox-group label { cursor: pointer; font-size: 13px; font-weight: 400; color: var(--primary-text-color); }
                 .hint { color: var(--secondary-text-color); font-size: 12px; line-height: 1.35; margin-top: 4px; }
+                .hint a { color: var(--primary-color); font-weight: 700; text-decoration: none; overflow-wrap: anywhere; }
+                .hint a:hover { text-decoration: underline; }
             </style>
             <div class="config-container">
                 <div class="section">
@@ -1318,6 +2484,84 @@ class LunarCalendarBubbleEditor extends HTMLElement {
                     </div>
                 </div>
 
+
+                <div class="section">
+                    <div class="section-title">System monitor</div>
+                    <div class="field">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="system_monitor_enabled" ${this.config.system_monitor_enabled ? 'checked' : ''}>
+                            <label for="system_monitor_enabled">Hiển thị bảng thông tin sensor cạnh SVG</label>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="system_monitor_button_enabled" ${this.config.system_monitor_button_enabled ? 'checked' : ''}>
+                            <label for="system_monitor_button_enabled">Bật nút ẩn/hiện cạnh SVG</label>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="system_monitor_hover_enabled" ${this.config.system_monitor_hover_enabled ? 'checked' : ''}>
+                            <label for="system_monitor_hover_enabled">Di chuột / nhấn giữ SVG để hiện bảng</label>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="system_monitor_initial_visible" ${this.config.system_monitor_initial_visible ? 'checked' : ''}>
+                            <label for="system_monitor_initial_visible">Mở sẵn bảng khi tải card</label>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="system_monitor_cycle_enabled" ${this.config.system_monitor_cycle_enabled ? 'checked' : ''}>
+                            <label for="system_monitor_cycle_enabled">Hiện từng sensor luân phiên</label>
+                        </div>
+                        <div class="hint">Bỏ chọn để hiện đủ 4 sensor thành 2 hàng RAM - CPU / Disk - Temp.</div>
+                    </div>
+                    <div class="field">
+                        <label>Thời gian chuyển sensor</label>
+                        <div class="input-group">
+                            <input type="number" id="system_monitor_cycle_seconds" min="0.5" max="120" step="0.5" value="${this.config.system_monitor_cycle_seconds}">
+                            <span class="value-badge">${this.config.system_monitor_cycle_seconds}s</span>
+                        </div>
+                        <div class="hint">Mặc định 3 giây. Khi bật, thẻ sẽ tự quay vòng RAM → CPU → Disk → Temp liên tục với hiệu ứng trượt/mờ mượt.</div>
+                    </div>
+                    <div class="field">
+                        <label>Kiểu hiển thị sensor</label>
+                        <select id="system_monitor_display_style">
+                            <option value="ring" ${this.config.system_monitor_display_style === 'ring' ? 'selected' : ''}>Vòng tròn hiện đại</option>
+                            <option value="bar" ${this.config.system_monitor_display_style === 'bar' ? 'selected' : ''}>Thanh ngang gọn</option>
+                        </select>
+                        <div class="hint">Kiểu vòng tròn giống ảnh đính kèm và là mặc định. Kiểu thanh ngang là giao diện cũ.</div>
+                    </div>
+                    <div class="field">
+                        <label>Sensor RAM</label>
+                        ${this.getEntityPickerMarkup('system_sensor_ram', this.config.system_sensor_ram, 'sensor.system_monitor_memory_usage')}
+                    </div>
+                    <div class="field">
+                        <label>Sensor CPU</label>
+                        ${this.getEntityPickerMarkup('system_sensor_cpu', this.config.system_sensor_cpu, 'sensor.system_monitor_processor_use')}
+                    </div>
+                    <div class="field">
+                        <label>Sensor Disk</label>
+                        ${this.getEntityPickerMarkup('system_sensor_disk', this.config.system_sensor_disk, 'sensor.system_monitor_disk_usage')}
+                    </div>
+                    <div class="field">
+                        <label>Sensor nhiệt độ CPU</label>
+                        ${this.getEntityPickerMarkup('system_sensor_temp', this.config.system_sensor_temp, 'sensor.system_monitor_processor_temperature')}
+                    </div>
+                    <div class="hint">Chỉ nhập trực tiếp entity_id của sensor, ví dụ <b>sensor.system_monitor_memory_usage</b>. Thẻ sẽ lấy state từ <b>hass.states</b> theo đúng entity_id đã nhập.</div>
+                    <div class="hint">Tham khảo Tích Hợp System monitor: <a href="https://www.home-assistant.io/integrations/systemmonitor/" target="_blank" rel="noopener noreferrer">https://www.home-assistant.io/integrations/systemmonitor/</a></div>
+                    <div class="field">
+                        <label>Mốc tối đa cho thanh nhiệt độ</label>
+                        <div class="input-group">
+                            <input type="number" id="system_monitor_temp_max" min="40" max="150" step="1" value="${this.config.system_monitor_temp_max}">
+                            <span class="value-badge">°C</span>
+                        </div>
+                        <div class="hint">Các sensor CPU/RAM/Disk dùng thang 0-100%. Sensor nhiệt độ dùng mốc này để vẽ thanh màu.</div>
+                    </div>
+                </div>
+
                 <div class="section">
                     <div class="section-title">V&#7883; tr&#237; &amp; hi&#7879;u &#7913;ng</div>
                     <div class="field">
@@ -1353,11 +2597,11 @@ class LunarCalendarBubbleEditor extends HTMLElement {
                 </div>
 
                 <div class="section">
-                    <div class="section-title">M&#224;u khung chat</div>
+                    <div class="section-title">M&#224;u khung chat &amp; sensor</div>
                     <div class="field">
-                        <label>M&#7851;u khung chat</label>
+                        <label>M&#7851;u khung chat / sensor</label>
                         <select id="chat_style">${this.getChatStyleOptions()}</select>
-                        <div class="hint">G&#7891;m 10 m&#7851;u giao di&#7879;n: glass, pastel, neon, sunset, mint, royal, clean, cute, aqua...</div>
+                        <div class="hint">M&#7851;u n&#224;y &#225;p d&#7909;ng chung cho khung ng&#224;y th&#225;ng v&#224; khung sensor. G&#7891;m 10 m&#7851;u: glass, pastel, neon, sunset, mint, royal, clean, cute, aqua...</div>
                     </div>
                     <div class="field">
                         <label>N&#7873;n khung chat</label>
@@ -1408,6 +2652,18 @@ class LunarCalendarBubbleEditor extends HTMLElement {
                 greeting_timeout_s: Number.parseFloat(this.querySelector('#greeting_timeout_s').value) || 0,
                 greeting_timeout: Math.round((Number.parseFloat(this.querySelector('#greeting_timeout_s').value) || 0) * 1000),
                 greeting_repeat_enabled: this.querySelector('#greeting_repeat_enabled').checked,
+                system_monitor_enabled: this.querySelector('#system_monitor_enabled').checked,
+                system_monitor_button_enabled: this.querySelector('#system_monitor_button_enabled').checked,
+                system_monitor_hover_enabled: this.querySelector('#system_monitor_hover_enabled').checked,
+                system_monitor_initial_visible: this.querySelector('#system_monitor_initial_visible').checked,
+                system_monitor_cycle_enabled: this.querySelector('#system_monitor_cycle_enabled').checked,
+                system_monitor_cycle_seconds: Math.min(120, Math.max(0.5, Number.parseFloat(this.querySelector('#system_monitor_cycle_seconds').value) || 3)),
+                system_monitor_display_style: this.querySelector('#system_monitor_display_style')?.value || 'ring',
+                system_monitor_temp_max: Number.parseFloat(this.querySelector('#system_monitor_temp_max').value) || 100,
+                system_sensor_cpu: this.getEntityPickerValue('system_sensor_cpu'),
+                system_sensor_ram: this.getEntityPickerValue('system_sensor_ram'),
+                system_sensor_temp: this.getEntityPickerValue('system_sensor_temp'),
+                system_sensor_disk: this.getEntityPickerValue('system_sensor_disk'),
                 animation_type: this.querySelector('#animation_type').value,
                 position: this.querySelector('#position').value,
                 offset_y: Number.parseInt(this.querySelector('#offset_y').value, 10) || 200,
@@ -1427,18 +2683,66 @@ class LunarCalendarBubbleEditor extends HTMLElement {
             }));
         };
 
+        this.updateEntityPickers();
+        this.loadAllStatesOnce();
+        let dispatchTimer = null;
+        const scheduleDispatch = () => {
+            window.clearTimeout(dispatchTimer);
+            dispatchTimer = window.setTimeout(() => dispatchConfig(), 120);
+        };
+
+
         this.querySelectorAll('input, select').forEach((el) => {
             const updateBadge = () => {
                 const badge = el.parentElement?.querySelector('.value-badge');
                 if (!badge) return;
                 if (el.type === 'color') badge.textContent = el.value.toUpperCase();
                 if (el.type === 'range') badge.textContent = el.id.includes('opacity') ? el.value : `${el.value}px`;
+                if (el.id === 'system_monitor_cycle_seconds') badge.textContent = `${el.value}s`;
             };
-            el.addEventListener('input', updateBadge);
+
+            const isEntityInput = el.classList.contains('entity-input');
+            const commitEntityInput = () => {
+                if (!isEntityInput) return;
+                const normalized = this.normalizeEntityId(el.value);
+                if (el.value !== normalized) {
+                    el.value = normalized;
+                }
+                this.config = { ...this.config, [el.id]: normalized };
+                this.updateEntityPickerStates();
+                dispatchConfig();
+            };
+
+            el.addEventListener('input', () => {
+                updateBadge();
+                if (isEntityInput) {
+                    this.config = { ...this.config, [el.id]: el.value };
+                    this.updateEntityPickerStates();
+                    window.clearTimeout(this._entityInputDispatchTimer);
+                    this._entityInputDispatchTimer = window.setTimeout(() => {
+                        if (document.activeElement === el) return;
+                        commitEntityInput();
+                    }, 450);
+                    return;
+                }
+            });
             el.addEventListener('change', () => {
                 updateBadge();
+                if (isEntityInput) {
+                    commitEntityInput();
+                    return;
+                }
                 dispatchConfig();
             });
+            if (isEntityInput) {
+                el.addEventListener('blur', commitEntityInput);
+                el.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        commitEntityInput();
+                    }
+                });
+            }
         });
     }
 }
