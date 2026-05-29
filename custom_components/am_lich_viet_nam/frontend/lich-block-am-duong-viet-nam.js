@@ -10,7 +10,7 @@ import {
   CA_DAO_TUC_NGU 
 } from './lich-block-am-duong-viet-nam-data.js';
 
-import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-popup.js?v=2';
+import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-popup.js';
 
 (function(){
   'use strict';
@@ -85,6 +85,21 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
   const NGAY_LE_AL = ["1/1","2/1","3/1","15/1","3/3","10/3","15/4","5/5","7/7","15/7","15/8","9/9","10/10","15/10","23/12"];
   const NGAY_LE_AL_STRING = ["Mùng Một Tết","Mùng 2 Tết","Mùng 3 Tết","Tết Nguyên Tiêu","Tết Hàn Thực","Giỗ tổ Hùng Vương","Lễ Phật Đản","Tết Đoan Ngọ","Lễ Thất Tịch","Lễ Vu Lan","Tết Trung Thu","Tết Trùng Cửu","Tết Trùng Thập","Tết Hạ Nguyên","Ông Táo Về Trời"];
 
+  // Bộ nhớ tạm thay thế localStorage – an toàn trong mọi ngữ cảnh Home Assistant
+  // (Kiosk mode, panel tùy chỉnh, v.v. có thể chặn localStorage)
+  const _cadaoMemStore = {};
+
+  function _safeStorageGet(key) {
+    try { return JSON.parse(localStorage.getItem(key)) || null; } 
+    catch (e) { return _cadaoMemStore[key] || null; }
+  }
+
+  function _safeStorageSet(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } 
+    catch (e) { /* bị chặn, chỉ dùng bộ nhớ tạm */ }
+    _cadaoMemStore[key] = value;
+  }
+
   function getUniqueDailyContent(sourceArray, storageKey = 'cadao_tracker', dateObj = null) {
     if (!sourceArray || sourceArray.length === 0) return "";
     const hasDisplayDate = dateObj instanceof Date && !isNaN(dateObj.getTime());
@@ -92,7 +107,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     const _dateStr = _todayObj.getFullYear() + "" + (_todayObj.getMonth() + 1) + "" + _todayObj.getDate();
     const totalItems = sourceArray.length;
 
-    // Khi người dùng vuốt sang ngày khác, nội dung ca dao/tục ngữ cũng bám theo ngày đang xem.
+    // Khi người dùng vuốt sang ngày khác, nội dung ca dao/tục ngữ bám theo ngày đang xem.
     // Dùng chỉ số ổn định theo Julian Day để vuốt qua lại cùng một ngày không bị đổi ngẫu nhiên.
     if (hasDisplayDate) {
         const seed = jdn(_todayObj.getDate(), _todayObj.getMonth() + 1, _todayObj.getFullYear());
@@ -101,9 +116,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
         return content ? content.replace(/\n/g, '<br>') : "";
     }
 
-    let storedData;
-    try { storedData = JSON.parse(localStorage.getItem(storageKey)) || {}; } 
-    catch (e) { storedData = {}; }
+    let storedData = _safeStorageGet(storageKey) || {};
 
     if (storedData.date !== _dateStr) { storedData = { date: _dateStr, shownIndices: [] }; }
     const availableIndices = [];
@@ -122,7 +135,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
         storedData.shownIndices.push(_selectedIndex);
     }
 
-    localStorage.setItem(storageKey, JSON.stringify(storedData));
+    _safeStorageSet(storageKey, storedData);
     let content = sourceArray[_selectedIndex];
     return content ? content.replace(/\n/g, '<br>') : "";
   }
@@ -363,10 +376,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
   const DAYNAMES = ["T2","T3","T4","T5","T6","T7","CN"];
   const PRINT_OPTS = { fontSize: "13pt", tableWidth: "100%" };
 
-  // ==========================================
-  // HÀM PRINTSTYLE
-  // ==========================================
+  // Cache style string – chỉ tạo 1 lần, không cần tạo lại mỗi lần render
+  let _cachedStyle = null;
   function printStyle(){
+    if (_cachedStyle) return _cachedStyle;
     let res = "";
     res += '<style>\n';
     res += `
@@ -525,6 +538,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       @keyframes lanternSwingStrong { 0% { transform: rotate(0deg); } 20% { transform: rotate(6deg); } 40% { transform: rotate(-5deg); } 60% { transform: rotate(4deg); } 80% { transform: rotate(-3deg); } 100% { transform: rotate(0deg); } }
     `;
     res += '</style>';
+    _cachedStyle = res;
     return res;
   }
 
@@ -583,18 +597,32 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     const pTheme = config.popup_theme || 'default';
     const pOpacity = config.popup_opacity !== undefined ? config.popup_opacity : 95;
 
-    return `<td class="${finalCellClass}" title="${title}" onclick="window.haShowDayPopup(${solarDate},${solarMonth},${solarYear}, '${pTheme}', ${pOpacity})">`+
+    return `<td class="${finalCellClass}" title="${title}" data-popup-d="${solarDate}" data-popup-m="${solarMonth}" data-popup-y="${solarYear}">`+
       `<div class="cell-content">`+
       `<div class="${solarClass}">${solarDate}</div>`+
       `<div class="${lunarClass}">${lunar}</div>`+
       `</div></td>`;
   }
 
-  if (typeof window.activeLunarTab === 'undefined') {
-      window.activeLunarTab = 'none'; 
+  // Hàm tiện ích dùng chung – khai báo 1 lần ở module level
+  function hexToRgba(hex, opacity) {
+    let c;
+    if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
+      c = hex.substring(1).split('');
+      if (c.length === 3) c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+      c = '0x' + c.join('');
+      return 'rgba(' + [(c >> 16) & 255, (c >> 8) & 255, c & 255].join(',') + ',' + (opacity / 100) + ')';
+    }
+    return hex;
   }
 
-  function printTable(mm, yy, today, config){
+  function applyOpacityToGradientStr(str, opacity) {
+    return str.replace(/#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})\b/gi, (match) => hexToRgba(match, opacity));
+  }
+
+
+
+  function printTable(mm, yy, today, config, activeTab){
     const jd = jdn(today.getDate(), mm, yy);
     const currentMonthArr = getMonth(mm, yy);
     if (currentMonthArr.length === 0) return "";
@@ -646,7 +674,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       if (imgRight) res_right = `<div class="show_right_tet">${imgRight}</div>`;
     }
     res += `<td colspan="2" class="td_tet_left">${res_left}</td>`;
-    res += `<td colspan="3"><div class="todayduonglich" title="Nhấp xem thêm chi tiết" onclick="window.haShowDayPopup(${today.getDate()},${mm},${yy}, '${pTheme}', ${pOpacity})">${today.getDate()}</div></td>`;
+    res += `<td colspan="3"><div class="todayduonglich" title="Nhấp xem thêm chi tiết">${today.getDate()}</div></td>`;
     res += `<td colspan="2" class="td_tet_right">${res_right}</td>`;
     res += `</tr>`;
 
@@ -719,7 +747,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     res += `</td>`;
 
     res += `<td width="50%" colspan="3" >`;
-    res += `<div class="ngayamlich" title="Nhấp xem thêm chi tiết" onclick="window.haShowDayPopup(${today.getDate()},${mm},${yy}, '${pTheme}', ${pOpacity})">${currentLunarDate.day}</div>`;
+    res += `<div class="ngayamlich" title="Nhấp xem thêm chi tiết">${currentLunarDate.day}</div>`;
     res += `</td>`;
 
     res += `<td width="25%" colspan="2">`;
@@ -731,10 +759,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     res += `<tr><td colspan="7"><div class="thang_am_lich">${getYearCanChi(currentLunarDate.year)}<span class="year-svg-container">${svgNam}</span></div></td></tr>`;
     res += `</table></div>`; 
 
-    let overlayDisplay = (window.activeLunarTab !== 'none') ? 'flex' : 'none';
+    let overlayDisplay = (activeTab !== 'none') ? 'flex' : 'none';
     res += `<div id="tab-overlay" class="tab-overlay" style="display: ${overlayDisplay};">`;
 
-    let calShowStyle = window.activeLunarTab === 'cal' ? 'block' : 'none';
+    let calShowStyle = activeTab === 'cal' ? 'block' : 'none';
     res += `<div id="tab-content-cal" style="display: ${calShowStyle};">`;
     res += `<table class="grid-month" border="0">`;
     res += printHead(mm, yy); 
@@ -754,13 +782,13 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     }
     res += `</table></div>`;
 
-    let convShowStyle = window.activeLunarTab === 'conv' ? 'block' : 'none';
+    let convShowStyle = activeTab === 'conv' ? 'block' : 'none';
     res += `<div id="tab-content-conv" style="display: ${convShowStyle};"></div>`; 
     
     res += `</div>`; 
 
-    let calActive = window.activeLunarTab === 'cal' ? 'active' : '';
-    let convActive = window.activeLunarTab === 'conv' ? 'active' : '';
+    let calActive = activeTab === 'cal' ? 'active' : '';
+    let convActive = activeTab === 'conv' ? 'active' : '';
 
     res += `
       <div class="tab-bar">
@@ -1348,6 +1376,30 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     }
   }
 
+  // Template HTML cho tab Tra cứu – tĩnh, không phụ thuộc ngày/config → cache ở module level
+  const _convHtml = `
+      <style>
+        .conv-input { background: rgba(0,0,0,0.15) !important; color: var(--lc-text-main) !important; border: 1px solid var(--lc-border-color) !important; outline: none; transition: all 0.2s; text-shadow: var(--lc-text-shadow-light); }
+        .conv-input:focus { background: var(--lc-bg-overlay-hover) !important; border-color: var(--lc-text-accent) !important; box-shadow: 0 0 5px var(--lc-text-accent); }
+        .conv-input::placeholder { color: var(--lc-text-main); opacity: 0.6; }
+        .conv-input option { background: #333; color: #fff; text-shadow: none; }
+        #conv-btn:hover { background: var(--lc-bg-overlay-hover) !important; transform: scale(1.01); border-color: var(--lc-text-accent) !important; }
+      </style>
+      <div style="padding: clamp(5px, 2cqi, 10px); box-sizing: border-box;">
+        <h3 style="text-align: center; color: var(--lc-text-accent); margin-top: 0; font-family: 'Be Vietnam Pro', sans-serif; text-shadow: var(--lc-text-shadow-light);">Tra cứu / Quy đổi</h3>
+        <select id="conv-type" class="conv-input" style="width: 100%; margin-bottom: clamp(8px, 3cqi, 12px); padding: clamp(6px, 2.5cqi, 10px); border-radius: 6px; cursor: pointer; font-size: clamp(9px, 3.8cqi, 14px); box-sizing: border-box;">
+          <option value="solar_to_lunar">☀️ Dương lịch ➡️ 🌙 Âm lịch</option>
+          <option value="lunar_to_solar">🌙 Âm lịch ➡️ ☀️ Dương lịch</option>
+        </select>
+        <div style="display: flex; gap: clamp(4px, 2cqi, 8px); margin-bottom: clamp(10px, 4cqi, 15px);">
+          <input id="conv-day" class="conv-input" type="number" placeholder="Ngày" min="1" max="31" style="flex: 1; padding: clamp(6px, 2.5cqi, 10px); border-radius: 6px; text-align: center; font-size: clamp(9px, 3.8cqi, 14px); min-width: 0;">
+          <input id="conv-month" class="conv-input" type="number" placeholder="Tháng" min="1" max="12" style="flex: 1; padding: clamp(6px, 2.5cqi, 10px); border-radius: 6px; text-align: center; font-size: clamp(9px, 3.8cqi, 14px); min-width: 0;">
+          <input id="conv-year" class="conv-input" type="number" placeholder="Năm" min="1800" max="2199" style="flex: 1.2; padding: clamp(6px, 2.5cqi, 10px); border-radius: 6px; text-align: center; font-size: clamp(9px, 3.8cqi, 14px); min-width: 0;">
+        </div>
+        <button id="conv-btn" style="width: 100%; background: var(--lc-bg-overlay); color: var(--lc-text-accent); text-shadow: var(--lc-text-shadow-light); font-weight: bold; border-radius: 6px; padding: clamp(6px, 2.5cqi, 10px); border: 1px solid var(--lc-border-color); cursor: pointer; font-size: clamp(10px, 4.2cqi, 15px); transition: all 0.2s; box-shadow: var(--lc-element-shadow);">TÍNH TOÁN QUY ĐỔI</button>
+        <div id="conv-result" style="display: none; margin-top: clamp(10px, 4cqi, 15px); padding: clamp(10px, 4cqi, 15px); background: var(--lc-bg-overlay); border-radius: 8px; border-left: 4px solid var(--lc-text-accent); color: var(--lc-text-main); box-shadow: var(--lc-element-shadow); text-shadow: var(--lc-text-shadow-light); font-size: clamp(9px, 3.8cqi, 15px);"></div>
+      </div>`;
+
   // ====== Home Assistant Card ======
   class LunarCalendarCard extends HTMLElement{
     static getConfigElement() { return document.createElement('lich-block-am-duong-viet-nam-editor'); }
@@ -1364,6 +1416,8 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 			this._userNavigatedDate = false;
 			this._viewingSwipeDate = false;
 			this._ignoreNextSwipeClickUntil = 0;
+			// Trạng thái tab riêng cho từng card instance (tránh xung đột khi có nhiều card)
+			this._activeTab = 'none';
 		}
 
     connectedCallback() {
@@ -1377,12 +1431,17 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       if (this._clickOutsideBound) {
         document.removeEventListener('click', this._clickOutsideBound);
       }
+      // Dọn dẹp listener mouseup trên window để tránh rò rỉ bộ nhớ
+      if (this._mouseUpBound) {
+        window.removeEventListener('mouseup', this._mouseUpBound);
+        this._mouseUpBound = null;
+      }
     }
 
     _handleClickOutside(e) {
-      if (window.activeLunarTab !== 'none') {
+      if (this._activeTab !== 'none') {
         if (!e.composedPath().includes(this)) {
-          window.activeLunarTab = 'none';
+          this._activeTab = 'none';
           const overlay = this.card.querySelector('#tab-overlay');
           const btnCal = this.card.querySelector('#tab-btn-cal');
           const btnConv = this.card.querySelector('#tab-btn-conv');
@@ -1560,12 +1619,13 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
         if (hasMovedEnough && ev.cancelable) ev.preventDefault();
       }, { passive: false });
 
-      window.addEventListener('mouseup', (ev) => {
+      this._mouseUpBound = (ev) => {
         if (activePointerId !== 'mouse') return;
         const endedInsideCard = pointInsideRoot(ev.clientX, ev.clientY);
         finishSwipe(ev.clientX, ev.clientY);
         if (!endedInsideCard) resetAfterMouseLeavesCard(ev);
-      }, { passive: true });
+      };
+      window.addEventListener('mouseup', this._mouseUpBound, { passive: true });
 
       root.addEventListener('mouseleave', resetAfterMouseLeavesCard, { passive: true });
 
@@ -1606,7 +1666,11 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       const oldTheme = this._hass && this._hass.themes ? this._hass.themes.darkMode : null;
       this._hass = hass;
       
-      injectPopupDOM();
+      // Chỉ inject popup DOM 1 lần duy nhất
+      if (!this._popupInjected) {
+        injectPopupDOM();
+        this._popupInjected = true;
+      }
 
       const newTheme = hass.themes && hass.themes.darkMode !== undefined ? hass.themes.darkMode : null;
       const now = new Date();
@@ -1625,21 +1689,6 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
     _applyTheme() {
         if (!this.config) return;
-
-        const hexToRgba = (hex, opacity) => {
-            let c;
-            if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
-                c= hex.substring(1).split('');
-                if(c.length === 3) c= [c[0], c[0], c[1], c[1], c[2], c[2]];
-                c= '0x'+c.join('');
-                return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+(opacity/100)+')';
-            }
-            return hex; 
-        };
-
-        const applyOpacityToGradientStr = (str, opacity) => {
-            return str.replace(/#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})\b/gi, (match) => hexToRgba(match, opacity));
-        };
 
         const oldBg = this.config.background_color || this.config.background;
         const bgType = this.config.bg_type || 'solid';
@@ -1837,39 +1886,13 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       const mm = this.displayMonth;
       const yy = this.displayYear;
 
-      const html = [ printStyle(), printTable(mm, yy, today, this.config) ].join('');
+      const html = [ printStyle(), printTable(mm, yy, today, this.config, this._activeTab) ].join('');
       const hoverEffect = this.config.hover_effect || 'neon';
-
-      const convHtml = `
-      <style>
-        .conv-input { background: rgba(0,0,0,0.15) !important; color: var(--lc-text-main) !important; border: 1px solid var(--lc-border-color) !important; outline: none; transition: all 0.2s; text-shadow: var(--lc-text-shadow-light); }
-        .conv-input:focus { background: var(--lc-bg-overlay-hover) !important; border-color: var(--lc-text-accent) !important; box-shadow: 0 0 5px var(--lc-text-accent); }
-        .conv-input::placeholder { color: var(--lc-text-main); opacity: 0.6; }
-        .conv-input option { background: #333; color: #fff; text-shadow: none; }
-        #conv-btn:hover { background: var(--lc-bg-overlay-hover) !important; transform: scale(1.01); border-color: var(--lc-text-accent) !important; }
-      </style>
-      <div style="padding: clamp(5px, 2cqi, 10px); box-sizing: border-box;">
-        <h3 style="text-align: center; color: var(--lc-text-accent); margin-top: 0; font-family: 'Be Vietnam Pro', sans-serif; text-shadow: var(--lc-text-shadow-light);">Tra cứu / Quy đổi</h3>
-        <select id="conv-type" class="conv-input" style="width: 100%; margin-bottom: clamp(8px, 3cqi, 12px); padding: clamp(6px, 2.5cqi, 10px); border-radius: 6px; cursor: pointer; font-size: clamp(9px, 3.8cqi, 14px); box-sizing: border-box;">
-          <option value="solar_to_lunar">☀️ Dương lịch ➡️ 🌙 Âm lịch</option>
-          <option value="lunar_to_solar">🌙 Âm lịch ➡️ ☀️ Dương lịch</option>
-        </select>
-        
-        <div style="display: flex; gap: clamp(4px, 2cqi, 8px); margin-bottom: clamp(10px, 4cqi, 15px);">
-          <input id="conv-day" class="conv-input" type="number" placeholder="Ngày" min="1" max="31" style="flex: 1; padding: clamp(6px, 2.5cqi, 10px); border-radius: 6px; text-align: center; font-size: clamp(9px, 3.8cqi, 14px); min-width: 0;">
-          <input id="conv-month" class="conv-input" type="number" placeholder="Tháng" min="1" max="12" style="flex: 1; padding: clamp(6px, 2.5cqi, 10px); border-radius: 6px; text-align: center; font-size: clamp(9px, 3.8cqi, 14px); min-width: 0;">
-          <input id="conv-year" class="conv-input" type="number" placeholder="Năm" min="1800" max="2199" style="flex: 1.2; padding: clamp(6px, 2.5cqi, 10px); border-radius: 6px; text-align: center; font-size: clamp(9px, 3.8cqi, 14px); min-width: 0;">
-        </div>
-
-        <button id="conv-btn" style="width: 100%; background: var(--lc-bg-overlay); color: var(--lc-text-accent); text-shadow: var(--lc-text-shadow-light); font-weight: bold; border-radius: 6px; padding: clamp(6px, 2.5cqi, 10px); border: 1px solid var(--lc-border-color); cursor: pointer; font-size: clamp(10px, 4.2cqi, 15px); transition: all 0.2s; box-shadow: var(--lc-element-shadow);">TÍNH TOÁN QUY ĐỔI</button>
-        
-        <div id="conv-result" style="display: none; margin-top: clamp(10px, 4cqi, 15px); padding: clamp(10px, 4cqi, 15px); background: var(--lc-bg-overlay); border-radius: 8px; border-left: 4px solid var(--lc-text-accent); color: var(--lc-text-main); box-shadow: var(--lc-element-shadow); text-shadow: var(--lc-text-shadow-light); font-size: clamp(9px, 3.8cqi, 15px);"></div>
-      </div>`;
 
       this.card.innerHTML = `<div class="lunar-card" data-hover="${hoverEffect}">${html}</div>`;
       
       const tabConvElement = this.card.querySelector('#tab-content-conv');
-      if (tabConvElement) tabConvElement.innerHTML = convHtml;
+      if (tabConvElement) tabConvElement.innerHTML = _convHtml;
 
       const popupTheme = this.config.popup_theme || 'default';
       const popupOpacity = this.config.popup_opacity !== undefined ? this.config.popup_opacity : 95;
@@ -1902,7 +1925,6 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
           }
       };
       this.card.querySelectorAll('.todayduonglich, .ngayamlich').forEach((el) => {
-          el.removeAttribute('onclick');
           el.addEventListener('click', (ev) => showMainDayPopup(ev, 'click'));
           el.addEventListener('pointerup', (ev) => {
               // Desktop fallback: mở popup ngay khi nhả chuột, nhưng không mở nếu vừa kéo/vuốt.
@@ -1913,6 +1935,23 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
           });
       });
 
+      // Xử lý click cho các ô ngày trong lưới lịch tháng (dùng data attribute thay onclick inline)
+      const calGrid = this.card.querySelector('#tab-content-cal');
+      if (calGrid) {
+          calGrid.addEventListener('click', (ev) => {
+              if (this._ignoreNextSwipeClickUntil && Date.now() < this._ignoreNextSwipeClickUntil) return;
+              const cell = ev.target.closest('[data-popup-d]');
+              if (!cell) return;
+              const d = parseInt(cell.dataset.popupD, 10);
+              const m = parseInt(cell.dataset.popupM, 10);
+              const y = parseInt(cell.dataset.popupY, 10);
+              if (typeof window.haShowDayPopup === 'function') {
+                  ev.stopPropagation();
+                  window.haShowDayPopup(d, m, y, popupTheme, popupOpacity);
+              }
+          });
+      }
+
       const btnCal = this.card.querySelector('#tab-btn-cal');
       const btnConv = this.card.querySelector('#tab-btn-conv');
       const contentCal = this.card.querySelector('#tab-content-cal');
@@ -1920,8 +1959,8 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       const overlay = this.card.querySelector('#tab-overlay');
 
       const toggleTab = (tabName) => {
-          if (window.activeLunarTab === tabName) {
-              window.activeLunarTab = 'none';
+          if (this._activeTab === tabName) {
+              this._activeTab = 'none';
               const selectedDate = this.displayDate || new Date();
               const selectedMonth = selectedDate.getMonth() + 1;
               const selectedYear = selectedDate.getFullYear();
@@ -1936,7 +1975,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
                   btnConv.classList.remove('active');
               }
           } else {
-              window.activeLunarTab = tabName;
+              this._activeTab = tabName;
               overlay.style.display = 'flex'; 
               
               if (tabName === 'cal') {
