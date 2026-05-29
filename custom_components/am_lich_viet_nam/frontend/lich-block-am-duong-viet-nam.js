@@ -85,16 +85,27 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
   const NGAY_LE_AL = ["1/1","2/1","3/1","15/1","3/3","10/3","15/4","5/5","7/7","15/7","15/8","9/9","10/10","15/10","23/12"];
   const NGAY_LE_AL_STRING = ["Mùng Một Tết","Mùng 2 Tết","Mùng 3 Tết","Tết Nguyên Tiêu","Tết Hàn Thực","Giỗ tổ Hùng Vương","Lễ Phật Đản","Tết Đoan Ngọ","Lễ Thất Tịch","Lễ Vu Lan","Tết Trung Thu","Tết Trùng Cửu","Tết Trùng Thập","Tết Hạ Nguyên","Ông Táo Về Trời"];
 
-  function getUniqueDailyContent(sourceArray, storageKey = 'cadao_tracker') {
+  function getUniqueDailyContent(sourceArray, storageKey = 'cadao_tracker', dateObj = null) {
     if (!sourceArray || sourceArray.length === 0) return "";
-    const _todayObj = new Date();
+    const hasDisplayDate = dateObj instanceof Date && !isNaN(dateObj.getTime());
+    const _todayObj = hasDisplayDate ? dateObj : new Date();
     const _dateStr = _todayObj.getFullYear() + "" + (_todayObj.getMonth() + 1) + "" + _todayObj.getDate();
+    const totalItems = sourceArray.length;
+
+    // Khi người dùng vuốt sang ngày khác, nội dung ca dao/tục ngữ cũng bám theo ngày đang xem.
+    // Dùng chỉ số ổn định theo Julian Day để vuốt qua lại cùng một ngày không bị đổi ngẫu nhiên.
+    if (hasDisplayDate) {
+        const seed = jdn(_todayObj.getDate(), _todayObj.getMonth() + 1, _todayObj.getFullYear());
+        const _selectedIndex = Math.abs((seed * 9301 + 49297) % 233280) % totalItems;
+        let content = sourceArray[_selectedIndex];
+        return content ? content.replace(/\n/g, '<br>') : "";
+    }
+
     let storedData;
     try { storedData = JSON.parse(localStorage.getItem(storageKey)) || {}; } 
     catch (e) { storedData = {}; }
 
     if (storedData.date !== _dateStr) { storedData = { date: _dateStr, shownIndices: [] }; }
-    const totalItems = sourceArray.length;
     const availableIndices = [];
 
     for (let i = 0; i < totalItems; i++) {
@@ -379,7 +390,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
         --lc-element-shadow: var(--user-element-shadow, 0 2px 8px rgba(0,0,0,0.12), inset 0 0.4px 0 rgba(255,255,255,0.35));
       }
       
-      .lunar-card { position: relative; isolation: isolate; container-type: inline-size; border-radius: 16px; overflow: hidden; padding-bottom: clamp(45px, 12cqi, 55px); }
+      .lunar-card { position: relative; isolation: isolate; container-type: inline-size; border-radius: 16px; overflow: hidden; padding-bottom: clamp(45px, 12cqi, 55px); touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: grab; }
       
       .td_tet_left { line-height: 0.9; align-items: flex-end; justify-content: center; position: relative; overflow: visible; }
       .show_left_tet { position: absolute; left: 50%; transform: translateX(-50%); bottom: -11px; display: flex; width: 85%; align-items: flex-end; justify-content: center; z-index: 3; }
@@ -660,7 +671,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
         res += `<tr><td colspan="7"><div align="center"><div class="thongtin_letet">${displayArray.join(" | ")}</div></div></td></tr>`;
     }
 
-    res += `<tr><td colspan="7"><div align="center"><div class="cadaotucngu">${getUniqueDailyContent(CA_DAO_TUC_NGU)}</div></div></td></tr>`;
+    res += `<tr><td colspan="7"><div align="center"><div class="cadaotucngu">${getUniqueDailyContent(CA_DAO_TUC_NGU, 'cadao_tracker', today)}</div></div></td></tr>`;
 
     const lunarDayIndex = (currentLunarDate.jd + 1) % 12;
     const lunarMonthIndex = (currentLunarDate.month + 1) % 12;
@@ -1347,8 +1358,12 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 		constructor(){
 			super();
 			const today = new Date();
-			this.displayMonth = today.getMonth() + 1;
-			this.displayYear = today.getFullYear();
+			this.displayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+			this.displayMonth = this.displayDate.getMonth() + 1;
+			this.displayYear = this.displayDate.getFullYear();
+			this._userNavigatedDate = false;
+			this._viewingSwipeDate = false;
+			this._ignoreNextSwipeClickUntil = 0;
 		}
 
     connectedCallback() {
@@ -1368,21 +1383,210 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       if (window.activeLunarTab !== 'none') {
         if (!e.composedPath().includes(this)) {
           window.activeLunarTab = 'none';
-          const today = new Date();
-          if (this.displayMonth !== (today.getMonth() + 1) || this.displayYear !== today.getFullYear()) {
-             this.displayMonth = today.getMonth() + 1;
-             this.displayYear = today.getFullYear();
-             this._render();
-          } else {
-             const overlay = this.card.querySelector('#tab-overlay');
-             const btnCal = this.card.querySelector('#tab-btn-cal');
-             const btnConv = this.card.querySelector('#tab-btn-conv');
-             if (overlay) overlay.style.display = 'none';
-             if (btnCal) btnCal.classList.remove('active');
-             if (btnConv) btnConv.classList.remove('active');
-          }
+          const overlay = this.card.querySelector('#tab-overlay');
+          const btnCal = this.card.querySelector('#tab-btn-cal');
+          const btnConv = this.card.querySelector('#tab-btn-conv');
+          if (overlay) overlay.style.display = 'none';
+          if (btnCal) btnCal.classList.remove('active');
+          if (btnConv) btnConv.classList.remove('active');
         }
       }
+    }
+
+    _normalizeDisplayDate(date) {
+      const base = (date instanceof Date && !isNaN(date.getTime())) ? date : new Date();
+      return new Date(base.getFullYear(), base.getMonth(), base.getDate());
+    }
+
+    _setDisplayDate(date, markUserNavigation = true) {
+      const nextDate = this._normalizeDisplayDate(date);
+      const year = nextDate.getFullYear();
+      if (year < 1800 || year > 2199) return false;
+      this.displayDate = nextDate;
+      this.displayMonth = nextDate.getMonth() + 1;
+      this.displayYear = nextDate.getFullYear();
+      if (markUserNavigation) this._userNavigatedDate = true;
+      return true;
+    }
+
+    _setDisplayMonthYear(month, year, markUserNavigation = true) {
+      const base = this.displayDate || new Date();
+      const safeDay = Math.min(base.getDate(), new Date(year, month, 0).getDate());
+      return this._setDisplayDate(new Date(year, month - 1, safeDay), markUserNavigation);
+    }
+
+    _isSameSolarDay(a, b) {
+      const da = this._normalizeDisplayDate(a);
+      const db = this._normalizeDisplayDate(b);
+      return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
+    }
+
+    _resetDisplayDateToToday() {
+      const today = new Date();
+      if (this._isSameSolarDay(this.displayDate, today)) return false;
+      this._userNavigatedDate = false;
+      this._viewingSwipeDate = false;
+      if (this._setDisplayDate(today, false)) {
+        this._render();
+        return true;
+      }
+      return false;
+    }
+
+    _shiftDisplayDate(days, fromSwipe = false) {
+      const base = this.displayDate || new Date();
+      const nextDate = new Date(base.getFullYear(), base.getMonth(), base.getDate() + days);
+      if (this._setDisplayDate(nextDate, true)) {
+        this._viewingSwipeDate = !!fromSwipe;
+        this._render();
+      }
+    }
+
+    _bindSwipeNavigation() {
+      const root = this.card ? this.card.querySelector('.lunar-card') : null;
+      if (!root) return;
+
+      let startX = 0;
+      let startY = 0;
+      let lastX = 0;
+      let lastY = 0;
+      let startTime = 0;
+      let activePointerId = null;
+      let hasMovedEnough = false;
+      const minSwipeDistance = 55;
+
+      const ignoreSwipeTarget = (target) => {
+        return !!(target && target.closest && target.closest('.tab-overlay, button, input, select, textarea, a'));
+      };
+
+      const beginSwipe = (clientX, clientY, pointerId = null) => {
+        startX = clientX;
+        startY = clientY;
+        lastX = clientX;
+        lastY = clientY;
+        startTime = Date.now();
+        activePointerId = pointerId;
+        hasMovedEnough = false;
+      };
+
+      const moveSwipe = (clientX, clientY) => {
+        if (!startTime) return;
+        lastX = clientX;
+        lastY = clientY;
+        const dx = lastX - startX;
+        const dy = lastY - startY;
+        if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.1) {
+          hasMovedEnough = true;
+        }
+      };
+
+      const finishSwipe = (clientX = lastX, clientY = lastY) => {
+        if (!startTime) return;
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+        const dt = Date.now() - startTime;
+        startTime = 0;
+        activePointerId = null;
+
+        if (dt > 1200 || Math.abs(dx) < minSwipeDistance || Math.abs(dx) < Math.abs(dy) * 1.25) return;
+
+        // Chặn click/popup phát sinh ngay sau thao tác kéo-vuốt.
+        this._ignoreNextSwipeClickUntil = Date.now() + 450;
+
+        // Kéo/vuốt trái: sang ngày sau. Kéo/vuốt phải: lùi về ngày trước.
+        this._shiftDisplayDate(dx < 0 ? 1 : -1, true);
+      };
+
+      root.addEventListener('click', (ev) => {
+        if (this._ignoreNextSwipeClickUntil && Date.now() < this._ignoreNextSwipeClickUntil) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+        }
+      }, true);
+
+      const resetAfterMouseLeavesCard = (ev) => {
+        // Chi reset khi ngay dang xem duoc doi bang thao tac vuot chuot;
+        // khong anh huong cac nut thang/nam hay thao tac cam ung.
+        if (!this._viewingSwipeDate) return;
+        if (ev && ev.pointerType && ev.pointerType !== 'mouse') return;
+        this._resetDisplayDateToToday();
+      };
+
+      const pointInsideRoot = (clientX, clientY) => {
+        const rect = root.getBoundingClientRect();
+        return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
+      };
+
+      if (window.PointerEvent) {
+        root.addEventListener('pointerdown', (ev) => {
+          if (!ev.isPrimary || ignoreSwipeTarget(ev.target)) return;
+          if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+          beginSwipe(ev.clientX, ev.clientY, ev.pointerId);
+        }, { passive: true });
+
+        root.addEventListener('pointermove', (ev) => {
+          if (activePointerId !== ev.pointerId) return;
+          moveSwipe(ev.clientX, ev.clientY);
+          if (hasMovedEnough && ev.cancelable) ev.preventDefault();
+        }, { passive: false });
+
+        root.addEventListener('pointerup', (ev) => {
+          if (activePointerId !== ev.pointerId) return;
+          const endedInsideCard = pointInsideRoot(ev.clientX, ev.clientY);
+          finishSwipe(ev.clientX, ev.clientY);
+          if (ev.pointerType === 'mouse' && !endedInsideCard) resetAfterMouseLeavesCard(ev);
+        }, { passive: true });
+
+        root.addEventListener('pointercancel', () => {
+          startTime = 0;
+          activePointerId = null;
+        }, { passive: true });
+
+        root.addEventListener('pointerleave', resetAfterMouseLeavesCard, { passive: true });
+
+        return;
+      }
+
+      // Fallback cho trình duyệt cũ không hỗ trợ Pointer Events.
+      root.addEventListener('mousedown', (ev) => {
+        if (ev.button !== 0 || ignoreSwipeTarget(ev.target)) return;
+        beginSwipe(ev.clientX, ev.clientY, 'mouse');
+      }, { passive: true });
+
+      root.addEventListener('mousemove', (ev) => {
+        if (activePointerId !== 'mouse') return;
+        moveSwipe(ev.clientX, ev.clientY);
+        if (hasMovedEnough && ev.cancelable) ev.preventDefault();
+      }, { passive: false });
+
+      window.addEventListener('mouseup', (ev) => {
+        if (activePointerId !== 'mouse') return;
+        const endedInsideCard = pointInsideRoot(ev.clientX, ev.clientY);
+        finishSwipe(ev.clientX, ev.clientY);
+        if (!endedInsideCard) resetAfterMouseLeavesCard(ev);
+      }, { passive: true });
+
+      root.addEventListener('mouseleave', resetAfterMouseLeavesCard, { passive: true });
+
+      root.addEventListener('touchstart', (ev) => {
+        if (!ev.touches || ev.touches.length !== 1 || ignoreSwipeTarget(ev.target)) return;
+        const touch = ev.touches[0];
+        beginSwipe(touch.clientX, touch.clientY, 'touch');
+      }, { passive: true });
+
+      root.addEventListener('touchmove', (ev) => {
+        if (activePointerId !== 'touch' || !ev.touches || ev.touches.length !== 1) return;
+        const touch = ev.touches[0];
+        moveSwipe(touch.clientX, touch.clientY);
+        if (hasMovedEnough && ev.cancelable) ev.preventDefault();
+      }, { passive: false });
+
+      root.addEventListener('touchend', (ev) => {
+        if (activePointerId !== 'touch' || !ev.changedTouches || ev.changedTouches.length !== 1) return;
+        const touch = ev.changedTouches[0];
+        finishSwipe(touch.clientX, touch.clientY);
+      }, { passive: true });
     }
 
     setConfig(config){
@@ -1405,9 +1609,13 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       injectPopupDOM();
 
       const newTheme = hass.themes && hass.themes.darkMode !== undefined ? hass.themes.darkMode : null;
-      const todayStr = new Date().toDateString();
+      const now = new Date();
+      const todayStr = now.toDateString();
       
       if (oldTheme !== newTheme || this._lastDateStr !== todayStr || !this._renderedHass) {
+        if (this._lastDateStr !== todayStr && !this._userNavigatedDate) {
+          this._setDisplayDate(now, false);
+        }
         this._lastDateStr = todayStr;
         this._renderedHass = true;
         this._applyTheme();
@@ -1622,7 +1830,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     }
 
     _render(){
-      const today = new Date();
+      if (!this.displayDate) this._setDisplayDate(new Date(), false);
+      const today = this._normalizeDisplayDate(this.displayDate);
+      this.displayMonth = today.getMonth() + 1;
+      this.displayYear = today.getFullYear();
       const mm = this.displayMonth;
       const yy = this.displayYear;
 
@@ -1660,6 +1871,48 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       const tabConvElement = this.card.querySelector('#tab-content-conv');
       if (tabConvElement) tabConvElement.innerHTML = convHtml;
 
+      const popupTheme = this.config.popup_theme || 'default';
+      const popupOpacity = this.config.popup_opacity !== undefined ? this.config.popup_opacity : 95;
+      let mainDayPointerPopupUntil = 0;
+      const showMainDayPopup = (ev, source = 'click') => {
+          if (source === 'click' && mainDayPointerPopupUntil && Date.now() < mainDayPointerPopupUntil) {
+              ev.preventDefault();
+              ev.stopPropagation();
+              if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+              return;
+          }
+          if (this._ignoreNextSwipeClickUntil && Date.now() < this._ignoreNextSwipeClickUntil) {
+              ev.preventDefault();
+              ev.stopPropagation();
+              if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+              return;
+          }
+          const currentDate = this._normalizeDisplayDate(this.displayDate || new Date());
+          if (typeof window.haShowDayPopup === 'function') {
+              ev.preventDefault();
+              ev.stopPropagation();
+              if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+              window.haShowDayPopup(
+                  currentDate.getDate(),
+                  currentDate.getMonth() + 1,
+                  currentDate.getFullYear(),
+                  popupTheme,
+                  popupOpacity
+              );
+          }
+      };
+      this.card.querySelectorAll('.todayduonglich, .ngayamlich').forEach((el) => {
+          el.removeAttribute('onclick');
+          el.addEventListener('click', (ev) => showMainDayPopup(ev, 'click'));
+          el.addEventListener('pointerup', (ev) => {
+              // Desktop fallback: mở popup ngay khi nhả chuột, nhưng không mở nếu vừa kéo/vuốt.
+              if (ev.pointerType === 'mouse') {
+                  mainDayPointerPopupUntil = Date.now() + 350;
+                  showMainDayPopup(ev, 'pointer');
+              }
+          });
+      });
+
       const btnCal = this.card.querySelector('#tab-btn-cal');
       const btnConv = this.card.querySelector('#tab-btn-conv');
       const contentCal = this.card.querySelector('#tab-content-cal');
@@ -1669,10 +1922,12 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       const toggleTab = (tabName) => {
           if (window.activeLunarTab === tabName) {
               window.activeLunarTab = 'none';
-              const today = new Date();
-              if (this.displayMonth !== (today.getMonth() + 1) || this.displayYear !== today.getFullYear()) {
-                  this.displayMonth = today.getMonth() + 1;
-                  this.displayYear = today.getFullYear();
+              const selectedDate = this.displayDate || new Date();
+              const selectedMonth = selectedDate.getMonth() + 1;
+              const selectedYear = selectedDate.getFullYear();
+              if (this.displayMonth !== selectedMonth || this.displayYear !== selectedYear) {
+                  this.displayMonth = selectedMonth;
+                  this.displayYear = selectedYear;
                   this._render();
                   return;
               } else {
@@ -1707,9 +1962,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
               const m = parseInt(this.card.querySelector('#goto-month').value, 10);
               const y = parseInt(this.card.querySelector('#goto-year').value, 10);
               if (m >= 1 && m <= 12 && y >= 1800 && y <= 2199) {
-                  this.displayMonth = m;
-                  this.displayYear = y;
-                  this._render();
+                  if (this._setDisplayMonthYear(m, y, true)) this._render();
               }
           });
       }
@@ -1909,36 +2162,39 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       const prevBtn = this.card.querySelector('#prev-month');
       if (prevBtn){
           prevBtn.addEventListener('click', () => {
-              this.displayMonth--;
-              if (this.displayMonth < 1){ this.displayMonth = 12; this.displayYear--; }
-              this._render();
+              let m = this.displayMonth - 1;
+              let y = this.displayYear;
+              if (m < 1){ m = 12; y--; }
+              if (this._setDisplayMonthYear(m, y, true)) this._render();
           });
       }
 
       const nextBtn = this.card.querySelector('#next-month');
       if (nextBtn){
           nextBtn.addEventListener('click', () => {
-              this.displayMonth++;
-              if (this.displayMonth > 12){ this.displayMonth = 1; this.displayYear++; }
-              this._render();
+              let m = this.displayMonth + 1;
+              let y = this.displayYear;
+              if (m > 12){ m = 1; y++; }
+              if (this._setDisplayMonthYear(m, y, true)) this._render();
           });
       }
 
       const prevYearBtn = this.card.querySelector('#prev-year');
-      if (prevYearBtn){ prevYearBtn.addEventListener('click', () => { this.displayYear--; this._render(); }); }
+      if (prevYearBtn){ prevYearBtn.addEventListener('click', () => { if (this._setDisplayMonthYear(this.displayMonth, this.displayYear - 1, true)) this._render(); }); }
 
       const nextYearBtn = this.card.querySelector('#next-year');
-      if (nextYearBtn){ nextYearBtn.addEventListener('click', () => { this.displayYear++; this._render(); }); }
+      if (nextYearBtn){ nextYearBtn.addEventListener('click', () => { if (this._setDisplayMonthYear(this.displayMonth, this.displayYear + 1, true)) this._render(); }); }
 
       const resetBtn = this.card.querySelector('#reset-today');
       if (resetBtn){
           resetBtn.addEventListener('click', () => {
               const today = new Date();
-              this.displayMonth = today.getMonth() + 1;
-              this.displayYear = today.getFullYear();
-              this._render();
+              this._userNavigatedDate = false;
+              if (this._setDisplayDate(today, false)) this._render();
           });
       }
+
+      this._bindSwipeNavigation();
     }
 
     getCardSize(){ return 8; }
