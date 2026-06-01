@@ -229,6 +229,10 @@ class LunarCalendarBubbleCard extends HTMLElement {
         this._extraStatesRequested = false;
         this._resizeHandler = null;
         this._placementRaf = null;
+        this._systemMonitorUpdateRaf = null;
+        this._systemMonitorStateSignature = '';
+        this._lastThemeDarkMode = undefined;
+        this._lastDateKey = '';
     }
 
     static getStubConfig() {
@@ -299,6 +303,8 @@ class LunarCalendarBubbleCard extends HTMLElement {
         this._systemMonitorPinned = !!mergedConfig.system_monitor_initial_visible;
         this._systemMonitorCycleIndex = 0;
         this._systemMonitorCycleAppliedIndex = -1;
+        this._systemMonitorStateSignature = '';
+        this._lastDateKey = '';
         this.render();
     }
 
@@ -306,12 +312,20 @@ class LunarCalendarBubbleCard extends HTMLElement {
         this._hass = hass;
         if (this.mainCard) this.mainCard.hass = hass;
         this.updateDates();
-        this.updateSystemMonitor();
-        this.loadAllStatesOnce();
+
+        const monitorSignature = this.getSystemMonitorStateSignature();
+        if (monitorSignature !== this._systemMonitorStateSignature) {
+            this._systemMonitorStateSignature = monitorSignature;
+            this.requestSystemMonitorUpdate();
+        }
+
+        if (!this._extraStatesRequested) this.loadAllStatesOnce();
 
         const modal = this.shadowRoot.getElementById('modal');
-        if (modal) {
-            if (hass && hass.themes && hass.themes.darkMode === false) {
+        const darkMode = hass?.themes?.darkMode;
+        if (modal && darkMode !== this._lastThemeDarkMode) {
+            this._lastThemeDarkMode = darkMode;
+            if (darkMode === false) {
                 modal.classList.add('is-light-theme');
             } else {
                 modal.classList.remove('is-light-theme');
@@ -333,6 +347,10 @@ class LunarCalendarBubbleCard extends HTMLElement {
         if (this._placementRaf) {
             window.cancelAnimationFrame(this._placementRaf);
             this._placementRaf = null;
+        }
+        if (this._systemMonitorUpdateRaf) {
+            window.cancelAnimationFrame(this._systemMonitorUpdateRaf);
+            this._systemMonitorUpdateRaf = null;
         }
     }
 
@@ -595,6 +613,7 @@ class LunarCalendarBubbleCard extends HTMLElement {
                     }
                     return acc;
                 }, {});
+                this._systemMonitorStateSignature = '';
                 this.updateSystemMonitor();
             }
         } catch (err) {
@@ -652,9 +671,9 @@ class LunarCalendarBubbleCard extends HTMLElement {
         return best ? { entityId: best, stateObj: states[best] } : null;
     }
 
-    getStateObjForEntity(entityId, key = '') {
+    getStateObjForEntity(entityId, key = '', statesOverride = null) {
         const normalizedId = this.normalizeEntityId(entityId);
-        const states = this.getAllStatesMap();
+        const states = statesOverride || this.getAllStatesMap();
         if (!normalizedId) return { entityId: '', stateObj: null };
         const exact = this.findStateByExactId(states, normalizedId);
         return exact || { entityId: normalizedId, stateObj: null };
@@ -669,8 +688,8 @@ class LunarCalendarBubbleCard extends HTMLElement {
         ].filter((item) => item.entity);
     }
 
-    getSensorDisplayInfo(item) {
-        const { entityId: resolvedEntityId, stateObj } = this.getStateObjForEntity(item.entity, item.key);
+    getSensorDisplayInfo(item, statesOverride = null) {
+        const { entityId: resolvedEntityId, stateObj } = this.getStateObjForEntity(item.entity, item.key, statesOverride);
         const rawState = stateObj?.state;
         const normalized = String(rawState ?? '').trim().toLowerCase();
         const unavailable = !stateObj || rawState === undefined || rawState === null || ['unknown', 'unavailable', 'none', 'null', ''].includes(normalized);
@@ -693,6 +712,24 @@ class LunarCalendarBubbleCard extends HTMLElement {
         }
 
         return { value, percent, unavailable, resolvedEntityId: resolvedEntityId || item.entity };
+    }
+
+    getSystemMonitorStateSignature() {
+        if (!this.config?.system_monitor_enabled) return 'disabled';
+        const states = this.getAllStatesMap();
+        return this.getSystemMonitorItems().map((item) => {
+            const { stateObj } = this.getStateObjForEntity(item.entity, item.key, states);
+            const unit = stateObj?.attributes?.unit_of_measurement ?? '';
+            return `${item.key}:${item.entity}:${stateObj?.state ?? ''}:${unit}`;
+        }).join('|');
+    }
+
+    requestSystemMonitorUpdate() {
+        if (this._systemMonitorUpdateRaf) return;
+        this._systemMonitorUpdateRaf = window.requestAnimationFrame(() => {
+            this._systemMonitorUpdateRaf = null;
+            this.updateSystemMonitor();
+        });
     }
 
     getSystemMonitorCycleSeconds() {
@@ -809,8 +846,9 @@ class LunarCalendarBubbleCard extends HTMLElement {
         const cycleClass = cycleMode ? ' cycle-mode' : '';
         const displayStyleClass = ` display-${this.getSystemMonitorDisplayStyle()}`;
         const activeIndex = items.length ? this._systemMonitorCycleIndex % items.length : 0;
+        const states = this.getAllStatesMap();
         const metrics = items.map((item, index) => {
-            const info = this.getSensorDisplayInfo(item);
+            const info = this.getSensorDisplayInfo(item, states);
             const title = info.resolvedEntityId && info.resolvedEntityId !== item.entity ? `${item.label}: ${item.entity} → ${info.resolvedEntityId}` : `${item.label}: ${item.entity}`;
             const activeClass = cycleMode && index === activeIndex ? ' is-active' : '';
             return `
@@ -839,10 +877,11 @@ class LunarCalendarBubbleCard extends HTMLElement {
         if (!this.config?.system_monitor_enabled) return;
         const panel = this.shadowRoot?.getElementById('systemMonitorPanel');
         if (!panel) return;
+        const states = this.getAllStatesMap();
         this.getSystemMonitorItems().forEach((item) => {
             const metric = panel.querySelector(`[data-system-key="${item.key}"]`);
             if (!metric) return;
-            const info = this.getSensorDisplayInfo(item);
+            const info = this.getSensorDisplayInfo(item, states);
             const valueEl = metric.querySelector('.system-monitor-value');
             const fillEl = metric.querySelector('.system-monitor-fill');
             if (valueEl) valueEl.textContent = info.value;
@@ -1824,7 +1863,7 @@ class LunarCalendarBubbleCard extends HTMLElement {
         if (this._resizeHandler) window.removeEventListener('resize', this._resizeHandler);
         this._resizeHandler = () => this.requestChatPlacementUpdate();
         window.addEventListener('resize', this._resizeHandler, { passive: true });
-        this.updateDates();
+        this.updateDates(true);
         this.requestChatPlacementUpdate();
         this.scheduleGreeting();
     }
@@ -2023,8 +2062,23 @@ class LunarCalendarBubbleCard extends HTMLElement {
         });
     }
 
-    updateDates() {
+    getDateRenderKey() {
+        const now = new Date();
+        return [
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+            this.config?.greeting_user || '',
+            this._hass?.user?.name || '',
+            this._hass?.user?.displayName || ''
+        ].join('|');
+    }
+
+    updateDates(force = false) {
         if (this._isTypingGreeting) return;
+        const dateKey = this.getDateRenderKey();
+        if (!force && this._lastDateKey === dateKey) return;
+        this._lastDateKey = dateKey;
         this.setGreetingFullText();
     }
 
@@ -2058,6 +2112,10 @@ class LunarCalendarBubbleEditor extends HTMLElement {
         this._registrySensorIds = [];
         this._registryRequested = false;
         this._entityInputDispatchTimer = null;
+    }
+
+    disconnectedCallback() {
+        window.clearTimeout(this._entityInputDispatchTimer);
     }
 
     set hass(hass) {
@@ -2747,13 +2805,20 @@ class LunarCalendarBubbleEditor extends HTMLElement {
     }
 }
 
-customElements.define('lich-am-duong-bubble-editor', LunarCalendarBubbleEditor);
-customElements.define('lich-am-duong-bubble', LunarCalendarBubbleCard);
+if (!customElements.get('lich-am-duong-bubble-editor')) {
+    customElements.define('lich-am-duong-bubble-editor', LunarCalendarBubbleEditor);
+}
+
+if (!customElements.get('lich-am-duong-bubble')) {
+    customElements.define('lich-am-duong-bubble', LunarCalendarBubbleCard);
+}
 
 window.customCards = window.customCards || [];
-window.customCards.push({
-    type: 'lich-am-duong-bubble',
-    name: 'Bong Bong Lich Am Duong SVG',
-    description: 'Bong bong SVG noi, tu doi vi tri khung chat, hieu ung go chu va ngay am duong.',
-    preview: false
-});
+if (!window.customCards.some((card) => card.type === 'lich-am-duong-bubble')) {
+    window.customCards.push({
+        type: 'lich-am-duong-bubble',
+        name: 'Bong Bong Lich Am Duong SVG',
+        description: 'Bong bong SVG noi, tu doi vi tri khung chat, hieu ung go chu va ngay am duong.',
+        preview: false
+    });
+}
