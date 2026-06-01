@@ -718,7 +718,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
         res += `<tr><td colspan="7"><div align="center"><div class="thongtin_letet">${displayArray.join(" | ")}</div></div></td></tr>`;
     }
 
-    res += `<tr><td colspan="7"><div align="center"><div class="cadaotucngu">${getUniqueDailyContent(CA_DAO_TUC_NGU, 'cadao_tracker', today)}</div></div></td></tr>`;
+    res += `<tr><td colspan="7"><div align="center"><div class="cadaotucngu" data-cadao-text></div></div></td></tr>`;
 
     const lunarDayIndex = (currentLunarDate.jd + 1) % 12;
     const lunarMonthIndex = (currentLunarDate.month + 1) % 12;
@@ -1895,6 +1895,20 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
         this.style.setProperty('--user-text-shadow-light', shadowLight);
     }
 
+
+    _updateCadaoTucNgu(){
+      // Chỉ cập nhật riêng ô ca dao/tục ngữ, không render lại toàn bộ thẻ.
+      if (!this.card) return;
+      const cadaoEl = this.card.querySelector('[data-cadao-text]');
+      if (!cadaoEl) return;
+
+      const displayDate = this._normalizeDisplayDate(this.displayDate || new Date());
+      const newContent = getUniqueDailyContent(CA_DAO_TUC_NGU, 'cadao_tracker', displayDate);
+      if (cadaoEl.innerHTML !== newContent) {
+        cadaoEl.innerHTML = newContent;
+      }
+    }
+
     _render(){
       if (!this.displayDate) this._setDisplayDate(new Date(), false);
       const today = this._normalizeDisplayDate(this.displayDate);
@@ -1933,6 +1947,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       </div>`;
 
       this.card.innerHTML = `<div class="lunar-card" data-hover="${hoverEffect}">${html}</div>`;
+      this._updateCadaoTucNgu();
       
       const tabConvElement = this.card.querySelector('#tab-content-conv');
       if (tabConvElement) tabConvElement.innerHTML = convHtml;
