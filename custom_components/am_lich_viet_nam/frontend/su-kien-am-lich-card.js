@@ -1,7 +1,7 @@
 (function() {
   'use strict';
 
-  // Fixed conservative build: giữ nguyên logic tải sự kiện từ tích hợp, chỉ thêm tương thích HA mới.
+  // Fixed v3: giữ nguyên logic tải sự kiện, sửa hiển thị ngày/tháng 1 chữ số và thêm tương thích HA mới.
 
   // HÀM TIỆN ÍCH CHUNG
   const hexToRgba = (hex, opacity) => {
@@ -13,6 +13,22 @@
       return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+(opacity/100)+')';
     }
     return hex; 
+  };
+
+  // Chỉ lấy ngày/tháng để hiển thị. Tránh lỗi substring(0, 5) với ngày 1 chữ số
+  // như "3/7/197..." bị thành "3/7/1".
+  const formatNgayThang = (value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+
+    const isoMatch = raw.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+    if (isoMatch) return `${isoMatch[3]}/${isoMatch[2]}`;
+
+    const vnMatch = raw.match(/^(\d{1,2})[-\/](\d{1,2})(?:[-\/].*)?$/);
+    if (vnMatch) return `${vnMatch[1]}/${vnMatch[2]}`;
+
+    const parts = raw.split('/');
+    return parts.length >= 2 ? parts.slice(0, 2).join('/') : raw;
   };
 
   // ==========================================
@@ -590,9 +606,9 @@
 
           let eventData = null;
           if (am_su_kien && duong_hien_tai) {
-            eventData = { entity_id: entityId, days: daysLeft, name: attrs.friendly_name || stateObj.name || "Sự kiện", thu: attrs.thu_hien_tai || "", duong: duong_hien_tai.substring(0, 5), am: am_su_kien.split('/').slice(0, 2).join('/'), attrs: attrs };
+            eventData = { entity_id: entityId, days: daysLeft, name: attrs.friendly_name || stateObj.name || "Sự kiện", thu: attrs.thu_hien_tai || "", duong: formatNgayThang(duong_hien_tai), am: am_su_kien.split('/').slice(0, 2).join('/'), attrs: attrs };
           } else if (duong_su_kien && am_hien_tai) {
-            eventData = { entity_id: entityId, days: daysLeft, name: attrs.friendly_name || stateObj.name || "Sự kiện", thu: attrs.thu_hien_tai || "", duong: duong_su_kien.substring(0, 5), am: am_hien_tai.split('/').slice(0, 2).join('/'), attrs: attrs };
+            eventData = { entity_id: entityId, days: daysLeft, name: attrs.friendly_name || stateObj.name || "Sự kiện", thu: attrs.thu_hien_tai || "", duong: formatNgayThang(duong_su_kien), am: am_hien_tai.split('/').slice(0, 2).join('/'), attrs: attrs };
           }
           if (eventData) events.push(eventData);
         } catch (err) { }
