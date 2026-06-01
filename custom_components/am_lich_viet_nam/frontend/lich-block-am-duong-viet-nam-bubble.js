@@ -1269,13 +1269,16 @@ class LunarCalendarBubbleCard extends HTMLElement {
                     padding: 6px 12px;
                     border-radius: 999px;
                     font-size: 11px;
-                    margin-bottom: 8px;
+                    margin-top: 7px;
+                    margin-bottom: 0;
                     opacity: 0;
-                    transform: translateY(10px);
+                    transform: translateY(-8px);
                     transition: all 0.25s ease;
                     white-space: nowrap;
                     pointer-events: none;
                     box-shadow: 0 6px 16px rgba(0,0,0,0.28);
+                    order: 3;
+                    z-index: 7;
                 }
 
                 @keyframes anim-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
@@ -1832,7 +1835,6 @@ class LunarCalendarBubbleCard extends HTMLElement {
             </style>
 
             <div class="bubble-wrapper" id="wrapper">
-                <div class="tooltip">Nh&#7845;n &#273;&#7875; xem / K&#233;o &#273;&#7875; di chuy&#7875;n</div>
                 <div class="avatar-stage" id="bubble" aria-label="Lunar calendar SVG bubble">
                     <div class="svg-avatar" id="svgAvatar">${selectedSvg}</div>
                     <div class="chat-bubble tail-${placement.tail}" id="chatBubble" aria-live="polite">
@@ -1842,6 +1844,7 @@ class LunarCalendarBubbleCard extends HTMLElement {
                     </div>
                 </div>
                 ${this.getSystemMonitorToggleMarkup()}
+                <div class="tooltip">Nh&#7845;n &#273;&#7875; xem / K&#233;o &#273;&#7875; di chuy&#7875;n</div>
             </div>
             ${this.getSystemMonitorPanelMarkup()}
 
