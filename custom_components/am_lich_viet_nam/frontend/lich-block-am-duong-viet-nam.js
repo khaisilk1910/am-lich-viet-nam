@@ -410,6 +410,15 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
   const DAYNAMES = ["T2","T3","T4","T5","T6","T7","CN"];
   const PRINT_OPTS = { fontSize: "13pt", tableWidth: "100%" };
 
+  function escapeHtmlAttr(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
   // ==========================================
   // HÀM PRINTSTYLE
   // ==========================================
@@ -630,7 +639,9 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     const pTheme = config.popup_theme || 'default';
     const pOpacity = config.popup_opacity !== undefined ? config.popup_opacity : 95;
 
-    return `<td class="${finalCellClass}" title="${title}" onclick="window.haShowDayPopup(${solarDate},${solarMonth},${solarYear}, '${pTheme}', ${pOpacity})">`+
+    return `<td class="${finalCellClass} lunar-day-cell" title="${escapeHtmlAttr(title)}" `+
+      `data-solar-date="${solarDate}" data-solar-month="${solarMonth}" data-solar-year="${solarYear}" `+
+      `data-popup-theme="${escapeHtmlAttr(pTheme)}" data-popup-opacity="${escapeHtmlAttr(pOpacity)}">`+
       `<div class="cell-content">`+
       `<div class="${solarClass}">${solarDate}</div>`+
       `<div class="${lunarClass}">${lunar}</div>`+
@@ -693,7 +704,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       if (imgRight) res_right = `<div class="show_right_tet">${imgRight}</div>`;
     }
     res += `<td colspan="2" class="td_tet_left">${res_left}</td>`;
-    res += `<td colspan="3"><div class="todayduonglich" title="Nhấp xem thêm chi tiết" onclick="window.haShowDayPopup(${today.getDate()},${mm},${yy}, '${pTheme}', ${pOpacity})">${today.getDate()}</div></td>`;
+    res += `<td colspan="3"><div class="todayduonglich" title="Nhấp xem thêm chi tiết">${today.getDate()}</div></td>`;
     res += `<td colspan="2" class="td_tet_right">${res_right}</td>`;
     res += `</tr>`;
 
@@ -766,7 +777,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     res += `</td>`;
 
     res += `<td width="50%" colspan="3" >`;
-    res += `<div class="ngayamlich" title="Nhấp xem thêm chi tiết" onclick="window.haShowDayPopup(${today.getDate()},${mm},${yy}, '${pTheme}', ${pOpacity})">${currentLunarDate.day}</div>`;
+    res += `<div class="ngayamlich" title="Nhấp xem thêm chi tiết">${currentLunarDate.day}</div>`;
     res += `</td>`;
 
     res += `<td width="25%" colspan="2">`;
@@ -1437,11 +1448,12 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
     _handleClickOutside(e) {
       if (window.activeLunarTab !== 'none') {
-        if (!e.composedPath().includes(this)) {
+        const path = (e && typeof e.composedPath === 'function') ? e.composedPath() : [];
+        if (!path.includes(this)) {
           window.activeLunarTab = 'none';
-          const overlay = this.card.querySelector('#tab-overlay');
-          const btnCal = this.card.querySelector('#tab-btn-cal');
-          const btnConv = this.card.querySelector('#tab-btn-conv');
+          const overlay = this.card ? this.card.querySelector('#tab-overlay') : null;
+          const btnCal = this.card ? this.card.querySelector('#tab-btn-cal') : null;
+          const btnConv = this.card ? this.card.querySelector('#tab-btn-conv') : null;
           if (overlay) overlay.style.display = 'none';
           if (btnCal) btnCal.classList.remove('active');
           if (btnConv) btnConv.classList.remove('active');
@@ -1506,6 +1518,15 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
         this._viewingSwipeDate = !!fromSwipe;
         this._render();
       }
+    }
+
+    _ensureCard() {
+      if (!this.shadowRoot) this.attachShadow({mode:'open'});
+      if (!this.card) {
+        this.card = document.createElement('ha-card');
+        this.shadowRoot.appendChild(this.card);
+      }
+      return this.card;
     }
 
     _bindSwipeNavigation() {
@@ -1657,11 +1678,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
     setConfig(config){
       this.config = config || {};
-      if (!this.shadowRoot){ this.attachShadow({mode:'open'}); }
-      if (!this.card){
-        this.card = document.createElement('ha-card');
-        this.shadowRoot.appendChild(this.card);
-      }
+      this._ensureCard();
       this.card.style.borderRadius = 'var(--ha-card-border-radius, 16px)';
       
       this._applyTheme(); 
@@ -1670,11 +1687,12 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
     set hass(hass){
       const oldTheme = this._hass && this._hass.themes ? this._hass.themes.darkMode : null;
-      this._hass = hass;
+      this._hass = hass || {};
+      this._ensureCard();
       
       injectPopupDOM();
 
-      const newTheme = hass.themes && hass.themes.darkMode !== undefined ? hass.themes.darkMode : null;
+      const newTheme = this._hass.themes && this._hass.themes.darkMode !== undefined ? this._hass.themes.darkMode : null;
       const now = new Date();
       const todayStr = now.toDateString();
       
@@ -1994,6 +2012,26 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
           });
       });
 
+      this.card.querySelectorAll('.lunar-day-cell').forEach((el) => {
+          el.removeAttribute('onclick');
+          el.addEventListener('click', (ev) => {
+              if (this._ignoreNextSwipeClickUntil && Date.now() < this._ignoreNextSwipeClickUntil) {
+                  ev.preventDefault();
+                  ev.stopPropagation();
+                  if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+                  return;
+              }
+              if (typeof window.haShowDayPopup !== 'function') return;
+              ev.preventDefault();
+              ev.stopPropagation();
+              const day = parseInt(el.dataset.solarDate, 10);
+              const month = parseInt(el.dataset.solarMonth, 10);
+              const year = parseInt(el.dataset.solarYear, 10);
+              const opacity = parseInt(el.dataset.popupOpacity, 10);
+              window.haShowDayPopup(day, month, year, el.dataset.popupTheme || 'default', Number.isFinite(opacity) ? opacity : 95);
+          });
+      });
+
       const btnCal = this.card.querySelector('#tab-btn-cal');
       const btnConv = this.card.querySelector('#tab-btn-conv');
       const contentCal = this.card.querySelector('#tab-content-cal');
@@ -2279,6 +2317,15 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     }
 
     getCardSize(){ return 8; }
+
+    getGridOptions(){
+      return {
+        columns: 12,
+        min_columns: 6,
+        rows: 8,
+        min_rows: 6
+      };
+    }
   }
 
   // Đăng ký Element
@@ -2286,12 +2333,14 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
   if (!customElements.get('lich-block-am-duong-viet-nam')) customElements.define('lich-block-am-duong-viet-nam', LunarCalendarCard);
 
   window.customCards = window.customCards || [];
-  window.customCards.push({
-      type: "lich-block-am-duong-viet-nam",
-      name: "Lịch Âm Dương",
-      description: "Thẻ Lịch Âm Dương Việt Nam có thể tùy chỉnh màu nền.",
-      preview: true,
-  });
+  if (!window.customCards.some((card) => card && card.type === "lich-block-am-duong-viet-nam")) {
+    window.customCards.push({
+        type: "lich-block-am-duong-viet-nam",
+        name: "Lịch Âm Dương",
+        description: "Thẻ Lịch Âm Dương Việt Nam có thể tùy chỉnh màu nền.",
+        preview: true,
+    });
+  }
 
   // ---- TRUYỀN HÀM TÍNH TOÁN CORE CHO POPUP LÀM VIỆC ----
   initPopupCore({
