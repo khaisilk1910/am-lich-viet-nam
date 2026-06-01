@@ -85,45 +85,92 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
   const NGAY_LE_AL = ["1/1","2/1","3/1","15/1","3/3","10/3","15/4","5/5","7/7","15/7","15/8","9/9","10/10","15/10","23/12"];
   const NGAY_LE_AL_STRING = ["Mùng Một Tết","Mùng 2 Tết","Mùng 3 Tết","Tết Nguyên Tiêu","Tết Hàn Thực","Giỗ tổ Hùng Vương","Lễ Phật Đản","Tết Đoan Ngọ","Lễ Thất Tịch","Lễ Vu Lan","Tết Trung Thu","Tết Trùng Cửu","Tết Trùng Thập","Tết Hạ Nguyên","Ông Táo Về Trời"];
 
+  const PAGE_LOAD_ID = Date.now() + '_' + Math.random().toString(36).slice(2);
+
+  function getDateKey(dateObj) {
+    const yyyy = dateObj.getFullYear();
+    const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const dd = String(dateObj.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function isSameSolarDate(a, b) {
+    return a.getFullYear() === b.getFullYear()
+      && a.getMonth() === b.getMonth()
+      && a.getDate() === b.getDate();
+  }
+
   function getUniqueDailyContent(sourceArray, storageKey = 'cadao_tracker', dateObj = null) {
     if (!sourceArray || sourceArray.length === 0) return "";
-    const hasDisplayDate = dateObj instanceof Date && !isNaN(dateObj.getTime());
-    const _todayObj = hasDisplayDate ? dateObj : new Date();
-    const _dateStr = _todayObj.getFullYear() + "" + (_todayObj.getMonth() + 1) + "" + _todayObj.getDate();
-    const totalItems = sourceArray.length;
 
-    // Khi người dùng vuốt sang ngày khác, nội dung ca dao/tục ngữ cũng bám theo ngày đang xem.
-    // Dùng chỉ số ổn định theo Julian Day để vuốt qua lại cùng một ngày không bị đổi ngẫu nhiên.
-    if (hasDisplayDate) {
-        const seed = jdn(_todayObj.getDate(), _todayObj.getMonth() + 1, _todayObj.getFullYear());
-        const _selectedIndex = Math.abs((seed * 9301 + 49297) % 233280) % totalItems;
-        let content = sourceArray[_selectedIndex];
+    const totalItems = sourceArray.length;
+    const hasDisplayDate = dateObj instanceof Date && !isNaN(dateObj.getTime());
+    const nowObj = new Date();
+    const displayObj = hasDisplayDate ? dateObj : nowObj;
+    const dateStr = getDateKey(displayObj);
+
+    // Khi người dùng vuốt sang ngày khác, nội dung vẫn bám theo ngày đang xem.
+    // Riêng ngày hôm nay phải đổi theo mỗi lần tải trang và không lặp lại trong ngày.
+    if (hasDisplayDate && !isSameSolarDate(displayObj, nowObj)) {
+        const seed = jdn(displayObj.getDate(), displayObj.getMonth() + 1, displayObj.getFullYear());
+        const selectedIndex = Math.abs((seed * 9301 + 49297) % 233280) % totalItems;
+        const content = sourceArray[selectedIndex];
         return content ? content.replace(/\n/g, '<br>') : "";
     }
 
     let storedData;
-    try { storedData = JSON.parse(localStorage.getItem(storageKey)) || {}; } 
+    try { storedData = JSON.parse(localStorage.getItem(storageKey)) || {}; }
     catch (e) { storedData = {}; }
 
-    if (storedData.date !== _dateStr) { storedData = { date: _dateStr, shownIndices: [] }; }
-    const availableIndices = [];
+    if (
+        storedData.date !== dateStr
+        || storedData.totalItems !== totalItems
+        || !Array.isArray(storedData.shownIndices)
+    ) {
+        storedData = { date: dateStr, totalItems, shownIndices: [] };
+    }
 
+    // Tránh đổi câu liên tục khi Home Assistant render lại cùng một lần tải trang.
+    if (
+        storedData.pageLoadId === PAGE_LOAD_ID
+        && Number.isInteger(storedData.currentIndex)
+        && storedData.currentIndex >= 0
+        && storedData.currentIndex < totalItems
+    ) {
+        const content = sourceArray[storedData.currentIndex];
+        return content ? content.replace(/\n/g, '<br>') : "";
+    }
+
+    const shownSet = new Set(
+        storedData.shownIndices.filter(index => Number.isInteger(index) && index >= 0 && index < totalItems)
+    );
+
+    let availableIndices = [];
     for (let i = 0; i < totalItems; i++) {
-        if (!storedData.shownIndices.includes(i)) availableIndices.push(i);
+        if (!shownSet.has(i)) availableIndices.push(i);
     }
 
-    let _selectedIndex;
+    // Nếu đã dùng hết toàn bộ danh sách trong ngày thì bắt đầu một vòng mới.
     if (availableIndices.length === 0) {
-        _selectedIndex = Math.floor(Math.random() * totalItems);
-        storedData.shownIndices = [_selectedIndex];
-    } else {
-        const randomPointer = Math.floor(Math.random() * availableIndices.length);
-        _selectedIndex = availableIndices[randomPointer];
-        storedData.shownIndices.push(_selectedIndex);
+        shownSet.clear();
+        availableIndices = Array.from({ length: totalItems }, (_, index) => index);
     }
 
-    localStorage.setItem(storageKey, JSON.stringify(storedData));
-    let content = sourceArray[_selectedIndex];
+    const randomPointer = Math.floor(Math.random() * availableIndices.length);
+    const selectedIndex = availableIndices[randomPointer];
+    shownSet.add(selectedIndex);
+
+    storedData.date = dateStr;
+    storedData.totalItems = totalItems;
+    storedData.shownIndices = Array.from(shownSet);
+    storedData.currentIndex = selectedIndex;
+    storedData.pageLoadId = PAGE_LOAD_ID;
+    storedData.updatedAt = Date.now();
+
+    try { localStorage.setItem(storageKey, JSON.stringify(storedData)); }
+    catch (e) { /* Bỏ qua nếu trình duyệt chặn localStorage. */ }
+
+    const content = sourceArray[selectedIndex];
     return content ? content.replace(/\n/g, '<br>') : "";
   }
 
