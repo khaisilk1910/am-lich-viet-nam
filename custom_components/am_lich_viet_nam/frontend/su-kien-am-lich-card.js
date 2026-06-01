@@ -1,6 +1,8 @@
 (function() {
   'use strict';
 
+  // Fixed conservative build: giữ nguyên logic tải sự kiện từ tích hợp, chỉ thêm tương thích HA mới.
+
   // HÀM TIỆN ÍCH CHUNG
   const hexToRgba = (hex, opacity) => {
     let c;
@@ -1100,6 +1102,17 @@
     }
 
     getCardSize() { return 3; }
+
+    // Tương thích tốt hơn với Home Assistant Sections view mới.
+    // Không thay đổi cách đọc/tải dữ liệu sự kiện.
+    getGridOptions() {
+      return {
+        columns: 6,
+        rows: 4,
+        min_columns: 3,
+        min_rows: 3
+      };
+    }
   }
 
   if (!customElements.get('su-kien-am-lich-editor')) {
@@ -1110,11 +1123,14 @@
   }
 
   window.customCards = window.customCards || [];
-  window.customCards.push({
+  const cardRegistration = {
     type: "su-kien-am-lich-card",
     name: "Danh sách Sự Kiện",
     description: "Thẻ hiển thị danh sách đếm ngược sự kiện cho Lịch Âm Việt Nam.",
     preview: true,
-  });
+  };
+  if (!window.customCards.some(card => card.type === cardRegistration.type)) {
+    window.customCards.push(cardRegistration);
+  }
 
 })();
