@@ -419,6 +419,169 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       .replace(/>/g, "&gt;");
   }
 
+
+  const WEATHER_CONDITION_EMOJI = {
+    "sunny": { emoji: "☀️", label: "Nắng", anim: "sunny" },
+    "clear": { emoji: "☀️", label: "Trời quang", anim: "sunny" },
+    "clear-night": { emoji: "🌙", label: "Đêm quang", anim: "night" },
+    "partlycloudy": { emoji: "⛅", label: "Có mây", anim: "cloudy" },
+    "partly-cloudy": { emoji: "⛅", label: "Có mây", anim: "cloudy" },
+    "mostlycloudy": { emoji: "🌥️", label: "Nhiều mây", anim: "cloudy" },
+    "mostly-cloudy": { emoji: "🌥️", label: "Nhiều mây", anim: "cloudy" },
+    "có-mây": { emoji: "⛅", label: "Có mây", anim: "cloudy" },
+    "nhiều-mây": { emoji: "☁️", label: "Nhiều mây", anim: "cloudy" },
+    "nắng": { emoji: "☀️", label: "Nắng", anim: "sunny" },
+    "trời-quang": { emoji: "☀️", label: "Trời quang", anim: "sunny" },
+    "cloudy": { emoji: "☁️", label: "Nhiều mây", anim: "cloudy" },
+    "overcast": { emoji: "☁️", label: "Âm u", anim: "cloudy" },
+    "rainy": { emoji: "🌧️", label: "Mưa", anim: "rain" },
+    "rain": { emoji: "🌧️", label: "Mưa", anim: "rain" },
+    "mưa": { emoji: "🌧️", label: "Mưa", anim: "rain" },
+    "mưa-lớn": { emoji: "🌧️", label: "Mưa lớn", anim: "rain-heavy" },
+    "pouring": { emoji: "🌧️", label: "Mưa lớn", anim: "rain-heavy" },
+    "drizzle": { emoji: "🌦️", label: "Mưa phùn", anim: "rain" },
+    "lightning": { emoji: "⚡", label: "Sấm sét", anim: "thunder" },
+    "lightning-rainy": { emoji: "⛈️", label: "Mưa dông", anim: "thunder" },
+    "lightning_rainy": { emoji: "⛈️", label: "Mưa dông", anim: "thunder" },
+    "thunderstorm": { emoji: "⛈️", label: "Dông bão", anim: "thunder" },
+    "dông-bão": { emoji: "⛈️", label: "Dông bão", anim: "thunder" },
+    "mưa-dông": { emoji: "⛈️", label: "Mưa dông", anim: "thunder" },
+    "storm": { emoji: "🌩️", label: "Bão", anim: "thunder" },
+    "snowy": { emoji: "❄️", label: "Tuyết", anim: "snow" },
+    "snow": { emoji: "❄️", label: "Tuyết", anim: "snow" },
+    "snowy-rainy": { emoji: "🌨️", label: "Mưa tuyết", anim: "snow" },
+    "snowy_rainy": { emoji: "🌨️", label: "Mưa tuyết", anim: "snow" },
+    "hail": { emoji: "🌨️", label: "Mưa đá", anim: "snow" },
+    "fog": { emoji: "🌫️", label: "Sương mù", anim: "fog" },
+    "sương-mù": { emoji: "🌫️", label: "Sương mù", anim: "fog" },
+    "mist": { emoji: "🌫️", label: "Sương mù", anim: "fog" },
+    "windy": { emoji: "💨", label: "Có gió", anim: "wind" },
+    "windy-variant": { emoji: "🌬️", label: "Gió mạnh", anim: "wind" },
+    "windy_variant": { emoji: "🌬️", label: "Gió mạnh", anim: "wind" },
+    "exceptional": { emoji: "⚠️", label: "Thời tiết xấu", anim: "alert" },
+    "unknown": { emoji: "🌤️", label: "Không rõ", anim: "cloudy" },
+    "unavailable": { emoji: "🌤️", label: "Không khả dụng", anim: "cloudy" }
+  };
+
+  function normalizeWeatherCondition(condition) {
+    return String(condition ?? "")
+      .trim()
+      .toLowerCase()
+      .normalize('NFC')
+      .replace(/\s+/g, "-");
+  }
+
+  function getWeatherConditionInfo(condition) {
+    const raw = String(condition ?? "").trim();
+    const key = normalizeWeatherCondition(raw);
+    const info = WEATHER_CONDITION_EMOJI[key] || WEATHER_CONDITION_EMOJI[key.replace(/_/g, "-")] || null;
+    if (info) return info;
+    if (!raw) return WEATHER_CONDITION_EMOJI.unknown;
+    return { emoji: "🌤️", label: raw, anim: "cloudy" };
+  }
+
+  function parseWeatherNumber(value) {
+    if (value === undefined || value === null) return null;
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    const cleaned = String(value).replace(",", ".").match(/-?\d+(\.\d+)?/);
+    if (!cleaned) return null;
+    const num = parseFloat(cleaned[0]);
+    return Number.isFinite(num) ? num : null;
+  }
+
+  function formatWeatherNumber(value, decimals = 0) {
+    const num = parseWeatherNumber(value);
+    if (num === null) {
+      const safe = escapeHtmlAttr(value ?? "").trim();
+      return safe || "—";
+    }
+    const rounded = decimals > 0 ? num.toFixed(decimals) : String(Math.round(num));
+    return rounded.replace(/\.0+$/, "");
+  }
+
+  function formatWeatherTemp(value) {
+    if (value === undefined || value === null || value === "") return "—";
+    return `${formatWeatherNumber(value)}°`;
+  }
+
+  function formatWeatherHumidity(value) {
+    if (value === undefined || value === null || value === "") return "—";
+    return `${formatWeatherNumber(value)}%`;
+  }
+
+  function formatWeatherWind(value, unit) {
+    if (value === undefined || value === null || value === "") return "—";
+    const cleanUnit = escapeHtmlAttr(unit || "km/h");
+    return `${formatWeatherNumber(value)} ${cleanUnit}`;
+  }
+
+  function getWeatherAttrValue(entity, names) {
+    if (!entity || !entity.attributes) return undefined;
+    for (const name of names) {
+      if (entity.attributes[name] !== undefined && entity.attributes[name] !== null && entity.attributes[name] !== "") {
+        return entity.attributes[name];
+      }
+    }
+    return undefined;
+  }
+
+  function getTodayForecastValue(entity, names) {
+    const forecast = entity && entity.attributes && Array.isArray(entity.attributes.forecast) ? entity.attributes.forecast : null;
+    if (!forecast || !forecast.length) return undefined;
+    const first = forecast[0] || {};
+    for (const name of names) {
+      if (first[name] !== undefined && first[name] !== null && first[name] !== "") return first[name];
+    }
+    return undefined;
+  }
+
+  function getHumidityComfortInfo(humidityValue, temperatureValue) {
+    const humidity = parseWeatherNumber(humidityValue);
+    const temperature = parseWeatherNumber(temperatureValue);
+    if (humidity === null && temperature === null) {
+      return { emoji: "💧", anim: "humidity-normal", label: "Độ ẩm" };
+    }
+    if (humidity !== null && humidity <= 35) {
+      return { emoji: "🏜️", anim: "humidity-dry", label: "Khô" };
+    }
+
+    // Chỉ số cảm nhận đơn giản: nhiệt độ càng cao và độ ẩm càng lớn thì nhịp hiệu ứng càng mạnh.
+    let discomfort = 0;
+    if (temperature !== null) discomfort += Math.max(0, temperature - 24) * 1.15;
+    if (humidity !== null) discomfort += Math.max(0, humidity - 55) * 0.38;
+    if (temperature !== null && humidity !== null && temperature >= 30 && humidity >= 60) discomfort += 6;
+
+    if (discomfort >= 22 || (temperature !== null && temperature >= 35 && humidity !== null && humidity >= 60)) {
+      return { emoji: "🥵", anim: "humidity-extreme", label: "Rất oi bức" };
+    }
+    if (discomfort >= 14 || (humidity !== null && humidity >= 75 && temperature !== null && temperature >= 30)) {
+      return { emoji: "😓", anim: "humidity-muggy", label: "Oi bức" };
+    }
+    if (humidity !== null && humidity >= 70) {
+      return { emoji: "💦", anim: "humidity-humid", label: "Ẩm cao" };
+    }
+    if (humidity !== null && humidity >= 55) {
+      return { emoji: "💧", anim: "humidity-normal", label: "Độ ẩm" };
+    }
+    return { emoji: "💧", anim: "humidity-normal", label: "Dễ chịu" };
+  }
+
+  function buildWeatherInfoHtml(weatherInfo, side) {
+    if (!weatherInfo || !weatherInfo.show) return "";
+    if (side === "right") {
+      return `<div class="weather-card-mini weather-card-humidity" title="${escapeHtmlAttr(weatherInfo.humidityComfortLabel)} - độ ẩm và tốc độ gió">`+
+        `<div class="weather-icon weather-humidity-icon weather-${weatherInfo.humidityAnim}"><span class="weather-icon-inner">${weatherInfo.humidityEmoji}</span></div>`+
+        `<div class="weather-main-value weather-humidity-value">${weatherInfo.humidityDisplay}</div>`+
+        `<div class="weather-sub-row"><span class="weather-wind-emoji">💨</span><span class="weather-wind">${weatherInfo.windDisplay}</span></div>`+
+      `</div>`;
+    }
+    return `<div class="weather-card-mini weather-card-condition" title="${escapeHtmlAttr(weatherInfo.conditionLabel)}">`+
+      `<div class="weather-icon weather-condition-icon weather-anim-${weatherInfo.conditionAnim}"><span class="weather-icon-inner">${weatherInfo.conditionEmoji}</span></div>`+
+      `<div class="weather-main-value weather-temp-value">${weatherInfo.temperatureDisplay}</div>`+
+      `<div class="weather-sub-row"><span class="weather-high">↑ ${weatherInfo.highDisplay}</span><span class="weather-low">↓ ${weatherInfo.lowDisplay}</span></div>`+
+    `</div>`;
+  }
+
   // ==========================================
   // HÀM PRINTSTYLE
   // ==========================================
@@ -474,6 +637,60 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       .phan_cach { font-family: 'Be Vietnam Pro', sans-serif; color: var(--user-element-base-color, #ffffff); opacity: 0.9; vertical-align: middle; text-align:center; font-size: clamp(8px, 3cqi, 16px); padding: 0; }
 
       .todayduonglich { color: var(--lc-text-main); font-family:'Bebas Neue', sans-serif; text-align:center; font-size: clamp(70px, 35cqi, 180px); line-height: 0.85; letter-spacing: 2px; font-weight: 600; text-shadow: var(--lc-text-shadow-heavy); position: relative; overflow: visible; cursor: pointer; padding: 5px 0; }
+      
+      .weather-slot { position: relative; vertical-align: middle; overflow: visible; height: clamp(72px, 20cqi, 118px); }
+      .weather-card-mini { width: 100%; height: 100%; min-height: clamp(72px, 20cqi, 118px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(2px, 0.9cqi, 6px); box-sizing: border-box; padding: 0 clamp(2px, 0.9cqi, 6px); color: var(--lc-text-main); text-align: center; background: transparent !important; border: none !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; text-shadow: var(--lc-text-shadow-light); }
+      .weather-card-mini .weather-icon { font-size: clamp(20px, 5.7cqi, 34px); line-height: 1; filter: drop-shadow(0 3px 7px rgba(0,0,0,0.35)); transform-origin: center; will-change: transform, filter, opacity; }
+      .weather-card-mini .weather-icon-inner { display: inline-block; transform-origin: center; will-change: transform, filter, opacity; }
+      .weather-card-mini .weather-main-value { font-family:'Be Vietnam Pro', sans-serif; font-size: clamp(20px, 6.4cqi, 36px); line-height: 0.95; font-weight: 800; letter-spacing: -0.8px; color: var(--lc-text-main); }
+      .weather-card-mini .weather-sub-row { display: flex; align-items: center; justify-content: center; gap: clamp(4px, 1.3cqi, 9px); font-family:'Be Vietnam Pro', sans-serif; font-size: clamp(8.5px, 2.8cqi, 13.5px); line-height: 1.1; opacity: 0.95; white-space: nowrap; }
+      .weather-card-mini .weather-high { color: var(--lc-sunday-color); font-weight: 700; }
+      .weather-card-mini .weather-low { color: var(--lc-saturday-color); font-weight: 700; }
+      .weather-card-mini .weather-wind { color: var(--lc-text-main); font-weight: 700; }
+      .weather-card-mini .weather-wind-emoji { color: var(--lc-saturday-color); filter: drop-shadow(0 2px 5px rgba(0,0,0,0.25)); animation: weatherWindFlow 2.6s ease-in-out infinite; }
+      .weather-anim-sunny .weather-icon-inner { animation: weatherSunPulse 2.2s ease-in-out infinite; }
+      .weather-anim-night .weather-icon-inner { animation: weatherNightTwinkle 2.8s ease-in-out infinite; }
+      .weather-anim-cloudy .weather-icon-inner { animation: weatherCloudFloat 3.4s ease-in-out infinite; }
+      .weather-anim-rain .weather-icon-inner { animation: weatherRainDrop 1.35s ease-in-out infinite; }
+      .weather-anim-rain-heavy .weather-icon-inner { animation: weatherRainHeavy 0.95s ease-in-out infinite; }
+      .weather-anim-thunder .weather-icon-inner { animation: weatherThunderFlash 1.15s steps(2, end) infinite; }
+      .weather-anim-snow .weather-icon-inner { animation: weatherSnowDrift 3.2s ease-in-out infinite; }
+      .weather-anim-fog .weather-icon-inner { animation: weatherFogDrift 4s ease-in-out infinite; }
+      .weather-anim-wind .weather-icon-inner { animation: weatherWindFlow 1.8s ease-in-out infinite; }
+      .weather-anim-alert .weather-icon-inner { animation: weatherAlertShake 0.95s ease-in-out infinite; }
+      .weather-humidity-icon { position: relative; isolation: isolate; }
+      .weather-humidity-icon::after { content: ""; position: absolute; inset: -10%; border-radius: 999px; z-index: -1; opacity: 0; pointer-events: none; transform-origin: center; }
+      .weather-humidity-normal .weather-icon-inner { animation: humidityCalmFloat 3.2s ease-in-out infinite; }
+      .weather-humidity-normal::after { background: radial-gradient(circle, rgba(120,190,255,0.22) 0%, rgba(120,190,255,0.08) 45%, transparent 72%); animation: humidityAuraCalm 3.2s ease-in-out infinite; }
+      .weather-humidity-dry .weather-icon-inner { animation: humidityDryShimmer 1.85s ease-in-out infinite; }
+      .weather-humidity-dry::after { background: radial-gradient(circle, rgba(255,190,80,0.28) 0%, rgba(255,135,45,0.11) 48%, transparent 74%); animation: humidityAuraDry 1.85s ease-in-out infinite; }
+      .weather-humidity-humid .weather-icon-inner { animation: humidityWetRipple 1.75s ease-in-out infinite; }
+      .weather-humidity-humid::after { border: 1px solid rgba(90,190,255,0.36); animation: humidityAuraHumid 1.75s ease-out infinite; }
+      .weather-humidity-muggy .weather-icon-inner { animation: humidityMuggyHeavy 1.18s ease-in-out infinite; }
+      .weather-humidity-muggy::after { background: radial-gradient(circle, rgba(255,170,70,0.28) 0%, rgba(90,190,255,0.12) 50%, transparent 76%); animation: humidityAuraMuggy 1.18s ease-in-out infinite; }
+      .weather-humidity-extreme .weather-icon-inner { animation: humidityExtremeStress 0.72s ease-in-out infinite; }
+      .weather-humidity-extreme::after { background: radial-gradient(circle, rgba(255,75,55,0.38) 0%, rgba(255,170,35,0.16) 50%, transparent 78%); animation: humidityAuraExtreme 0.72s ease-in-out infinite; }
+      @keyframes weatherSunPulse { 0%,100%{ transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 2px rgba(255,210,60,0.35)); } 50%{ transform: scale(1.08) rotate(8deg); filter: drop-shadow(0 0 10px rgba(255,210,60,0.75)); } }
+      @keyframes weatherNightTwinkle { 0%,100%{ transform: translateY(0) scale(1); opacity: 0.9; } 50%{ transform: translateY(-2px) scale(1.05); opacity: 1; filter: drop-shadow(0 0 8px rgba(180,210,255,0.7)); } }
+      @keyframes weatherCloudFloat { 0%,100%{ transform: translateX(-2px); } 50%{ transform: translateX(3px) translateY(-1px); } }
+      @keyframes weatherRainDrop { 0%,100%{ transform: translateY(-1px); } 50%{ transform: translateY(4px); filter: drop-shadow(0 5px 7px rgba(80,170,255,0.55)); } }
+      @keyframes weatherRainHeavy { 0%,100%{ transform: translateY(-2px) rotate(-1deg); } 50%{ transform: translateY(5px) rotate(1deg); filter: drop-shadow(0 7px 8px rgba(80,170,255,0.65)); } }
+      @keyframes weatherThunderFlash { 0%,100%{ transform: scale(1); filter: drop-shadow(0 0 2px rgba(255,255,120,0.35)); } 50%{ transform: scale(1.12); filter: drop-shadow(0 0 13px rgba(255,255,120,0.95)); } }
+      @keyframes weatherSnowDrift { 0%,100%{ transform: translate(0,0) rotate(0deg); } 50%{ transform: translate(2px,3px) rotate(12deg); filter: drop-shadow(0 0 8px rgba(210,240,255,0.75)); } }
+      @keyframes weatherFogDrift { 0%,100%{ transform: translateX(-3px); opacity: 0.72; } 50%{ transform: translateX(4px); opacity: 1; } }
+      @keyframes weatherWindFlow { 0%,100%{ transform: translateX(-2px); opacity: 0.85; } 50%{ transform: translateX(5px); opacity: 1; } }
+      @keyframes weatherAlertShake { 0%,100%{ transform: rotate(0deg); } 25%{ transform: rotate(-8deg); } 75%{ transform: rotate(8deg); } }
+      @keyframes humidityCalmFloat { 0%,100%{ transform: translateY(0) scale(1); filter: drop-shadow(0 0 3px rgba(120,190,255,0.26)); } 50%{ transform: translateY(-2px) scale(1.035); filter: drop-shadow(0 0 8px rgba(120,190,255,0.46)); } }
+      @keyframes humidityAuraCalm { 0%,100%{ opacity: .18; transform: scale(.82); } 50%{ opacity: .42; transform: scale(1.08); } }
+      @keyframes humidityDryShimmer { 0%,100%{ transform: translateY(0) skewX(0deg) scale(1); filter: drop-shadow(0 0 3px rgba(255,180,80,0.34)); } 25%{ transform: translateY(-1px) skewX(-3deg) scale(1.035); } 50%{ transform: translateY(-3px) skewX(3deg) scale(1.06); filter: drop-shadow(0 0 10px rgba(255,165,65,0.72)); } 75%{ transform: translateY(-1px) skewX(-2deg) scale(1.035); } }
+      @keyframes humidityAuraDry { 0%,100%{ opacity: .12; transform: scale(.72); filter: blur(.5px); } 50%{ opacity: .52; transform: scale(1.16); filter: blur(1.8px); } }
+      @keyframes humidityWetRipple { 0%,100%{ transform: translateY(0) scale(1); filter: drop-shadow(0 0 3px rgba(80,180,255,0.34)); } 50%{ transform: translateY(1px) scale(1.085); filter: drop-shadow(0 0 11px rgba(80,180,255,0.7)); } }
+      @keyframes humidityAuraHumid { 0%{ opacity: .52; transform: scale(.62); } 70%{ opacity: .12; transform: scale(1.32); } 100%{ opacity: 0; transform: scale(1.45); } }
+      @keyframes humidityMuggyHeavy { 0%,100%{ transform: translateY(0) scale(1) rotate(0deg); filter: drop-shadow(0 0 4px rgba(255,175,80,0.38)); } 35%{ transform: translateY(3px) scale(1.06) rotate(-2deg); } 65%{ transform: translateY(5px) scale(1.095) rotate(2deg); filter: drop-shadow(0 0 13px rgba(255,145,70,0.76)); } }
+      @keyframes humidityAuraMuggy { 0%,100%{ opacity: .2; transform: scale(.78); filter: blur(.3px); } 50%{ opacity: .58; transform: scale(1.22); filter: blur(1.5px); } }
+      @keyframes humidityExtremeStress { 0%,100%{ transform: translate(0,0) scale(1) rotate(0deg); filter: drop-shadow(0 0 5px rgba(255,70,55,0.48)); } 20%{ transform: translate(-1px,2px) scale(1.08) rotate(-5deg); } 40%{ transform: translate(1px,4px) scale(1.14) rotate(4deg); filter: drop-shadow(0 0 16px rgba(255,65,55,0.92)); } 60%{ transform: translate(-1px,3px) scale(1.1) rotate(-3deg); } 80%{ transform: translate(1px,1px) scale(1.06) rotate(3deg); } }
+      @keyframes humidityAuraExtreme { 0%,100%{ opacity: .28; transform: scale(.76); filter: blur(.5px); } 45%{ opacity: .68; transform: scale(1.28); filter: blur(2px); } 70%{ opacity: .35; transform: scale(1.08); } }
+      @container (max-width: 330px) { .weather-slot { height: clamp(58px, 18cqi, 92px); } .weather-card-mini { min-height: clamp(58px, 18cqi, 92px); gap: 1px; } .weather-card-mini .weather-icon { font-size: clamp(17px, 5.2cqi, 28px); } .weather-card-mini .weather-main-value { font-size: clamp(18px, 5.8cqi, 30px); } .weather-card-mini .weather-sub-row { font-size: clamp(8px, 2.5cqi, 12px); gap: 4px; } }
       
       .thongtin_letet { font-family: 'Playfair Display', serif; color: var(--lc-holiday-color); line-height: 1.35; padding: clamp(4px, 1.2cqi, 8px) clamp(10px, 3cqi, 20px); margin: 2px 30px; text-align:center; font-size: clamp(12px, 3.8cqi, 18px); letter-spacing: 0.5px; background: var(--lc-bg-overlay); border-radius:14px; border:0.4px solid var(--lc-border-color); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); text-shadow: var(--lc-text-shadow-light); font-weight: 600; width: max-width: 90%; }
       .cadaotucngu { font-family: 'Playfair Display', serif; font-style:italic; color: var(--lc-cadao-color); line-height: 1.35; padding: clamp(4px, 1.2cqi, 8px) clamp(10px, 3cqi, 20px); margin: 6px 30px 10px 30px; text-align:center; font-size: clamp(12px, 3.8cqi, 18px); letter-spacing: 0.5px; background: var(--lc-bg-overlay); border-radius:14px; border:0.4px solid var(--lc-border-color); box-shadow: var(--lc-element-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); text-shadow: var(--lc-text-shadow-light); font-weight: 500; width: max-width: 95%; }
@@ -703,9 +920,15 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       const imgRight = svg_tet_right[idxRight];
       if (imgRight) res_right = `<div class="show_right_tet">${imgRight}</div>`;
     }
-    res += `<td colspan="2" class="td_tet_left">${res_left}</td>`;
+    const weatherInfo = config && config._weatherInfo ? config._weatherInfo : null;
+    const showWeatherInfo = !!(weatherInfo && weatherInfo.show);
+    if (showWeatherInfo) {
+      res_left = buildWeatherInfoHtml(weatherInfo, 'left');
+      res_right = buildWeatherInfoHtml(weatherInfo, 'right');
+    }
+    res += `<td colspan="2" class="td_tet_left${showWeatherInfo ? ' weather-slot weather-slot-left' : ''}">${res_left}</td>`;
     res += `<td colspan="3"><div class="todayduonglich" title="Nhấp xem thêm chi tiết">${today.getDate()}</div></td>`;
-    res += `<td colspan="2" class="td_tet_right">${res_right}</td>`;
+    res += `<td colspan="2" class="td_tet_right${showWeatherInfo ? ' weather-slot weather-slot-right' : ''}">${res_right}</td>`;
     res += `</tr>`;
 
     let noiDungLe = "";
@@ -867,6 +1090,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
     set hass(hass) {
       this._hass = hass;
+      if (this._rendered) this._updateWeatherEntityList();
     }
 
     connectedCallback() {
@@ -885,6 +1109,13 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
           input[type=range] { flex-grow: 1; cursor: pointer; }
           .val-badge { background: var(--primary-color); color: var(--text-primary-color, white); padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; min-width: 48px; text-align: center; }
           select.ha-select { background: var(--card-background-color, transparent); color: var(--primary-text-color); border: 1px solid var(--divider-color, #e0e0e0); padding: 6px 8px; border-radius: 6px; font-family: inherit; font-size: 14px; flex-grow: 1; max-width: 200px; cursor: pointer; }
+          
+          .weather-row { align-items: center; gap: 12px; }
+          .weather-row .label { flex: 0 0 150px; min-width: 0 !important; }
+          .weather-entity-input { flex: 1 1 auto; width: 100%; min-width: 0; max-width: 280px; box-sizing: border-box; background: var(--card-background-color, transparent); color: var(--primary-text-color); border: 1px solid var(--divider-color, #e0e0e0); border-radius: 6px; padding: 8px 10px; font-family: inherit; font-size: 14px; outline: none; }
+          .weather-entity-input:focus { border-color: var(--primary-color); box-shadow: 0 0 0 1px var(--primary-color); }
+          .weather-note { font-size: 12px; color: var(--secondary-text-color); line-height: 1.45; margin: 4px 0 14px 0; }
+          .weather-row-disabled { opacity: 0.45; pointer-events: none; }
           
           /* CSS CHO TÍNH NĂNG ẨN/HIỆN KHỐI */
           .section { border: 1px solid var(--divider-color, #e0e0e0); border-radius: 12px; padding: 16px; margin-bottom: 16px; background: var(--card-background-color, transparent); box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: padding 0.3s ease; }
@@ -1134,6 +1365,46 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
           <div class="section collapsed">
             <div class="section-title">
+              <div class="title-left">🌤️ Thời tiết</div>
+              <div class="title-right">
+                <input type="checkbox" id="weather_show" style="transform: scale(1.2); cursor: pointer;" title="Bật/Tắt hiển thị thông tin thời tiết">
+                <span class="section-icon">▼</span>
+              </div>
+            </div>
+            <div class="section-content">
+              <div class="weather-note">Bật tính năng này để hiển thị thời tiết ở hai bên ngày dương lịch. Bạn có thể nhập hoặc chọn entity cho từng thông tin; nếu chọn entity dạng weather ở mục Điều kiện thời tiết thì thẻ sẽ tự lấy thêm nhiệt độ, độ ẩm và tốc độ gió từ attributes khi các sensor tương ứng đang để trống.</div>
+              <div id="weather_settings">
+                <div class="row weather-row">
+                  <span class="label">Nhiệt độ hiện tại</span>
+                  <input type="text" id="weather_temperature_entity" class="weather-entity-input" list="weather_entity_list" autocomplete="off" placeholder="sensor.nhiet_do">
+                </div>
+                <div class="row weather-row">
+                  <span class="label">Điều kiện thời tiết</span>
+                  <input type="text" id="weather_condition_entity" class="weather-entity-input" list="weather_entity_list" autocomplete="off" placeholder="weather.home hoặc sensor.dieu_kien">
+                </div>
+                <div class="row weather-row">
+                  <span class="label">Nhiệt độ cao nhất</span>
+                  <input type="text" id="weather_temp_high_entity" class="weather-entity-input" list="weather_entity_list" autocomplete="off" placeholder="sensor.nhiet_do_cao_nhat">
+                </div>
+                <div class="row weather-row">
+                  <span class="label">Nhiệt độ thấp nhất</span>
+                  <input type="text" id="weather_temp_low_entity" class="weather-entity-input" list="weather_entity_list" autocomplete="off" placeholder="sensor.nhiet_do_thap_nhat">
+                </div>
+                <div class="row weather-row">
+                  <span class="label">Độ ẩm</span>
+                  <input type="text" id="weather_humidity_entity" class="weather-entity-input" list="weather_entity_list" autocomplete="off" placeholder="sensor.do_am">
+                </div>
+                <div class="row weather-row">
+                  <span class="label">Tốc độ gió</span>
+                  <input type="text" id="weather_wind_entity" class="weather-entity-input" list="weather_entity_list" autocomplete="off" placeholder="sensor.toc_do_gio">
+                </div>
+                <datalist id="weather_entity_list"></datalist>
+              </div>
+            </div>
+          </div>
+
+          <div class="section collapsed">
+            <div class="section-title">
               <div class="title-left">☁️ Đổ bóng (Shadow)</div>
               <div class="title-right">
                 <input type="checkbox" id="shadow_enable" style="transform: scale(1.2); cursor: pointer;" title="Bật/Tắt hiệu ứng đổ bóng">
@@ -1205,6 +1476,14 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     
     get _hover_effect() { return this._config.hover_effect || 'neon'; }
 
+    get _weather_show() { return this._config.weather_show !== undefined ? this._config.weather_show : true; }
+    get _weather_temperature_entity() { return this._config.weather_temperature_entity || ''; }
+    get _weather_humidity_entity() { return this._config.weather_humidity_entity || ''; }
+    get _weather_condition_entity() { return this._config.weather_condition_entity || ''; }
+    get _weather_temp_high_entity() { return this._config.weather_temp_high_entity || ''; }
+    get _weather_temp_low_entity() { return this._config.weather_temp_low_entity || ''; }
+    get _weather_wind_entity() { return this._config.weather_wind_entity || ''; }
+
     get _border_color() { return this._config.border_color || '#ffffff'; }
     get _border_width() { return this._config.border_width !== undefined ? this._config.border_width : 1; }
     get _border_opacity() { return this._config.border_opacity !== undefined ? this._config.border_opacity : 0; }
@@ -1215,6 +1494,27 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     get _shadow_blur() { return this._config.shadow_blur !== undefined ? this._config.shadow_blur : 16; }
     get _shadow_offset_x() { return this._config.shadow_offset_x !== undefined ? this._config.shadow_offset_x : 0; }
     get _shadow_offset_y() { return this._config.shadow_offset_y !== undefined ? this._config.shadow_offset_y : 4; }
+
+    _updateWeatherEntityList() {
+      const entityList = this.querySelector('#weather_entity_list');
+      if (!entityList || !this._hass || !this._hass.states) return;
+      const weatherDomains = new Set(['weather', 'sensor', 'number', 'input_number']);
+      const options = Object.keys(this._hass.states)
+        .filter((entityId) => weatherDomains.has(String(entityId).split('.')[0]))
+        .sort()
+        .map((entityId) => {
+          const stateObj = this._hass.states[entityId];
+          const friendly = stateObj && stateObj.attributes && stateObj.attributes.friendly_name ? ` - ${stateObj.attributes.friendly_name}` : '';
+          return `<option value="${escapeHtmlAttr(entityId)}">${escapeHtmlAttr(entityId + friendly)}</option>`;
+        })
+        .join('');
+      entityList.innerHTML = options;
+    }
+
+    _getEntityInputValue(id) {
+      const input = this.querySelector('#' + id);
+      return input ? input.value.trim() : '';
+    }
 
     updateUI() {
       if (!this.querySelector('#bg_color')) return;
@@ -1307,6 +1607,17 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       
       this.querySelector('#shadow_offset_y').value = this._shadow_offset_y;
       this.querySelector('#shadow_offset_y_val').textContent = this._shadow_offset_y + 'px';
+
+      this._updateWeatherEntityList();
+      this.querySelector('#weather_show').checked = this._weather_show;
+      const weatherSettings = this.querySelector('#weather_settings');
+      if (weatherSettings) weatherSettings.classList.toggle('weather-row-disabled', !this._weather_show);
+      this.querySelector('#weather_temperature_entity').value = this._weather_temperature_entity;
+      this.querySelector('#weather_condition_entity').value = this._weather_condition_entity;
+      this.querySelector('#weather_temp_high_entity').value = this._weather_temp_high_entity;
+      this.querySelector('#weather_temp_low_entity').value = this._weather_temp_low_entity;
+      this.querySelector('#weather_humidity_entity').value = this._weather_humidity_entity;
+      this.querySelector('#weather_wind_entity').value = this._weather_wind_entity;
     }
 
     addListeners() {
@@ -1345,7 +1656,15 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
             shadow_opacity: parseInt(this.querySelector('#shadow_opacity').value, 10),
             shadow_blur: parseInt(this.querySelector('#shadow_blur').value, 10),
             shadow_offset_x: parseInt(this.querySelector('#shadow_offset_x').value, 10),
-            shadow_offset_y: parseInt(this.querySelector('#shadow_offset_y').value, 10)
+            shadow_offset_y: parseInt(this.querySelector('#shadow_offset_y').value, 10),
+
+            weather_show: this.querySelector('#weather_show').checked,
+            weather_temperature_entity: this._getEntityInputValue('weather_temperature_entity'),
+            weather_humidity_entity: this._getEntityInputValue('weather_humidity_entity'),
+            weather_condition_entity: this._getEntityInputValue('weather_condition_entity'),
+            weather_temp_high_entity: this._getEntityInputValue('weather_temp_high_entity'),
+            weather_temp_low_entity: this._getEntityInputValue('weather_temp_low_entity'),
+            weather_wind_entity: this._getEntityInputValue('weather_wind_entity')
         };
         
         if (newConfig.background_color !== undefined) delete newConfig.background_color;
@@ -1410,7 +1729,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
   class LunarCalendarCard extends HTMLElement{
     static getConfigElement() { return document.createElement('lich-block-am-duong-viet-nam-editor'); }
     static getStubConfig() { 
-      return { bg_type: 'solid', bg_color: '#000000', bg_opacity: 0, border_width: 1, border_opacity: 0, shadow_enable: false }; 
+      return { bg_type: 'solid', bg_color: '#000000', bg_opacity: 0, border_width: 1, border_opacity: 0, shadow_enable: false, weather_show: true }; 
     }
 
 		constructor(){
@@ -1447,12 +1766,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     }
 
     _handleClickOutside(e) {
-      const activeTab = window.activeLunarTab;
-      if (activeTab !== 'none') {
+      if (window.activeLunarTab !== 'none') {
         const path = (e && typeof e.composedPath === 'function') ? e.composedPath() : [];
         if (!path.includes(this)) {
           window.activeLunarTab = 'none';
-          if (activeTab === 'cal' && this._resetDisplayDateToToday()) return;
           const overlay = this.card ? this.card.querySelector('#tab-overlay') : null;
           const btnCal = this.card ? this.card.querySelector('#tab-btn-cal') : null;
           const btnConv = this.card ? this.card.querySelector('#tab-btn-conv') : null;
@@ -1678,8 +1995,74 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       }, { passive: true });
     }
 
+    _getWeatherEntity(entityId) {
+      if (!entityId || !this._hass || !this._hass.states) return null;
+      return this._hass.states[entityId] || null;
+    }
+
+    _getWeatherStateValue(entityId) {
+      const entity = this._getWeatherEntity(entityId);
+      if (!entity || entity.state === undefined || entity.state === null) return undefined;
+      const state = String(entity.state);
+      if (state === 'unknown' || state === 'unavailable') return undefined;
+      return entity.state;
+    }
+
+    _buildWeatherInfo() {
+      const cfg = this.config || {};
+      const weatherEnabled = cfg.weather_show !== undefined ? !!cfg.weather_show : true;
+      if (!weatherEnabled) return { show: false };
+
+      const conditionEntity = this._getWeatherEntity(cfg.weather_condition_entity);
+      const isWeatherDomain = !!(cfg.weather_condition_entity && String(cfg.weather_condition_entity).split('.')[0] === 'weather');
+      const weatherEntity = isWeatherDomain ? conditionEntity : null;
+
+      const conditionRaw = this._getWeatherStateValue(cfg.weather_condition_entity);
+      const conditionInfo = getWeatherConditionInfo(conditionRaw);
+
+      const temperatureValue = this._getWeatherStateValue(cfg.weather_temperature_entity)
+        ?? getWeatherAttrValue(weatherEntity, ['temperature', 'native_temperature', 'current_temperature']);
+      const humidityValue = this._getWeatherStateValue(cfg.weather_humidity_entity)
+        ?? getWeatherAttrValue(weatherEntity, ['humidity', 'relative_humidity']);
+      const windValue = this._getWeatherStateValue(cfg.weather_wind_entity)
+        ?? getWeatherAttrValue(weatherEntity, ['wind_speed', 'wind_speed_value', 'wind']);
+      const highValue = this._getWeatherStateValue(cfg.weather_temp_high_entity)
+        ?? getWeatherAttrValue(weatherEntity, ['temperature_high', 'high_temperature', 'temperature_max', 'max_temp'])
+        ?? getTodayForecastValue(weatherEntity, ['temperature', 'temperature_high', 'high_temperature', 'temp_high']);
+      const lowValue = this._getWeatherStateValue(cfg.weather_temp_low_entity)
+        ?? getWeatherAttrValue(weatherEntity, ['temperature_low', 'low_temperature', 'temperature_min', 'min_temp'])
+        ?? getTodayForecastValue(weatherEntity, ['templow', 'temperature_low', 'low_temperature', 'temp_low']);
+
+      const windUnit = (this._getWeatherEntity(cfg.weather_wind_entity)?.attributes?.unit_of_measurement)
+        || getWeatherAttrValue(weatherEntity, ['wind_speed_unit', 'native_wind_speed_unit'])
+        || 'km/h';
+
+      const hasAnyData = [conditionRaw, temperatureValue, humidityValue, windValue, highValue, lowValue].some(v => v !== undefined && v !== null && v !== '');
+      if (!hasAnyData) return { show: false };
+
+      const humidityComfort = getHumidityComfortInfo(humidityValue, temperatureValue);
+      return {
+        show: true,
+        conditionEmoji: conditionInfo.emoji,
+        conditionLabel: conditionInfo.label,
+        conditionAnim: conditionInfo.anim || 'cloudy',
+        temperatureDisplay: formatWeatherTemp(temperatureValue),
+        highDisplay: formatWeatherTemp(highValue),
+        lowDisplay: formatWeatherTemp(lowValue),
+        humidityDisplay: formatWeatherHumidity(humidityValue),
+        humidityEmoji: humidityComfort.emoji,
+        humidityAnim: humidityComfort.anim,
+        humidityComfortLabel: humidityComfort.label,
+        windDisplay: formatWeatherWind(windValue, windUnit)
+      };
+    }
+
+    _getWeatherSignature(weatherInfo) {
+      return JSON.stringify(weatherInfo || { show: false });
+    }
+
     setConfig(config){
-      this.config = config || {};
+      this.config = { weather_show: true, ...(config || {}) };
       this._ensureCard();
       this.card.style.borderRadius = 'var(--ha-card-border-radius, 16px)';
       
@@ -1694,11 +2077,17 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       
       injectPopupDOM();
 
+      const weatherInfo = this._buildWeatherInfo();
+      const weatherSignature = this._getWeatherSignature(weatherInfo);
+      const weatherChanged = this._lastWeatherSignature !== weatherSignature;
+      this._lastWeatherSignature = weatherSignature;
+      this._weatherInfo = weatherInfo;
+
       const newTheme = this._hass.themes && this._hass.themes.darkMode !== undefined ? this._hass.themes.darkMode : null;
       const now = new Date();
       const todayStr = now.toDateString();
       
-      if (oldTheme !== newTheme || this._lastDateStr !== todayStr || !this._renderedHass) {
+      if (oldTheme !== newTheme || this._lastDateStr !== todayStr || weatherChanged || !this._renderedHass) {
         if (this._lastDateStr !== todayStr && !this._userNavigatedDate) {
           this._setDisplayDate(now, false);
         }
@@ -1937,7 +2326,8 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       const mm = this.displayMonth;
       const yy = this.displayYear;
 
-      const html = [ printStyle(), printTable(mm, yy, today, this.config) ].join('');
+      const renderConfig = { ...(this.config || {}), _weatherInfo: this._weatherInfo || this._buildWeatherInfo() };
+      const html = [ printStyle(), printTable(mm, yy, today, renderConfig) ].join('');
       const hoverEffect = this.config.hover_effect || 'neon';
 
       const convHtml = `
@@ -2043,10 +2433,19 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       const toggleTab = (tabName) => {
           if (window.activeLunarTab === tabName) {
               window.activeLunarTab = 'none';
-              if (tabName === 'cal' && this._resetDisplayDateToToday()) return;
-              overlay.style.display = 'none';
-              btnCal.classList.remove('active');
-              btnConv.classList.remove('active');
+              const selectedDate = this.displayDate || new Date();
+              const selectedMonth = selectedDate.getMonth() + 1;
+              const selectedYear = selectedDate.getFullYear();
+              if (this.displayMonth !== selectedMonth || this.displayYear !== selectedYear) {
+                  this.displayMonth = selectedMonth;
+                  this.displayYear = selectedYear;
+                  this._render();
+                  return;
+              } else {
+                  overlay.style.display = 'none';
+                  btnCal.classList.remove('active');
+                  btnConv.classList.remove('active');
+              }
           } else {
               window.activeLunarTab = tabName;
               overlay.style.display = 'flex'; 
