@@ -4,10 +4,42 @@
 // ==========================================
 
 import { svg_12congiap, svg_12congiap_names } from './lich-block-am-duong-viet-nam-bubble-data.js';
-import { getLichAmDuongTodayInfo } from './lich-block-am-duong-viet-nam-popup.js';
+import { getLichAmDuongHelpers } from './lich-am-duong-viet-nam-core.js?v=1';
+import { getLichAmDuongTodayInfo, initPopupCore } from './lich-block-am-duong-viet-nam-popup.js?v=2';
 
 const SVG_ITEMS = Array.isArray(svg_12congiap) ? svg_12congiap : [];
 const SVG_NAMES = Array.isArray(svg_12congiap_names) ? svg_12congiap_names : [];
+const HA_LICH_AM_DUONG_HELPERS = getLichAmDuongHelpers();
+initPopupCore(HA_LICH_AM_DUONG_HELPERS);
+
+const MAIN_BLOCK_CARD_TAG = 'lich-block-am-duong-viet-nam';
+let mainBlockCardLoadPromise = null;
+
+async function ensureMainBlockCardLoaded() {
+    if (customElements.get(MAIN_BLOCK_CARD_TAG)) return true;
+    if (!mainBlockCardLoadPromise) {
+        mainBlockCardLoadPromise = import('./lich-block-am-duong-viet-nam.js?v=1')
+            .catch((err) => {
+                mainBlockCardLoadPromise = null;
+                console.warn('Không thể tải thẻ lịch block chính:', err);
+                throw err;
+            });
+    }
+    try {
+        await mainBlockCardLoadPromise;
+    } catch (err) {
+        return false;
+    }
+    return !!customElements.get(MAIN_BLOCK_CARD_TAG);
+}
+
+function formatDateValueForMainBlock(date = new Date()) {
+    const fixed = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const yyyy = fixed.getFullYear();
+    const mm = String(fixed.getMonth() + 1).padStart(2, '0');
+    const dd = String(fixed.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
 
 const CHAT_FONT_OPTIONS = [
     { value: 'system', label: 'Hiện đại / System', family: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' },
@@ -409,7 +441,7 @@ class LunarCalendarBubbleCard extends HTMLElement {
 
     getDateInfo() {
         try {
-            const exactInfo = getLichAmDuongTodayInfo();
+            const exactInfo = getLichAmDuongTodayInfo(HA_LICH_AM_DUONG_HELPERS);
             if (exactInfo && exactInfo.solarLine && exactInfo.lunarLine) {
                 return {
                     solarLine: exactInfo.solarLine,
@@ -2085,20 +2117,46 @@ class LunarCalendarBubbleCard extends HTMLElement {
         this.setGreetingFullText();
     }
 
-    openModal() {
+    async openModal() {
         const container = this.shadowRoot.getElementById('card-container');
-        if (container && !container.firstChild) {
-            this.mainCard = document.createElement('lich-block-am-duong-viet-nam');
-            if (customElements.get('lich-block-am-duong-viet-nam')) {
-                this.mainCard.setConfig({ type: 'custom:lich-block-am-duong-viet-nam' });
-                this.mainCard.hass = this._hass;
-                container.appendChild(this.mainCard);
-            } else {
-                container.innerHTML = '<div style="padding: 22px; color: var(--primary-text-color);">Kh&#244;ng t&#236;m th&#7845;y card <b>lich-block-am-duong-viet-nam</b>.</div>';
-            }
-        }
         const modal = this.shadowRoot.getElementById('modal');
         if (modal) modal.style.display = 'flex';
+        if (!container) return;
+
+        const openToken = (this._mainBlockOpenToken || 0) + 1;
+        this._mainBlockOpenToken = openToken;
+
+        if (!customElements.get(MAIN_BLOCK_CARD_TAG) && !this.mainCard) {
+            container.innerHTML = '<div style="padding: 22px; color: var(--primary-text-color);">Đang tải lịch block chính...</div>';
+        }
+
+        const isReady = await ensureMainBlockCardLoaded();
+        if (openToken !== this._mainBlockOpenToken) return;
+
+        if (!isReady) {
+            container.innerHTML = '<div style="padding: 22px; color: var(--primary-text-color);">Chưa tải được thẻ <b>lich-block-am-duong-viet-nam</b>. Hãy kiểm tra file lịch block chính nằm cùng thư mục và được khai báo dạng JavaScript module.</div>';
+            return;
+        }
+
+        if (!this.mainCard) {
+            this.mainCard = document.createElement(MAIN_BLOCK_CARD_TAG);
+            const today = new Date();
+            const dateValue = formatDateValueForMainBlock(today);
+            this.mainCard.setConfig({
+                type: 'custom:lich-block-am-duong-viet-nam',
+                selected_date: dateValue,
+                initial_date: dateValue,
+                date: dateValue,
+                day: today.getDate(),
+                month: today.getMonth() + 1,
+                year: today.getFullYear()
+            });
+            if (this._hass) this.mainCard.hass = this._hass;
+            container.replaceChildren(this.mainCard);
+        } else if (!container.contains(this.mainCard)) {
+            container.replaceChildren(this.mainCard);
+            if (this._hass) this.mainCard.hass = this._hass;
+        }
     }
 
     closeModal() {

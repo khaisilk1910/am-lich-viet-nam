@@ -1,3 +1,4 @@
+import { getLichAmDuongHelpers as haLichGetSharedHelpers } from './lich-am-duong-viet-nam-core.js?v=1';
 // ==========================================
 // LUNAR CALENDAR POPUP MODULE
 // File này chỉ chứa giao diện và logic của Popup
@@ -5,124 +6,11 @@
 
 let _haLichPopupHelpers = null;
 
-const HA_LICH_CAN_FALLBACK = ['Giáp', 'Ất', 'Bính', 'Đinh', 'Mậu', 'Kỷ', 'Canh', 'Tân', 'Nhâm', 'Quý'];
-const HA_LICH_CHI_FALLBACK = ['Tý', 'Sửu', 'Dần', 'Mão', 'Thìn', 'Tỵ', 'Ngọ', 'Mùi', 'Thân', 'Dậu', 'Tuất', 'Hợi'];
 const HA_LICH_DAY_NAMES = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
 const HA_LICH_LUNAR_MONTH_NAMES = ['', 'Giêng', 'Hai', 'Ba', 'Tư', 'Năm', 'Sáu', 'Bảy', 'Tám', 'Chín', 'Mười', 'Mười Một', 'Chạp'];
 
 function haLichPad2(value) {
     return String(value).padStart(2, '0');
-}
-
-function haLichInt(value) {
-    return Math.floor(value);
-}
-
-function haLichJdnFallback(dd, mm, yy) {
-    const a = haLichInt((14 - mm) / 12);
-    const y = yy + 4800 - a;
-    const m = mm + 12 * a - 3;
-    return dd + haLichInt((153 * m + 2) / 5) + 365 * y + haLichInt(y / 4) - haLichInt(y / 100) + haLichInt(y / 400) - 32045;
-}
-
-function haLichNewMoon(k) {
-    const T = k / 1236.85;
-    const T2 = T * T;
-    const T3 = T2 * T;
-    const dr = Math.PI / 180;
-    let jd1 = 2415020.75933 + 29.53058868 * k + 0.0001178 * T2 - 0.000000155 * T3;
-    jd1 += 0.00033 * Math.sin((166.56 + 132.87 * T - 0.009173 * T2) * dr);
-    const M = 359.2242 + 29.10535608 * k - 0.0000333 * T2 - 0.00000347 * T3;
-    const Mpr = 306.0253 + 385.81691806 * k + 0.0107306 * T2 + 0.00001236 * T3;
-    const F = 21.2964 + 390.67050646 * k - 0.0016528 * T2 - 0.00000239 * T3;
-    let c1 = (0.1734 - 0.000393 * T) * Math.sin(M * dr) + 0.0021 * Math.sin(2 * dr * M);
-    c1 -= 0.4068 * Math.sin(Mpr * dr) + 0.0161 * Math.sin(2 * dr * Mpr);
-    c1 -= 0.0004 * Math.sin(3 * dr * Mpr);
-    c1 += 0.0104 * Math.sin(2 * dr * F) - 0.0051 * Math.sin((M + Mpr) * dr);
-    c1 -= 0.0074 * Math.sin((M - Mpr) * dr) + 0.0004 * Math.sin((2 * F + M) * dr);
-    c1 -= 0.0004 * Math.sin((2 * F - M) * dr) - 0.0006 * Math.sin((2 * F + Mpr) * dr);
-    c1 += 0.0010 * Math.sin((2 * F - Mpr) * dr) + 0.0005 * Math.sin((2 * Mpr + M) * dr);
-    let deltaT;
-    if (T < -11) {
-        deltaT = 0.001 + 0.000839 * T + 0.0002261 * T2 - 0.00000845 * T3 - 0.000000081 * T * T3;
-    } else {
-        deltaT = -0.000278 + 0.000265 * T + 0.000262 * T2;
-    }
-    return jd1 + c1 - deltaT;
-}
-
-function haLichSunLongitude(jdn) {
-    const T = (jdn - 2451545.0) / 36525;
-    const T2 = T * T;
-    const dr = Math.PI / 180;
-    const M = 357.52910 + 35999.05030 * T - 0.0001559 * T2 - 0.00000048 * T * T2;
-    const L0 = 280.46645 + 36000.76983 * T + 0.0003032 * T2;
-    let DL = (1.914600 - 0.004817 * T - 0.000014 * T2) * Math.sin(dr * M);
-    DL += (0.019993 - 0.000101 * T) * Math.sin(2 * dr * M) + 0.000290 * Math.sin(3 * dr * M);
-    let L = (L0 + DL) * dr;
-    L -= Math.PI * 2 * haLichInt(L / (Math.PI * 2));
-    return L;
-}
-
-function haLichGetNewMoonDay(k, timeZone) {
-    return haLichInt(haLichNewMoon(k) + 0.5 + timeZone / 24);
-}
-
-function haLichGetSunLongitude(dayNumber, timeZone) {
-    return haLichInt(haLichSunLongitude(dayNumber - 0.5 - timeZone / 24) / Math.PI * 6);
-}
-
-function haLichGetLunarMonth11(yy, timeZone) {
-    const off = haLichJdnFallback(31, 12, yy) - 2415021;
-    const k = haLichInt(off / 29.530588853);
-    let nm = haLichGetNewMoonDay(k, timeZone);
-    const sunLong = haLichGetSunLongitude(nm, timeZone);
-    if (sunLong >= 9) nm = haLichGetNewMoonDay(k - 1, timeZone);
-    return nm;
-}
-
-function haLichGetLeapMonthOffset(a11, timeZone) {
-    const k = haLichInt((a11 - 2415021.076998695) / 29.530588853 + 0.5);
-    let last = 0;
-    let i = 1;
-    let arc = haLichGetSunLongitude(haLichGetNewMoonDay(k + i, timeZone), timeZone);
-    do {
-        last = arc;
-        i += 1;
-        arc = haLichGetSunLongitude(haLichGetNewMoonDay(k + i, timeZone), timeZone);
-    } while (arc !== last && i < 14);
-    return i - 1;
-}
-
-function haLichConvertSolar2LunarFallback(dd, mm, yy, timeZone = 7.0) {
-    const dayNumber = haLichJdnFallback(dd, mm, yy);
-    const k = haLichInt((dayNumber - 2415021.076998695) / 29.530588853);
-    let monthStart = haLichGetNewMoonDay(k + 1, timeZone);
-    if (monthStart > dayNumber) monthStart = haLichGetNewMoonDay(k, timeZone);
-    let a11 = haLichGetLunarMonth11(yy, timeZone);
-    let b11 = a11;
-    let lunarYear;
-    if (a11 >= monthStart) {
-        lunarYear = yy;
-        a11 = haLichGetLunarMonth11(yy - 1, timeZone);
-    } else {
-        lunarYear = yy + 1;
-        b11 = haLichGetLunarMonth11(yy + 1, timeZone);
-    }
-    const lunarDay = dayNumber - monthStart + 1;
-    const diff = haLichInt((monthStart - a11) / 29);
-    let lunarLeap = 0;
-    let lunarMonth = diff + 11;
-    if (b11 - a11 > 365) {
-        const leapMonthDiff = haLichGetLeapMonthOffset(a11, timeZone);
-        if (diff >= leapMonthDiff) {
-            lunarMonth = diff + 10;
-            if (diff === leapMonthDiff) lunarLeap = 1;
-        }
-    }
-    if (lunarMonth > 12) lunarMonth -= 12;
-    if (lunarMonth >= 11 && diff < 4) lunarYear -= 1;
-    return { day: lunarDay, month: lunarMonth, year: lunarYear, leap: lunarLeap };
 }
 
 function haLichGetTodaySolarParts() {
@@ -143,7 +31,11 @@ function haLichResolveHelpers(helpersOverride = null) {
     if (helpersOverride) return helpersOverride;
     if (_haLichPopupHelpers) return _haLichPopupHelpers;
     if (typeof window !== 'undefined' && window.haLichAmDuongPopupHelpers) return window.haLichAmDuongPopupHelpers;
-    return null;
+    try {
+        return haLichGetSharedHelpers();
+    } catch (err) {
+        return null;
+    }
 }
 
 export function getLichAmDuongDateInfo(dd = null, mm = null, yy = null, helpersOverride = null) {
@@ -154,23 +46,18 @@ export function getLichAmDuongDateInfo(dd = null, mm = null, yy = null, helpersO
         yy = today.year;
     }
     const helpers = haLichResolveHelpers(helpersOverride);
-    const CAN = helpers?.CAN || HA_LICH_CAN_FALLBACK;
-    const CHI = helpers?.CHI || HA_LICH_CHI_FALLBACK;
-    const jd = typeof helpers?.jdn === 'function' ? helpers.jdn(dd, mm, yy) : haLichJdnFallback(dd, mm, yy);
-
-    let lunar;
-    if (typeof helpers?.getLunarDate === 'function') {
-        lunar = helpers.getLunarDate(dd, mm, yy);
-    } else {
-        lunar = haLichConvertSolar2LunarFallback(dd, mm, yy, 7.0);
-    }
+    const missingCore = !helpers || typeof helpers.jdn !== 'function' || typeof helpers.getLunarDate !== 'function';
+    const CAN = Array.isArray(helpers?.CAN) ? helpers.CAN : [];
+    const CHI = Array.isArray(helpers?.CHI) ? helpers.CHI : [];
+    const jd = missingCore ? 0 : helpers.jdn(dd, mm, yy);
+    const lunar = missingCore ? { day: dd, month: mm, year: yy, leap: 0 } : helpers.getLunarDate(dd, mm, yy);
 
     const lunarDay = Number(lunar?.day) || dd;
     const lunarMonth = Number(lunar?.month) || mm;
     const lunarYear = Number(lunar?.year) || yy;
     const lunarLeap = Number(lunar?.leap) || 0;
-    const dayIndex = ((jd + 1) % 7 + 7) % 7;
-    const canChiNam = CAN[(lunarYear + 6) % 10] + ' ' + CHI[(lunarYear + 8) % 12];
+    const dayIndex = missingCore ? new Date(yy, mm - 1, dd).getDay() : ((jd + 1) % 7 + 7) % 7;
+    const canChiNam = (CAN.length && CHI.length) ? CAN[(lunarYear + 6) % 10] + ' ' + CHI[(lunarYear + 8) % 12] : 'Không rõ';
     const monthName = HA_LICH_LUNAR_MONTH_NAMES[lunarMonth] || String(lunarMonth);
     const leapText = lunarLeap ? ' nhuận' : '';
 
@@ -186,7 +73,7 @@ export function getLichAmDuongDateInfo(dd = null, mm = null, yy = null, helpersO
         canChiNam,
         solarLine: `${HA_LICH_DAY_NAMES[dayIndex]}, ${haLichPad2(dd)} - ${haLichPad2(mm)} - ${yy}`,
         lunarLine: `${lunarDay} Tháng ${monthName}${leapText}, ${canChiNam}`,
-        source: helpers ? 'popup_helpers' : 'vietnam_lunar_fallback'
+        source: missingCore ? 'missing_core' : 'shared_core'
     };
 }
 
@@ -252,7 +139,7 @@ export function injectPopupDOM() {
 }
 
 export function initPopupCore(helpers) {
-    _haLichPopupHelpers = helpers || null;
+    _haLichPopupHelpers = helpers || haLichResolveHelpers() || null;
     if (typeof window !== 'undefined') {
         window.haLichAmDuongPopupHelpers = _haLichPopupHelpers;
         window.haGetLichAmDuongDateInfo = (dd, mm, yy) => getLichAmDuongDateInfo(dd, mm, yy, _haLichPopupHelpers);
@@ -263,7 +150,7 @@ export function initPopupCore(helpers) {
         jdn, getLunarDate, getCanChiNgay, TIETKHI, 
         getSunLongitude, getGioHoangDao, getGioHacDao, 
         getHuongXuatHanh, getThanSat, CAN, CHI 
-    } = helpers;
+    } = _haLichPopupHelpers || {};
 
     function convertSolar2Lunar(dd, mm, yy) {
         if (typeof getLunarDate === 'function') {
