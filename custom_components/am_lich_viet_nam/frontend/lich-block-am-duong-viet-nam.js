@@ -1447,10 +1447,12 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     }
 
     _handleClickOutside(e) {
-      if (window.activeLunarTab !== 'none') {
+      const activeTab = window.activeLunarTab;
+      if (activeTab !== 'none') {
         const path = (e && typeof e.composedPath === 'function') ? e.composedPath() : [];
         if (!path.includes(this)) {
           window.activeLunarTab = 'none';
+          if (activeTab === 'cal' && this._resetDisplayDateToToday()) return;
           const overlay = this.card ? this.card.querySelector('#tab-overlay') : null;
           const btnCal = this.card ? this.card.querySelector('#tab-btn-cal') : null;
           const btnConv = this.card ? this.card.querySelector('#tab-btn-conv') : null;
@@ -2041,19 +2043,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       const toggleTab = (tabName) => {
           if (window.activeLunarTab === tabName) {
               window.activeLunarTab = 'none';
-              const selectedDate = this.displayDate || new Date();
-              const selectedMonth = selectedDate.getMonth() + 1;
-              const selectedYear = selectedDate.getFullYear();
-              if (this.displayMonth !== selectedMonth || this.displayYear !== selectedYear) {
-                  this.displayMonth = selectedMonth;
-                  this.displayYear = selectedYear;
-                  this._render();
-                  return;
-              } else {
-                  overlay.style.display = 'none';
-                  btnCal.classList.remove('active');
-                  btnConv.classList.remove('active');
-              }
+              if (tabName === 'cal' && this._resetDisplayDateToToday()) return;
+              overlay.style.display = 'none';
+              btnCal.classList.remove('active');
+              btnConv.classList.remove('active');
           } else {
               window.activeLunarTab = tabName;
               overlay.style.display = 'flex'; 
