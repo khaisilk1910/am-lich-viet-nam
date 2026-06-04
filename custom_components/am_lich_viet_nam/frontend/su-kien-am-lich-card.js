@@ -461,6 +461,8 @@
       this.expandedRows = new Set();
       this._lastDataString = null;
       this._handleDocumentClick = this._handleDocumentClick.bind(this);
+      this._updateDataRaf = null;
+      this._configSignature = '';
       
       // BIẾN LƯU STATE LOCAL CHO THANH TRƯỢT MÀ KHÔNG CẦN VÀO EDITOR
       this._localSoNgay = null; 
@@ -472,6 +474,10 @@
 
     disconnectedCallback() {
       document.removeEventListener('click', this._handleDocumentClick);
+      if (this._updateDataRaf) {
+        window.cancelAnimationFrame(this._updateDataRaf);
+        this._updateDataRaf = null;
+      }
     }
 
     _handleDocumentClick(event) {
@@ -511,6 +517,7 @@
           this._localSoNgay = null;
       }
       this.config = config;
+      this._configSignature = JSON.stringify(this.config || {});
 
       if (!this.shadowRoot) {
         this.attachShadow({ mode: 'open' });
@@ -566,12 +573,20 @@
       this.card.style.borderRadius = 'var(--ha-card-border-radius, 12px)';
       this.card.style.overflow = 'hidden';
       
-      if (this._hass) this.updateData();
+      if (this._hass) this.scheduleUpdateData();
     }
 
     set hass(hass) {
       this._hass = hass;
-      this.updateData();
+      this.scheduleUpdateData();
+    }
+
+    scheduleUpdateData() {
+      if (this._updateDataRaf) return;
+      this._updateDataRaf = window.requestAnimationFrame(() => {
+        this._updateDataRaf = null;
+        this.updateData();
+      });
     }
 
     updateData() {
@@ -616,8 +631,9 @@
 
       events.sort((a, b) => a.days - b.days);
 
-      // Thêm biến _localSoNgay vào Hash để check nếu kéo thanh trượt thì phải render lại
-      const dataHash = JSON.stringify(events.map(e => `${e.entity_id}_${e.days}`)) + JSON.stringify(this.config) + hasIntegrationData + this._localSoNgay;
+      // Hash chỉ dựa trên dữ liệu hiển thị + config đã cache, tránh stringify toàn bộ config ở mọi nhịp hass.
+      const eventSignature = events.map(e => `${e.entity_id}|${e.days}|${e.name}|${e.thu}|${e.duong}|${e.am}`).join('||');
+      const dataHash = `${eventSignature}::${this._configSignature}::${hasIntegrationData}::${this._localSoNgay}`;
       if (this._lastDataString === dataHash) return;
       this._lastDataString = dataHash;
 
@@ -1086,7 +1102,7 @@
         sliderUI.addEventListener('change', (e) => {
           this._localSoNgay = parseInt(e.target.value, 10);
           this._lastDataString = null; // Xóa Cache để ép thẻ tải lại danh sách
-          this.updateData();
+          this.scheduleUpdateData();
         });
       }
 
@@ -1144,9 +1160,11 @@
     name: "Danh sách Sự Kiện",
     description: "Thẻ hiển thị danh sách đếm ngược sự kiện cho Lịch Âm Việt Nam.",
     preview: true,
+    // Không tự gợi ý theo entity để tránh xuất hiện sai ngữ cảnh trong picker HA 2026.6+.
+    getEntitySuggestion: () => null
   };
-  if (!window.customCards.some(card => card.type === cardRegistration.type)) {
-    window.customCards.push(cardRegistration);
-  }
+  const existingEventCard = window.customCards.find(card => card && card.type === cardRegistration.type);
+  if (existingEventCard) Object.assign(existingEventCard, cardRegistration);
+  else window.customCards.push(cardRegistration);
 
 })();

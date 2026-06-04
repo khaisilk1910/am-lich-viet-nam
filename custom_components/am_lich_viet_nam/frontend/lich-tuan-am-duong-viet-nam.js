@@ -1044,6 +1044,13 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       this._suppressClickUntil = 0;
       this._popupDateSyncRaf = null;
       this._popupDateSyncTimer = null;
+      this._popupDomInjected = false;
+    }
+
+    _ensurePopupDOM() {
+      if (this._popupDomInjected) return;
+      injectPopupDOM();
+      this._popupDomInjected = true;
     }
 
     connectedCallback() {
@@ -1079,14 +1086,14 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       this.card.style.border = this.config.border || "none";
       this.card.style.boxShadow = this.config.box_shadow || "none";
       this.card.style.borderRadius = this.config.border_radius || "var(--ha-card-border-radius, 14px)";
-      injectPopupDOM();
+      this._ensurePopupDOM();
       this._render();
       this._startAutoRefresh();
     }
 
     set hass(hass) {
       this._hass = hass;
-      injectPopupDOM();
+      this._ensurePopupDOM();
       if (this._cardPopupMainCard) this._cardPopupMainCard.hass = hass;
       this._syncCardPopupTheme();
       const key = this._todayKey();

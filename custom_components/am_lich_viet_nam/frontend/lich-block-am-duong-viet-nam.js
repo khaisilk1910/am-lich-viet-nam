@@ -1384,7 +1384,14 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 			this._userNavigatedDate = false;
 			this._viewingSwipeDate = false;
 			this._ignoreNextSwipeClickUntil = 0;
+			this._popupDomInjected = false;
 		}
+
+    _ensurePopupDOM() {
+      if (this._popupDomInjected) return;
+      injectPopupDOM();
+      this._popupDomInjected = true;
+    }
 
     _parseConfigDateValue(value) {
       if (value instanceof Date && !isNaN(value.getTime())) {
@@ -1780,7 +1787,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       this._hass = hass || {};
       this._ensureCard();
       
-      injectPopupDOM();
+      this._ensurePopupDOM();
 
       const weatherInfo = this._buildWeatherInfo();
       const weatherSignature = this._getWeatherSignature(weatherInfo);
@@ -2430,14 +2437,17 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
   if (!customElements.get('lich-block-am-duong-viet-nam')) customElements.define('lich-block-am-duong-viet-nam', LunarCalendarCard);
 
   window.customCards = window.customCards || [];
-  if (!window.customCards.some((card) => card && card.type === "lich-block-am-duong-viet-nam")) {
-    window.customCards.push({
+  const lunarBlockCardDescriptor = {
         type: "lich-block-am-duong-viet-nam",
         name: "Lịch Âm Dương",
         description: "Thẻ Lịch Âm Dương Việt Nam có thể tùy chỉnh màu nền.",
         preview: true,
-    });
-  }
+        // Thẻ lịch tổng hợp không gắn entity cụ thể, nên không tự gợi ý theo entity trong HA 2026.6+.
+        getEntitySuggestion: () => null
+  };
+  const existingLunarBlockCard = window.customCards.find((card) => card && card.type === lunarBlockCardDescriptor.type);
+  if (existingLunarBlockCard) Object.assign(existingLunarBlockCard, lunarBlockCardDescriptor);
+  else window.customCards.push(lunarBlockCardDescriptor);
 
   // ---- TRUYỀN HÀM TÍNH TOÁN CORE CHO POPUP LÀM VIỆC ----
   initPopupCore(getLichAmDuongHelpers());

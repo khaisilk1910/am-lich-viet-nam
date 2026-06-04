@@ -1782,20 +1782,39 @@ class LunarCalendarBubbleCard extends HTMLElement {
 
                 .modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10000; display: none; align-items: center; justify-content: center; }
                 .modal-overlay { position: absolute; width: 100%; height: 100%; background: transparent; }
-                .modal-content { position: relative; width: 95%; max-width: 480px; max-height: 85vh; border-radius: 28px; animation: popInModal 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; box-shadow: 0 25px 50px rgba(0,0,0,0.5); overflow: hidden; }
+                .modal-content { position: relative; width: 95%; max-width: 480px; max-height: 85vh; border-radius: 28px; animation: popInModal 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; box-shadow: 0 25px 50px rgba(0,0,0,0.5); overflow: hidden; background: #000000; color-scheme: dark; }
                 @keyframes popInModal { 0% { opacity: 0; transform: scale(0.7) translateY(30px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
-                .close-btn { position: absolute; top: 15px; right: 15px; z-index: 101; background: rgba(0,0,0,0.2); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+                .close-btn { position: absolute; top: 15px; right: 15px; z-index: 101; background: rgba(255,255,255,0.18); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-                #card-container { overflow-y: auto; background: var(--card-background-color); border-radius: 28px; }
-                .is-light-theme #card-container {
-                    background: rgba(0, 0, 0, 0.75) !important;
-                    --ha-card-background: transparent !important;
-                    --card-background-color: transparent !important;
-                    --paper-card-background-color: transparent !important;
-                    --primary-background-color: transparent !important;
-                    --secondary-background-color: transparent !important;
-                    backdrop-filter: blur(12px);
-                    -webkit-backdrop-filter: blur(12px);
+                #card-container {
+                    overflow-y: auto;
+                    background: #000000 !important;
+                    border-radius: 28px;
+                    color-scheme: dark;
+                    --ha-card-background: #000000 !important;
+                    --card-background-color: #000000 !important;
+                    --paper-card-background-color: #000000 !important;
+                    --primary-background-color: #000000 !important;
+                    --secondary-background-color: #000000 !important;
+                    --primary-text-color: #ffffff !important;
+                    --secondary-text-color: rgba(255,255,255,0.82) !important;
+                    --text-primary-color: #ffffff !important;
+                    --divider-color: rgba(255,255,255,0.18) !important;
+                    --ha-card-box-shadow: none !important;
+                }
+                #card-container > * {
+                    background: transparent !important;
+                    color-scheme: dark;
+                    --ha-card-background: #000000 !important;
+                    --card-background-color: #000000 !important;
+                    --paper-card-background-color: #000000 !important;
+                    --primary-background-color: #000000 !important;
+                    --secondary-background-color: #000000 !important;
+                    --primary-text-color: #ffffff !important;
+                    --secondary-text-color: rgba(255,255,255,0.82) !important;
+                    --text-primary-color: #ffffff !important;
+                    --divider-color: rgba(255,255,255,0.18) !important;
+                    --ha-card-box-shadow: none !important;
                 }
 
                 @media (max-width: 600px) {
@@ -2117,10 +2136,42 @@ class LunarCalendarBubbleCard extends HTMLElement {
         this.setGreetingFullText();
     }
 
+    applyMainBlockPopupDarkTheme(card = this.mainCard) {
+        const container = this.shadowRoot?.getElementById('card-container');
+        const darkVars = {
+            '--ha-card-background': '#000000',
+            '--card-background-color': '#000000',
+            '--paper-card-background-color': '#000000',
+            '--primary-background-color': '#000000',
+            '--secondary-background-color': '#000000',
+            '--primary-text-color': '#ffffff',
+            '--secondary-text-color': 'rgba(255,255,255,0.82)',
+            '--text-primary-color': '#ffffff',
+            '--divider-color': 'rgba(255,255,255,0.18)',
+            '--ha-card-box-shadow': 'none'
+        };
+        const applyVars = (el) => {
+            if (!el?.style) return;
+            Object.entries(darkVars).forEach(([name, value]) => {
+                el.style.setProperty(name, value, 'important');
+            });
+            el.style.colorScheme = 'dark';
+        };
+
+        applyVars(container);
+        applyVars(card);
+        if (container) container.style.setProperty('background', '#000000', 'important');
+        if (card) card.style.setProperty('background', 'transparent', 'important');
+    }
+
     async openModal() {
         const container = this.shadowRoot.getElementById('card-container');
         const modal = this.shadowRoot.getElementById('modal');
-        if (modal) modal.style.display = 'flex';
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.classList.add('force-dark-calendar-popup');
+        }
+        this.applyMainBlockPopupDarkTheme();
         if (!container) return;
 
         const openToken = (this._mainBlockOpenToken || 0) + 1;
@@ -2144,6 +2195,13 @@ class LunarCalendarBubbleCard extends HTMLElement {
             const dateValue = formatDateValueForMainBlock(today);
             this.mainCard.setConfig({
                 type: 'custom:lich-block-am-duong-viet-nam',
+                bg_type: 'solid',
+                bg_color: '#000000',
+                bg_opacity: 100,
+                border_opacity: 0,
+                shadow_enable: false,
+                text_main_color: '#ffffff',
+                text_accent_color: '#ffff99',
                 selected_date: dateValue,
                 initial_date: dateValue,
                 date: dateValue,
@@ -2152,10 +2210,14 @@ class LunarCalendarBubbleCard extends HTMLElement {
                 year: today.getFullYear()
             });
             if (this._hass) this.mainCard.hass = this._hass;
+            this.applyMainBlockPopupDarkTheme(this.mainCard);
             container.replaceChildren(this.mainCard);
         } else if (!container.contains(this.mainCard)) {
             container.replaceChildren(this.mainCard);
             if (this._hass) this.mainCard.hass = this._hass;
+            this.applyMainBlockPopupDarkTheme(this.mainCard);
+        } else {
+            this.applyMainBlockPopupDarkTheme(this.mainCard);
         }
     }
 
