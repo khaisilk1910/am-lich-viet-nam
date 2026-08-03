@@ -3,12 +3,13 @@
 // Custom card: lich-am-duong-bubble
 // ==========================================
 
-import { svg_12congiap, svg_12congiap_names } from './lich-block-am-duong-viet-nam-bubble-data.js';
-import { getLichAmDuongHelpers } from './lich-am-duong-viet-nam-core.js?v=1';
-import { getLichAmDuongTodayInfo, initPopupCore } from './lich-block-am-duong-viet-nam-popup.js?v=2';
+import { getSvgItemCount, loadSvgItem, svg_12congiap_names, svg_12congiap_viewboxes } from './lich-block-am-duong-viet-nam-bubble-data.js?v=20260803';
+import { getLichAmDuongHelpers } from './lich-am-duong-viet-nam-core.js?v=20260803';
+import { getLichAmDuongTodayInfo, initPopupCore } from './lich-block-am-duong-viet-nam-popup.js?v=20260803';
 
-const SVG_ITEMS = Array.isArray(svg_12congiap) ? svg_12congiap : [];
+const SVG_COUNT = getSvgItemCount();
 const SVG_NAMES = Array.isArray(svg_12congiap_names) ? svg_12congiap_names : [];
+const SVG_VIEWBOXES = Array.isArray(svg_12congiap_viewboxes) ? svg_12congiap_viewboxes : [];
 const HA_LICH_AM_DUONG_HELPERS = getLichAmDuongHelpers();
 initPopupCore(HA_LICH_AM_DUONG_HELPERS);
 
@@ -18,7 +19,7 @@ let mainBlockCardLoadPromise = null;
 async function ensureMainBlockCardLoaded() {
     if (customElements.get(MAIN_BLOCK_CARD_TAG)) return true;
     if (!mainBlockCardLoadPromise) {
-        mainBlockCardLoadPromise = import('./lich-block-am-duong-viet-nam.js?v=1')
+        mainBlockCardLoadPromise = import('./lich-block-am-duong-viet-nam.js?v=20260803')
             .catch((err) => {
                 mainBlockCardLoadPromise = null;
                 console.warn('Không thể tải thẻ lịch block chính:', err);
@@ -257,19 +258,28 @@ class LunarCalendarBubbleCard extends HTMLElement {
         this._systemMonitorCycleIndex = 0;
         this._systemMonitorCycleTimer = null;
         this._systemMonitorCycleAppliedIndex = -1;
-        this._extraStates = {};
-        this._extraStatesRequested = false;
         this._resizeHandler = null;
         this._placementRaf = null;
         this._systemMonitorUpdateRaf = null;
         this._systemMonitorStateSignature = '';
         this._lastThemeDarkMode = undefined;
         this._lastDateKey = '';
+        this._selectedSvg = '';
+        this._selectedSvgIndex = -1;
+        this._svgLoadToken = 0;
+        this._documentVisibilityHandler = null;
+        this._intersectionObserver = null;
+        this._isPageVisible = !document.hidden;
+        this._isIntersecting = true;
+    }
+
+    connectedCallback() {
+        this.attachVisibilityHandlers();
+        this.setupVisibilityObserver();
     }
 
     static getStubConfig() {
         return {
-            type: 'custom:lich-am-duong-bubble',
             position: 'bottom-right',
             offset_x: 20,
             offset_y: 200,
@@ -322,6 +332,20 @@ class LunarCalendarBubbleCard extends HTMLElement {
         return document.createElement('lich-am-duong-bubble-editor');
     }
 
+    getCardSize() {
+        return 1;
+    }
+
+    getGridOptions() {
+        return {
+            rows: 1,
+            columns: 3,
+            min_rows: 1,
+            max_rows: 1,
+            min_columns: 3
+        };
+    }
+
     setConfig(config) {
         if (!config || !config.type) throw new Error('Invalid configuration');
         const mergedConfig = { ...LunarCalendarBubbleCard.getStubConfig(), ...config };
@@ -337,7 +361,13 @@ class LunarCalendarBubbleCard extends HTMLElement {
         this._systemMonitorCycleAppliedIndex = -1;
         this._systemMonitorStateSignature = '';
         this._lastDateKey = '';
+        const selectedIndex = this.getSelectedSvgIndex();
+        if (selectedIndex !== this._selectedSvgIndex) {
+            this._selectedSvgIndex = selectedIndex;
+            this._selectedSvg = '';
+        }
         this.render();
+        this.loadSelectedSvg();
     }
 
     set hass(hass) {
@@ -351,7 +381,6 @@ class LunarCalendarBubbleCard extends HTMLElement {
             this.requestSystemMonitorUpdate();
         }
 
-        if (!this._extraStatesRequested) this.loadAllStatesOnce();
 
         const modal = this.shadowRoot.getElementById('modal');
         const darkMode = hass?.themes?.darkMode;
@@ -384,6 +413,75 @@ class LunarCalendarBubbleCard extends HTMLElement {
             window.cancelAnimationFrame(this._systemMonitorUpdateRaf);
             this._systemMonitorUpdateRaf = null;
         }
+        if (this._documentVisibilityHandler) {
+            document.removeEventListener('visibilitychange', this._documentVisibilityHandler);
+            this._documentVisibilityHandler = null;
+        }
+        if (this._intersectionObserver) {
+            this._intersectionObserver.disconnect();
+            this._intersectionObserver = null;
+        }
+    }
+
+    attachVisibilityHandlers() {
+        if (!this._documentVisibilityHandler) {
+            this._documentVisibilityHandler = () => {
+                this._isPageVisible = !document.hidden;
+                this.applyVisibilityState();
+            };
+            document.addEventListener('visibilitychange', this._documentVisibilityHandler, { passive: true });
+        }
+        this._isPageVisible = !document.hidden;
+        this.applyVisibilityState();
+    }
+
+    setupVisibilityObserver() {
+        if (this._intersectionObserver) this._intersectionObserver.disconnect();
+        const target = this.shadowRoot?.getElementById('wrapper');
+        if (!target || typeof IntersectionObserver === 'undefined') {
+            this._isIntersecting = true;
+            return;
+        }
+        this._intersectionObserver = new IntersectionObserver((entries) => {
+            this._isIntersecting = entries.some((entry) => entry.isIntersecting);
+            this.applyVisibilityState();
+        }, { rootMargin: '80px' });
+        this._intersectionObserver.observe(target);
+    }
+
+    isCardActive() {
+        return this.isConnected && this._isPageVisible && this._isIntersecting;
+    }
+
+    applyVisibilityState() {
+        const active = this.isCardActive();
+        this.toggleAttribute('data-paused', !active);
+        if (!active) {
+            this.stopSystemMonitorCycle();
+            window.clearTimeout(this._greetingTimer);
+            window.clearTimeout(this._greetingHideTimer);
+            window.clearTimeout(this._greetingRepeatTimer);
+            this.clearTypingTimers();
+            return;
+        }
+        this.requestSystemMonitorUpdate();
+        this.startSystemMonitorCycle();
+    }
+
+    async loadSelectedSvg() {
+        const index = this.getSelectedSvgIndex();
+        const token = ++this._svgLoadToken;
+        try {
+            const svg = this.sanitizeSvg(await loadSvgItem(index));
+            if (token !== this._svgLoadToken || index !== this.getSelectedSvgIndex()) return;
+            this._selectedSvgIndex = index;
+            this._selectedSvg = svg;
+            const avatar = this.shadowRoot?.getElementById('svgAvatar');
+            if (avatar) avatar.innerHTML = svg;
+            this.requestChatPlacementUpdate();
+        } catch (error) {
+            console.warn('Không thể tải SVG bubble:', error);
+        }
     }
 
     getRGBA(hex, opacity) {
@@ -402,19 +500,17 @@ class LunarCalendarBubbleCard extends HTMLElement {
     }
 
     getSelectedSvgIndex() {
-        const count = SVG_ITEMS.length || 1;
+        const count = SVG_COUNT || 1;
         const parsed = Number.parseInt(this.config.svg_style, 10);
         if (Number.isNaN(parsed)) return 0;
         return Math.max(0, Math.min(count - 1, parsed));
     }
 
     getSvgViewBox(index) {
-        const svg = SVG_ITEMS[index] || '';
-        const match = svg.match(/viewBox=["']\s*([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s*["']/i);
-        if (!match) return { width: 1, height: 1 };
+        const box = SVG_VIEWBOXES[index];
         return {
-            width: Math.abs(Number.parseFloat(match[3])) || 1,
-            height: Math.abs(Number.parseFloat(match[4])) || 1
+            width: Math.abs(Number(box?.width)) || 1,
+            height: Math.abs(Number(box?.height)) || 1
         };
     }
 
@@ -616,92 +712,18 @@ class LunarCalendarBubbleCard extends HTMLElement {
     }
 
     getAllStatesMap() {
-        const hass = this.getHassObject();
-        const out = {};
-        const addStates = (states) => {
-            Object.entries(states || {}).forEach(([id, stateObj]) => {
-                const normalizedId = this.normalizeEntityId(id);
-                if (id) out[id] = stateObj;
-                if (normalizedId) out[normalizedId] = stateObj;
-                const stateEntityId = this.normalizeEntityId(stateObj?.entity_id);
-                if (stateEntityId) out[stateEntityId] = stateObj;
-            });
-        };
-        addStates(hass?.states);
-        addStates(this._extraStates);
-        return out;
+        return this.getHassObject()?.states || {};
     }
 
-    async loadAllStatesOnce() {
-        if (!this._hass?.callWS || this._extraStatesRequested) return;
-        this._extraStatesRequested = true;
-        try {
-            const statesList = await this._hass.callWS({ type: 'get_states' });
-            if (Array.isArray(statesList)) {
-                this._extraStates = statesList.reduce((acc, item) => {
-                    if (item?.entity_id) {
-                        acc[item.entity_id] = item;
-                        acc[this.normalizeEntityId(item.entity_id)] = item;
-                    }
-                    return acc;
-                }, {});
-                this._systemMonitorStateSignature = '';
-                this.updateSystemMonitor();
-            }
-        } catch (err) {
-            console.warn('Cannot load full Home Assistant states for system monitor:', err);
-        }
-    }
 
-    getSystemMonitorAliasCandidates(key) {
-        const map = {
-            ram: ['sensor.system_monitor_memory_usage', 'sensor.system_monitor_memory_use_percent', 'sensor.system_monitor_memory_use', 'sensor.memory_use_percent', 'sensor.memory_usage', 'sensor.ram_usage'],
-            cpu: ['sensor.system_monitor_processor_use', 'sensor.system_monitor_cpu_usage', 'sensor.processor_use', 'sensor.cpu_usage', 'sensor.cpu_use_percent'],
-            disk: ['sensor.system_monitor_disk_usage', 'sensor.system_monitor_disk_use_percent', 'sensor.disk_use_percent', 'sensor.disk_usage', 'sensor.disk_use'],
-            temp: ['sensor.system_monitor_processor_temperature', 'sensor.processor_temperature', 'sensor.cpu_temperature', 'sensor.system_monitor_cpu_temperature', 'sensor.temperature_cpu']
-        };
-        return (map[key] || []).map((id) => this.normalizeEntityId(id));
-    }
 
     findStateByExactId(states, entityId) {
         const normalized = this.normalizeEntityId(entityId);
         if (!normalized) return null;
-        if (states[normalized]) return { entityId: normalized, stateObj: states[normalized] };
-        for (const [id, stateObj] of Object.entries(states || {})) {
-            const normalizedKey = this.normalizeEntityId(id);
-            const normalizedStateEntityId = this.normalizeEntityId(stateObj?.entity_id);
-            if (normalizedKey === normalized || normalizedStateEntityId === normalized) {
-                return { entityId: normalizedStateEntityId || normalizedKey || normalized, stateObj };
-            }
-        }
-        return null;
+        const stateObj = states?.[normalized] || null;
+        return stateObj ? { entityId: normalized, stateObj } : null;
     }
 
-    findStateByMetricKey(states, key) {
-        const rules = {
-            ram: [['memory', 'ram'], ['usage', 'use', 'percent', 'used']],
-            cpu: [['processor', 'cpu'], ['usage', 'use', 'percent', 'load']],
-            disk: [['disk', 'storage'], ['usage', 'use', 'percent', 'used']],
-            temp: [['temperature', 'temp'], ['processor', 'cpu']]
-        };
-        const groups = rules[key];
-        if (!groups) return null;
-        const candidates = Object.keys(states)
-            .filter((id) => id.startsWith('sensor.'))
-            .map((id) => {
-                const friendly = states[id]?.attributes?.friendly_name || '';
-                const unit = states[id]?.attributes?.unit_of_measurement || '';
-                const text = `${id} ${friendly} ${unit}`.toLowerCase();
-                const matched = groups.every((group) => group.some((token) => text.includes(token)));
-                const systemScore = text.includes('system_monitor') ? -4 : 0;
-                const unitScore = key === 'temp' && (unit.includes('°') || unit.toLowerCase().includes('c')) ? -2 : 0;
-                return { id, matched, score: systemScore + unitScore + text.length / 1000 };
-            })
-            .filter((item) => item.matched)
-            .sort((a, b) => a.score - b.score);
-        const best = candidates[0]?.id;
-        return best ? { entityId: best, stateObj: states[best] } : null;
-    }
 
     getStateObjForEntity(entityId, key = '', statesOverride = null) {
         const normalizedId = this.normalizeEntityId(entityId);
@@ -813,6 +835,7 @@ class LunarCalendarBubbleCard extends HTMLElement {
     startSystemMonitorCycle() {
         this.stopSystemMonitorCycle();
         this.applySystemMonitorCycleState({ restartProgress: true });
+        if (!this.isCardActive()) return;
         if (!this.config?.system_monitor_enabled || !this.isSystemMonitorCycleMode()) return;
         if (this.getSystemMonitorItems().length <= 1) return;
 
@@ -1217,7 +1240,7 @@ class LunarCalendarBubbleCard extends HTMLElement {
         };
 
         const index = this.getSelectedSvgIndex();
-        const selectedSvg = this.sanitizeSvg(SVG_ITEMS[index] || SVG_ITEMS[0] || '');
+        const selectedSvg = this._selectedSvgIndex === index ? this._selectedSvg : '';
         const box = this.getSvgViewBox(index);
         const svgSize = Math.max(40, Number(this.config.svg_size) || 80);
         const stageHeight = Math.max(svgSize, Math.min(svgSize * 1.75, svgSize * (box.height / Math.max(box.width, 1))));
@@ -1817,6 +1840,17 @@ class LunarCalendarBubbleCard extends HTMLElement {
                     --ha-card-box-shadow: none !important;
                 }
 
+                :host([data-paused]) .avatar-stage,
+                :host([data-paused]) .system-monitor-metric,
+                :host([data-paused]) .chat-bubble { animation-play-state: paused !important; }
+
+                @media (prefers-reduced-motion: reduce) {
+                    .avatar-stage, .system-monitor-metric, .chat-bubble, .modal-content {
+                        animation: none !important;
+                        transition-duration: 0.01ms !important;
+                    }
+                }
+
                 @media (max-width: 600px) {
                     .bubble-wrapper { align-items: center; }
                     .tooltip { display: none; }
@@ -1910,6 +1944,7 @@ class LunarCalendarBubbleCard extends HTMLElement {
 
         this.setupDragAndDrop();
         this.setupSystemMonitorControls();
+        this.setupVisibilityObserver();
         this.updateSystemMonitor();
         this.startSystemMonitorCycle();
         this.shadowRoot.getElementById('overlay')?.addEventListener('click', () => this.closeModal());
@@ -1945,6 +1980,7 @@ class LunarCalendarBubbleCard extends HTMLElement {
 
     scheduleNextRepeatedGreeting() {
         window.clearTimeout(this._greetingRepeatTimer);
+        if (!this.isCardActive()) return;
         if (!this.config.greeting_enabled || !this.config.greeting_repeat_enabled) return;
         if (this.getGreetingTimeoutMs() <= 0) return;
 
@@ -1966,6 +2002,7 @@ class LunarCalendarBubbleCard extends HTMLElement {
         chat.classList.remove('show');
         chat.dataset.typed = '0';
         this.setGreetingFullText();
+        if (!this.isCardActive()) return;
         if (!this.config.greeting_enabled) return;
 
         const delay = Math.max(0, Number(this.config.greeting_delay) || 0);
@@ -2230,8 +2267,6 @@ class LunarCalendarBubbleCard extends HTMLElement {
 class LunarCalendarBubbleEditor extends HTMLElement {
     constructor() {
         super();
-        this._extraStates = {};
-        this._extraStatesRequested = false;
         this._registrySensorIds = [];
         this._registryRequested = false;
         this._entityInputDispatchTimer = null;
@@ -2244,7 +2279,6 @@ class LunarCalendarBubbleEditor extends HTMLElement {
     set hass(hass) {
         this._hass = hass;
         this.updateEntityPickers();
-        this.loadAllStatesOnce();
     }
 
     escapeAttribute(value) {
@@ -2294,40 +2328,7 @@ class LunarCalendarBubbleEditor extends HTMLElement {
     }
 
     getAllStatesMap() {
-        const hass = this.getHassObject();
-        const out = {};
-        const addStates = (states) => {
-            Object.entries(states || {}).forEach(([id, stateObj]) => {
-                const normalizedId = this.normalizeEntityId(id);
-                if (id) out[id] = stateObj;
-                if (normalizedId) out[normalizedId] = stateObj;
-                const stateEntityId = this.normalizeEntityId(stateObj?.entity_id);
-                if (stateEntityId) out[stateEntityId] = stateObj;
-            });
-        };
-        addStates(hass?.states);
-        addStates(this._extraStates);
-        return out;
-    }
-
-    async loadAllStatesOnce() {
-        if (!this._hass?.callWS || this._extraStatesRequested) return;
-        this._extraStatesRequested = true;
-        try {
-            const statesList = await this._hass.callWS({ type: 'get_states' });
-            if (Array.isArray(statesList)) {
-                this._extraStates = statesList.reduce((acc, item) => {
-                    if (item?.entity_id) {
-                        acc[item.entity_id] = item;
-                        acc[this.normalizeEntityId(item.entity_id)] = item;
-                    }
-                    return acc;
-                }, {});
-                this.updateEntityPickers();
-            }
-        } catch (err) {
-            console.warn('Cannot load all Home Assistant states for sensor selector:', err);
-        }
+        return this.getHassObject()?.states || {};
     }
 
     async loadSensorRegistryOnce() {
@@ -2583,7 +2584,7 @@ class LunarCalendarBubbleEditor extends HTMLElement {
     }
 
     getSvgOptions() {
-        const count = SVG_ITEMS.length || 1;
+        const count = SVG_COUNT || 1;
         const current = Number.parseInt(this.config.svg_style, 10) || 0;
         return Array.from({ length: count }, (_, index) => {
             const name = SVG_NAMES[index] || `Mau SVG ${String(index + 1).padStart(2, '0')}`;
@@ -2622,7 +2623,7 @@ class LunarCalendarBubbleEditor extends HTMLElement {
                     <div class="field">
                         <label>Ch&#7885;n m&#7851;u SVG hi&#7875;n th&#7883;</label>
                         <select id="svg_style">${this.getSvgOptions()}</select>
-                        <div class="hint">Danh s&#225;ch n&#224;y l&#7845;y t&#7921; &#273;&#7897;ng t&#7915; file <b>lich-block-am-duong-viet-nam-bubble-data.js</b>.</div>
+                        <div class="hint">M&#7895;i SVG ch&#7881; &#273;&#432;&#7907;c t&#7843;i khi b&#7841;n ch&#7885;n, gi&#250;p dashboard kh&#7903;i &#273;&#7897;ng nhanh h&#417;n.</div>
                     </div>
                     <div class="field">
                         <label>K&#237;ch th&#432;&#7899;c SVG</label>
@@ -2865,7 +2866,6 @@ class LunarCalendarBubbleEditor extends HTMLElement {
         };
 
         this.updateEntityPickers();
-        this.loadAllStatesOnce();
         let dispatchTimer = null;
         const scheduleDispatch = () => {
             window.clearTimeout(dispatchTimer);
@@ -2942,6 +2942,7 @@ if (!window.customCards.some((card) => card.type === 'lich-am-duong-bubble')) {
         type: 'lich-am-duong-bubble',
         name: 'Bong Bong Lich Am Duong SVG',
         description: 'Bong bong SVG noi, tu doi vi tri khung chat, hieu ung go chu va ngay am duong.',
+        documentationURL: 'https://github.com/khaisilk1910/am-lich-viet-nam',
         preview: false
     });
 }

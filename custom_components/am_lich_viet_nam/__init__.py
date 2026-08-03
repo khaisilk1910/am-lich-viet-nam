@@ -1,51 +1,102 @@
 """The Vietnamese Lunar Calendar integration."""
-import os
-import logging
-import voluptuous as vol
-import datetime
-from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers import config_validation as cv
-from homeassistant.components.http import StaticPathConfig
-from homeassistant.components.frontend import add_extra_js_url
-from homeassistant.components.lovelace.resources import ResourceStorageCollection
 
-from .const import DOMAIN
+from __future__ import annotations
+
+from datetime import date
+import hashlib
+import logging
+import os
+from typing import Any
+
+import voluptuous as vol
+
+from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
+from homeassistant.components.lovelace.resources import ResourceStorageCollection
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.helpers import config_validation as cv
+
 from .amlich_core import (
-    get_lunar_date, lunar_to_solar_extended, get_year_can_chi, get_lunar_leap_info,
-    get_can_chi_day_month_year, get_month_name, get_tiet_khi, get_gio_hoang_dao,
-    get_gio_hac_dao, get_huong_xuat_hanh, get_thap_nhi_truc, get_nhi_thap_bat_tu,
-    NGAY_THONG_TIN, THU
+    NGAY_THONG_TIN,
+    THU,
+    get_can_chi_day_month_year,
+    get_gio_hac_dao,
+    get_gio_hoang_dao,
+    get_huong_xuat_hanh,
+    get_lunar_date,
+    get_lunar_leap_info,
+    get_month_name,
+    get_nhi_thap_bat_tu,
+    get_thap_nhi_truc,
+    get_tiet_khi,
+    get_year_can_chi,
+    lunar_to_solar_extended,
 )
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-# Khai báo đường dẫn ảo trên web và thư mục thực tế chứa UI
 UI_URL_BASE = "/am_lich_viet_nam_ui"
 UI_DIR_PATH = "frontend"
+PLATFORMS = ["sensor"]
 
-SERVICE_CONVERT_SCHEMA = vol.Schema({
-    vol.Required("conversion_type"): vol.In(["solar_to_lunar", "lunar_to_solar"]),
-    vol.Required("day"): cv.positive_int,
-    vol.Required("month"): cv.positive_int,
-    vol.Required("year"): cv.positive_int,
-})
+FRONTEND_RESOURCES = (
+    "lich-block-am-duong-viet-nam.js",
+    "su-kien-am-lich-card.js",
+    "lich-block-am-duong-viet-nam-bubble.js",
+    "lich-tuan-am-duong-viet-nam.js",
+)
 
-async def init_resource(hass: HomeAssistant, url: str, ver: str) -> bool:
-    """Hàm tự động thêm thẻ vào Lovelace Resources với định dạng hacstag."""
-    url_with_version = f"{url}?hacstag={ver}"
+SERVICE_CONVERT_SCHEMA = vol.Schema(
+    {
+        vol.Required("conversion_type"): vol.In(
+            ["solar_to_lunar", "lunar_to_solar"]
+        ),
+        vol.Required("day"): vol.All(cv.positive_int, vol.Range(min=1, max=31)),
+        vol.Required("month"): vol.All(cv.positive_int, vol.Range(min=1, max=12)),
+        vol.Required("year"): vol.All(
+            cv.positive_int, vol.Range(min=1800, max=2199)
+        ),
+    }
+)
 
-    if "lovelace" not in hass.data:
-        _LOGGER.debug("Lovelace chưa được tải, sử dụng add_extra_js_url fallback.")
-        add_extra_js_url(hass, url_with_version)
+
+def _get_file_version(file_path: str, fallback: str) -> str:
+    """Return a short content hash for a frontend resource."""
+    try:
+        digest = hashlib.sha256()
+        with open(file_path, "rb") as resource_file:
+            for chunk in iter(lambda: resource_file.read(128 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()[:16]
+    except OSError as err:
+        _LOGGER.warning(
+            "Không thể đọc %s để tạo phiên bản cache (%s). Dùng %s",
+            file_path,
+            err,
+            fallback,
+        )
+        return fallback
+
+
+async def _async_init_resource(hass: HomeAssistant, url: str, version: str) -> bool:
+    """Add or update a Lovelace JavaScript resource."""
+    versioned_url = f"{url}?hacstag={version}"
+    lovelace = hass.data.get("lovelace")
+
+    if lovelace is None:
+        add_extra_js_url(hass, versioned_url)
         return False
 
-    lovelace = hass.data.get("lovelace")
-    resources: ResourceStorageCollection = (
-        lovelace.resources if hasattr(lovelace, "resources") else lovelace.get("resources")
+    resources: Any = (
+        lovelace.resources
+        if hasattr(lovelace, "resources")
+        else lovelace.get("resources")
     )
-
     if not resources:
+        add_extra_js_url(hass, versioned_url)
         return False
 
     if hasattr(resources, "async_get_info"):
@@ -53,223 +104,266 @@ async def init_resource(hass: HomeAssistant, url: str, ver: str) -> bool:
 
     for item in resources.async_items():
         item_url = item.get("url", "")
-        
-        # LOGIC SO SÁNH CHÍNH XÁC: Phải khớp hoàn toàn hoặc chỉ khác tham số phía sau ?
-        if item_url == url or item_url.startswith(f"{url}?"):
-            if item_url.endswith(f"hacstag={ver}"):
-                return False
+        if item_url != url and not item_url.startswith(f"{url}?"):
+            continue
+        if item_url == versioned_url:
+            return False
 
-            _LOGGER.debug(f"Cập nhật Lovelace resource thành: {url_with_version}")
-
-            if isinstance(resources, ResourceStorageCollection):
-                await resources.async_update_item(
-                    item["id"], {"res_type": "module", "url": url_with_version}
-                )
-            else:
-                item["url"] = url_with_version
-
-            return True
+        _LOGGER.debug("Cập nhật Lovelace resource: %s", versioned_url)
+        if isinstance(resources, ResourceStorageCollection):
+            await resources.async_update_item(
+                item["id"], {"res_type": "module", "url": versioned_url}
+            )
+        else:
+            add_extra_js_url(hass, versioned_url)
+        return True
 
     if isinstance(resources, ResourceStorageCollection):
-        _LOGGER.debug(f"Thêm mới Lovelace resource: {url_with_version}")
-        await resources.async_create_item({"res_type": "module", "url": url_with_version})
+        _LOGGER.debug("Thêm Lovelace resource: %s", versioned_url)
+        await resources.async_create_item(
+            {"res_type": "module", "url": versioned_url}
+        )
     else:
-        _LOGGER.debug(f"Thêm extra JS module (chế độ YAML): {url_with_version}")
-        add_extra_js_url(hass, url_with_version)
+        add_extra_js_url(hass, versioned_url)
 
     return True
 
 
-async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Được gọi khi Home Assistant khởi động để thiết lập các thành phần chung (Giao diện)."""
-    
-    await hass.http.async_register_static_paths([
-        StaticPathConfig(
-            UI_URL_BASE,
-            hass.config.path("custom_components", DOMAIN, UI_DIR_PATH),
-            False
+async def _async_register_frontend_resources(hass: HomeAssistant) -> None:
+    """Register all frontend modules once per Home Assistant start."""
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if domain_data.get("frontend_resources_registered"):
+        return
+
+    integration = hass.data.get("integrations", {}).get(DOMAIN)
+    fallback_version = str(getattr(integration, "version", "1.0"))
+    frontend_path = hass.config.path(
+        "custom_components", DOMAIN, UI_DIR_PATH
+    )
+
+    for file_name in FRONTEND_RESOURCES:
+        file_path = os.path.join(frontend_path, file_name)
+        version = await hass.async_add_executor_job(
+            _get_file_version, file_path, fallback_version
         )
-    ])
+        await _async_init_resource(
+            hass, f"{UI_URL_BASE}/{file_name}", version
+        )
+
+    domain_data["frontend_resources_registered"] = True
+
+
+def _get_date_details(jd: int, lunar_obj: Any) -> dict[str, Any]:
+    """Build detailed calendar information for an action response."""
+    can_chi_day, can_chi_month, can_chi_year = get_can_chi_day_month_year(
+        lunar_obj
+    )
+    day_info = NGAY_THONG_TIN.get(can_chi_day, {})
+    return {
+        "lunar_day": lunar_obj.day,
+        "month_name": get_month_name(lunar_obj.month, lunar_obj.leap == 1),
+        "can_chi_day": can_chi_day,
+        "can_chi_month": can_chi_month,
+        "can_chi_year": can_chi_year,
+        "tiet_khi": get_tiet_khi(jd),
+        "gio_hoang_dao": get_gio_hoang_dao(jd),
+        "gio_hac_dao": get_gio_hac_dao(jd),
+        "huong_xuat_hanh": get_huong_xuat_hanh(jd),
+        "thap_nhi_truc": get_thap_nhi_truc(jd),
+        "nhi_thap_bat_tu": get_nhi_thap_bat_tu(jd),
+        "ngay_mo_ta": day_info.get("moTa", ""),
+        "ngay_chi_tiet": day_info.get("chiTiet", []),
+    }
+
+
+def _convert_date(data: dict[str, Any]) -> dict[str, Any]:
+    """Convert a date synchronously outside the Home Assistant event loop."""
+    conversion_type = data["conversion_type"]
+    day = int(data["day"])
+    month = int(data["month"])
+    year = int(data["year"])
+
+    if conversion_type == "solar_to_lunar":
+        try:
+            solar_date = date(year, month, day)
+        except ValueError as err:
+            raise ValueError(
+                f"Ngày dương lịch {day}/{month}/{year} không tồn tại"
+            ) from err
+
+        lunar = get_lunar_date(day, month, year)
+        if not lunar:
+            raise ValueError("Ngày nằm ngoài phạm vi hỗ trợ 1800-2199")
+
+        year_can_chi = get_year_can_chi(lunar.year)
+        leap_month = get_lunar_leap_info(lunar.year)
+        response: dict[str, Any] = {
+            "ngay": lunar.day,
+            "thang": lunar.month,
+            "nam": lunar.year,
+            "nam_can_chi": year_can_chi,
+            "thu": THU[solar_date.weekday()],
+            "ngay_duong_lich": f"{day}/{month}/{year}",
+            "ngay_am_lich": (
+                f"{lunar.day}/{lunar.month}/{lunar.year}"
+                + (" (Nhuận)" if lunar.leap == 1 else "")
+            ),
+            "details": _get_date_details(lunar.jd, lunar),
+        }
+
+        if leap_month > 0:
+            message = (
+                f"Năm âm lịch {year_can_chi} ({lunar.year}) "
+                f"có nhuận tháng {leap_month}."
+            )
+            if lunar.month == leap_month:
+                message += " Tháng bạn tra trùng ngay vào tháng Nhuận này!"
+                both_solar, _ = lunar_to_solar_extended(
+                    lunar.day, lunar.month, lunar.year
+                )
+                if lunar.leap == 1:
+                    if "regular" in both_solar:
+                        response["ngay_duong_thang_thuong"] = both_solar[
+                            "regular"
+                        ]["ngay_duong_lich"]
+                    response["ngay_duong_thang_nhuan"] = f"{day}/{month}/{year}"
+                else:
+                    response["ngay_duong_thang_thuong"] = f"{day}/{month}/{year}"
+                    if "leap" in both_solar:
+                        response["ngay_duong_thang_nhuan"] = both_solar["leap"][
+                            "ngay_duong_lich"
+                        ]
+            response["thong_bao_nhuan"] = message
+        else:
+            response["thong_bao_nhuan"] = (
+                f"Năm âm lịch {year_can_chi} ({lunar.year}) không có tháng nhuận."
+            )
+
+        return response
+
+    both_solar, leap_month = lunar_to_solar_extended(day, month, year)
+    if not both_solar:
+        raise ValueError(f"Ngày {day}/{month}/{year} âm lịch không tồn tại")
+
+    default_result = both_solar.get("regular", both_solar.get("leap"))
+    if not default_result:
+        raise ValueError(f"Không thể quy đổi ngày {day}/{month}/{year} âm lịch")
+
+    solar_date = date(
+        default_result["nam"], default_result["thang"], default_result["ngay"]
+    )
+    lunar_for_details = get_lunar_date(
+        default_result["ngay"],
+        default_result["thang"],
+        default_result["nam"],
+    )
+    year_can_chi = get_year_can_chi(year)
+    response = {
+        "ngay": default_result["ngay"],
+        "thang": default_result["thang"],
+        "nam": default_result["nam"],
+        "nam_can_chi": year_can_chi,
+        "thu": THU[solar_date.weekday()],
+        "ngay_am_lich": f"{day}/{month}/{year}",
+        "ngay_duong_lich": default_result["ngay_duong_lich"],
+    }
+
+    if lunar_for_details:
+        response["details"] = _get_date_details(
+            lunar_for_details.jd, lunar_for_details
+        )
+
+    if leap_month > 0:
+        message = (
+            f"Năm âm lịch {year_can_chi} ({year}) có nhuận tháng {leap_month}."
+        )
+        if month == leap_month:
+            message += (
+                " Tháng bạn đang quy đổi chính là tháng nhuận! "
+                "Dưới đây là 2 kết quả:"
+            )
+            if "regular" in both_solar:
+                response["ngay_duong_thang_thuong"] = both_solar["regular"][
+                    "ngay_duong_lich"
+                ]
+            if "leap" in both_solar:
+                response["ngay_duong_thang_nhuan"] = both_solar["leap"][
+                    "ngay_duong_lich"
+                ]
+        response["thong_bao_nhuan"] = message
+    else:
+        response["thong_bao_nhuan"] = (
+            f"Năm âm lịch {year_can_chi} ({year}) không có tháng nhuận."
+        )
+
+    return response
+
+
+async def _async_handle_convert_date(
+    hass: HomeAssistant, call: ServiceCall
+) -> ServiceResponse:
+    """Handle the convert_date action."""
+    try:
+        return await hass.async_add_executor_job(_convert_date, dict(call.data))
+    except ValueError as err:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="invalid_date",
+            translation_placeholders={"message": str(err)},
+        ) from err
+    except Exception as err:
+        _LOGGER.exception("Không thể quy đổi ngày")
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="conversion_failed",
+        ) from err
+
+
+async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
+    """Set up shared integration resources."""
+    await hass.http.async_register_static_paths(
+        [
+            StaticPathConfig(
+                UI_URL_BASE,
+                hass.config.path("custom_components", DOMAIN, UI_DIR_PATH),
+                True,
+            )
+        ]
+    )
+
+    try:
+        await _async_register_frontend_resources(hass)
+    except Exception:  # Frontend registration must not block sensor setup.
+        _LOGGER.exception("Không thể tự động đăng ký tài nguyên Lovelace")
+
+    if not hass.services.has_service(DOMAIN, "convert_date"):
+
+        async def async_handle_convert_date(call: ServiceCall) -> ServiceResponse:
+            return await _async_handle_convert_date(hass, call)
+
+        hass.services.async_register(
+            DOMAIN,
+            "convert_date",
+            async_handle_convert_date,
+            schema=SERVICE_CONVERT_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
 
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Âm lịch Việt Nam from a config entry."""
-    
-    # ---------------------------------------------------------
-    # AUTO CACHE BUSTING KẾT HỢP MANIFEST FALLBACK
-    # ---------------------------------------------------------
-    # Lấy version từ manifest.json làm dự phòng (fallback)
-    integration = hass.data.get("integrations", {}).get(DOMAIN)
-    fallback_version = getattr(integration, "version", "1.0")
-    
-    def get_file_version(file_name, fallback):
-        """Hàm đọc mốc thời gian file được sửa đổi (chạy trong executor an toàn)."""
-        try:
-            # Dùng hass.config.path nối chuỗi nhiều tham số để chống lỗi đường dẫn chéo nền tảng
-            file_path = hass.config.path("custom_components", DOMAIN, UI_DIR_PATH, file_name)
-            return str(int(os.path.getmtime(file_path)))
-        except Exception as e:
-            _LOGGER.warning(f"Không thể đọc file {file_name} để tạo hacstag ({e}). Dùng version dự phòng: {fallback}")
-            return fallback
-
-    # Chạy hàm đọc file trong môi trường an toàn (tránh block luồng chính của HASS)
-    ver_lich_block = await hass.async_add_executor_job(
-        get_file_version, "lich-block-am-duong-viet-nam.js", fallback_version
-    )
-    ver_su_kien = await hass.async_add_executor_job(
-        get_file_version, "su-kien-am-lich-card.js", fallback_version
-    )
-    ver_lich_bubble = await hass.async_add_executor_job(
-        get_file_version, "su-kien-am-lich-card.js", fallback_version
-    )
-    ver_lich_bubble = await hass.async_add_executor_job(
-        get_file_version, "lich-tuan-am-duong-viet-nam.js", fallback_version
-    )
-
-    # Đăng ký URL với mã version vừa tự động tạo
-    await init_resource(hass, f"{UI_URL_BASE}/lich-block-am-duong-viet-nam.js", ver_lich_block)
-    await init_resource(hass, f"{UI_URL_BASE}/su-kien-am-lich-card.js", ver_su_kien)
-    await init_resource(hass, f"{UI_URL_BASE}/lich-block-am-duong-viet-nam-bubble.js", ver_lich_bubble)
-    await init_resource(hass, f"{UI_URL_BASE}/lich-tuan-am-duong-viet-nam.js", ver_lich_bubble)
-    # ---------------------------------------------------------
-
-    await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
-    entry.async_on_unload(entry.add_update_listener(update_listener))
-    
-    async def handle_convert_date(call: ServiceCall) -> ServiceResponse:
-        conv_type = call.data["conversion_type"]
-        d = call.data["day"]
-        m = call.data["month"]
-        y = call.data["year"]
-
-        def get_details(jd, lunar_obj):
-            can_chi_day, can_chi_month, can_chi_year = get_can_chi_day_month_year(lunar_obj)
-            ngay_thong_tin = NGAY_THONG_TIN.get(can_chi_day, {})
-            return {
-                "lunar_day": lunar_obj.day,
-                "month_name": get_month_name(lunar_obj.month, lunar_obj.leap == 1),
-                "can_chi_day": can_chi_day,
-                "can_chi_month": can_chi_month,
-                "can_chi_year": can_chi_year,
-                "tiet_khi": get_tiet_khi(jd),
-                "gio_hoang_dao": get_gio_hoang_dao(jd),
-                "gio_hac_dao": get_gio_hac_dao(jd),
-                "huong_xuat_hanh": get_huong_xuat_hanh(jd),
-                "thap_nhi_truc": get_thap_nhi_truc(jd),
-                "nhi_thap_bat_tu": get_nhi_thap_bat_tu(jd),
-                "ngay_mo_ta": ngay_thong_tin.get('moTa', ''),
-                "ngay_chi_tiet": ngay_thong_tin.get('chiTiet', [])
-            }
-
-        try:
-            if conv_type == "solar_to_lunar":
-                try:
-                    datetime.datetime(y, m, d)
-                except ValueError:
-                    return {"error": f"Ngày dương lịch {d}/{m}/{y} không tồn tại!"}
-
-                lunar = await hass.async_add_executor_job(get_lunar_date, d, m, y)
-                if not lunar:
-                    return {"error": "Nằm ngoài phạm vi hỗ trợ (1800-2199)."}
-                
-                can_chi = get_year_can_chi(lunar.year)
-                leap_month_of_year = await hass.async_add_executor_job(get_lunar_leap_info, lunar.year)
-                
-                response = {
-                    "ngay": lunar.day,
-                    "thang": lunar.month,
-                    "nam": lunar.year,
-                    "nam_can_chi": can_chi,
-                    "thu": THU[datetime.datetime(y, m, d).weekday()],
-                    "ngay_duong_lich": f"{int(d)}/{int(m)}/{int(y)}",
-                    "ngay_am_lich": f"{int(lunar.day)}/{int(lunar.month)}/{int(lunar.year)}" + (" (Nhuận)" if lunar.leap == 1 else "")
-                }
-                
-                response["details"] = await hass.async_add_executor_job(get_details, lunar.jd, lunar)
-                
-                if leap_month_of_year > 0:
-                    msg = f"Năm âm lịch {can_chi} ({lunar.year}) có nhuận tháng {leap_month_of_year}."
-                    if lunar.month == leap_month_of_year:
-                        msg += " Tháng bạn tra trùng ngay vào tháng Nhuận này!"
-                        both_solar, _ = await hass.async_add_executor_job(lunar_to_solar_extended, lunar.day, lunar.month, lunar.year)
-                        if lunar.leap == 1:
-                            if "regular" in both_solar:
-                                response["ngay_duong_thang_thuong"] = both_solar["regular"]["ngay_duong_lich"]
-                            response["ngay_duong_thang_nhuan"] = f"{int(d)}/{int(m)}/{int(y)}"
-                        else:
-                            response["ngay_duong_thang_thuong"] = f"{int(d)}/{int(m)}/{int(y)}"
-                            if "leap" in both_solar:
-                                response["ngay_duong_thang_nhuan"] = both_solar["leap"]["ngay_duong_lich"]
-                    response["thong_bao_nhuan"] = msg
-                else:
-                    response["thong_bao_nhuan"] = f"Năm âm lịch {can_chi} ({lunar.year}) không có tháng nhuận."
-                    
-                return response
-                
-            else:
-                both_solar, leap_month_of_year = await hass.async_add_executor_job(lunar_to_solar_extended, d, m, y)
-                can_chi = get_year_can_chi(y)
-                
-                if not both_solar:
-                     return {"error": f"Ngày {d}/{m}/{y} âm lịch không tồn tại."}
-                     
-                default_res = both_solar.get("regular", both_solar.get("leap"))
-                
-                lunar_obj_for_details = await hass.async_add_executor_job(
-                    get_lunar_date, default_res["ngay"], default_res["thang"], default_res["nam"]
-                )
-                     
-                response = {
-                    "ngay": default_res["ngay"],
-                    "thang": default_res["thang"],
-                    "nam": default_res["nam"],
-                    "nam_can_chi": can_chi,
-                    "thu": THU[datetime.datetime(default_res["nam"], default_res["thang"], default_res["ngay"]).weekday()],
-                    "ngay_am_lich": f"{int(d)}/{int(m)}/{int(y)}",
-                    "ngay_duong_lich": default_res["ngay_duong_lich"]
-                }
-                
-                if lunar_obj_for_details:
-                    response["details"] = await hass.async_add_executor_job(get_details, lunar_obj_for_details.jd, lunar_obj_for_details)
-                
-                if leap_month_of_year > 0:
-                    msg = f"Năm âm lịch {can_chi} ({y}) có nhuận tháng {leap_month_of_year}."
-                    if m == leap_month_of_year:
-                        msg += " Tháng bạn đang quy đổi chính là tháng nhuận! Dưới đây là 2 kết quả:"
-                        if "regular" in both_solar:
-                            response["ngay_duong_thang_thuong"] = both_solar["regular"]["ngay_duong_lich"]
-                        if "leap" in both_solar:
-                            response["ngay_duong_thang_nhuan"] = both_solar["leap"]["ngay_duong_lich"]
-                    response["thong_bao_nhuan"] = msg
-                else:
-                    response["thong_bao_nhuan"] = f"Năm âm lịch {can_chi} ({y}) không có tháng nhuận."
-
-                return response
-                
-        except ValueError as e:
-            return {"error": str(e)}
-        except Exception as e:
-            return {"error": f"Lỗi không xác định: {str(e)}"}
-
-    hass.services.async_register(
-        DOMAIN, "convert_date", handle_convert_date,
-        schema=SERVICE_CONVERT_SCHEMA, supports_response=SupportsResponse.ONLY,
-    )
+    """Set up a Vietnamese Lunar Calendar config entry."""
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, ["sensor"])
-    if unload_ok:
-        entries = hass.config_entries.async_entries(DOMAIN)
-        if len([e for e in entries if e.state.name == "LOADED"]) == 1:
-            hass.services.async_remove(DOMAIN, "convert_date")
-    return unload_ok
+    """Unload a config entry without removing shared actions or resources."""
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
-async def update_listener(hass: HomeAssistant, entry: ConfigEntry):
-    """Handle options update."""
+async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload an entry after its options change."""
     await hass.config_entries.async_reload(entry.entry_id)

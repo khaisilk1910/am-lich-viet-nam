@@ -32,9 +32,9 @@ import {
   getHuongXuatHanh,
   getThanSat,
   getLichAmDuongHelpers
-} from './lich-am-duong-viet-nam-core.js?v=1';
+} from './lich-am-duong-viet-nam-core.js?v=20260803';
 
-import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-popup.js?v=2';
+import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-popup.js?v=20260803';
 
 (function(){
   'use strict';
@@ -61,7 +61,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
   async function ensureMainBlockCardLoaded() {
     if (customElements.get(MAIN_BLOCK_CARD_TAG)) return true;
     if (!mainBlockCardLoadPromise) {
-      mainBlockCardLoadPromise = import('./lich-block-am-duong-viet-nam.js?v=1')
+      mainBlockCardLoadPromise = import('./lich-block-am-duong-viet-nam.js?v=20260803')
         .catch((err) => {
           mainBlockCardLoadPromise = null;
           console.warn('Không thể tải thẻ lịch block chính:', err);
@@ -1474,6 +1474,9 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
             0% { opacity: 0; transform: scale(0.78) translateY(24px); }
             100% { opacity: 1; transform: scale(1) translateY(0); }
           }
+          @media (prefers-reduced-motion: reduce) {
+            .wlc-card-popup-content { animation: none !important; }
+          }
           .wlc-card-popup-close {
             position: absolute;
             top: 15px;
@@ -1793,6 +1796,11 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
           .wlc-day:focus-visible {
             outline: none;
             transform: translateY(-1px);
+          }
+
+          @media (prefers-reduced-motion: reduce) {
+            .wlc-day, .wlc-nav, .wlc-today-reset { transition: none !important; animation: none !important; }
+            .wlc-day:hover, .wlc-day:focus-visible { transform: none; }
           }
 
           .wlc-day.is-center::before {
@@ -2177,6 +2185,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     type: WEEKLY_CARD_TAG,
     name: WEEKLY_CARD_NAME,
     description: "Thẻ tuần Âm Dương Việt Nam: hôm nay ở giữa, mũi tên hoặc kéo ngang để tiến/lùi từng tuần, bấm ngày để xem popup chi tiết, có trình chỉnh màu trong UI.",
+    documentationURL: "https://github.com/khaisilk1910/am-lich-viet-nam",
     preview: true,
     // Thẻ này không gắn với entity cụ thể, nên không tự gợi ý trong picker theo entity để tránh làm rối UI Home Assistant 2026.6+.
     getEntitySuggestion: () => null

@@ -1,4 +1,4 @@
-import { getLichAmDuongHelpers as haLichGetSharedHelpers } from './lich-am-duong-viet-nam-core.js?v=1';
+import { getLichAmDuongHelpers as haLichGetSharedHelpers } from './lich-am-duong-viet-nam-core.js?v=20260803';
 // ==========================================
 // LUNAR CALENDAR POPUP MODULE
 // File này chỉ chứa giao diện và logic của Popup
@@ -30,7 +30,6 @@ export function getLichAmDuongTodayInfo(helpersOverride = null) {
 function haLichResolveHelpers(helpersOverride = null) {
     if (helpersOverride) return helpersOverride;
     if (_haLichPopupHelpers) return _haLichPopupHelpers;
-    if (typeof window !== 'undefined' && window.haLichAmDuongPopupHelpers) return window.haLichAmDuongPopupHelpers;
     try {
         return haLichGetSharedHelpers();
     } catch (err) {
@@ -81,16 +80,25 @@ export function injectPopupDOM() {
     // 1. Khung HTML Popup
     if (!document.getElementById('ha-lich-popup')) {
         document.body.insertAdjacentHTML('beforeend', `
-            <div id="ha-lich-popup" class="ha-popup" onclick="window.haClosePopup()">
-                <div class="ha-popup-box" onclick="event.stopPropagation()">
+            <div id="ha-lich-popup" class="ha-popup">
+                <div class="ha-popup-box">
                     <div class="ha-popup-header">
                         <span id="ha-popup-title">Chi tiết</span>
-                        <span class="ha-popup-close" onclick="window.haClosePopup()">✕</span>
+                        <button type="button" class="ha-popup-close" aria-label="Đóng">✕</button>
                     </div>
                     <div id="ha-popup-content" class="ha-popup-content"></div>
                 </div>
             </div>
         `);
+    }
+
+    const popup = document.getElementById('ha-lich-popup');
+    if (popup && popup.dataset.listenersAttached !== 'true') {
+        popup.addEventListener('click', (event) => {
+            if (event.target === popup) closeDayPopup();
+        });
+        popup.querySelector('.ha-popup-close')?.addEventListener('click', closeDayPopup);
+        popup.dataset.listenersAttached = 'true';
     }
 
     // 2. Style CSS cho Popup
@@ -105,7 +113,7 @@ export function injectPopupDOM() {
             @media (min-width: 600px) { .ha-popup { align-items: center; } .ha-popup-box { border-radius: 24px; margin-bottom: auto; width: 420px; border: 1px solid rgba(var(--popup-text-rgb), 0.1); } }
             
             .ha-popup-header { display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 1.2em; margin-bottom: 20px; border-bottom: 1px solid rgba(var(--popup-text-rgb), 0.1); padding-bottom: 15px; }
-            .ha-popup-close { font-size: 24px; cursor: pointer; padding: 5px; color: rgba(var(--popup-text-rgb), 0.6); transition: color 0.2s; line-height: 1; }
+            .ha-popup-close { font-size: 24px; cursor: pointer; padding: 5px; color: rgba(var(--popup-text-rgb), 0.6); transition: color 0.2s; line-height: 1; border: 0; background: transparent; font-family: inherit; }
             .ha-popup-close:hover { color: var(--popup-text); }
             
             .popup-info-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 20px; }
@@ -140,255 +148,253 @@ export function injectPopupDOM() {
 
 export function initPopupCore(helpers) {
     _haLichPopupHelpers = helpers || haLichResolveHelpers() || null;
-    if (typeof window !== 'undefined') {
-        window.haLichAmDuongPopupHelpers = _haLichPopupHelpers;
-        window.haGetLichAmDuongDateInfo = (dd, mm, yy) => getLichAmDuongDateInfo(dd, mm, yy, _haLichPopupHelpers);
-        window.haGetLichAmDuongTodayInfo = () => getLichAmDuongTodayInfo(_haLichPopupHelpers);
-    }
+}
 
-    const { 
-        jdn, getLunarDate, getCanChiNgay, TIETKHI, 
-        getSunLongitude, getGioHoangDao, getGioHacDao, 
-        getHuongXuatHanh, getThanSat, CAN, CHI 
-    } = _haLichPopupHelpers || {};
+export function closeDayPopup() {
+    const popup = document.getElementById('ha-lich-popup');
+    if (popup) popup.classList.remove('show');
+}
 
-    function convertSolar2Lunar(dd, mm, yy) {
+export function showDayPopup(dd, mm, yy, theme = 'default', opacity = 95) {
+    const helpers = haLichResolveHelpers();
+    if (!helpers) return;
+
+    const {
+        jdn, getLunarDate, getCanChiNgay, TIETKHI,
+        getSunLongitude, getGioHoangDao, getGioHacDao,
+        getHuongXuatHanh, getThanSat, CAN, CHI
+    } = helpers;
+
+    function convertSolar2Lunar(day, month, year) {
         if (typeof getLunarDate === 'function') {
-            const lunar = getLunarDate(dd, mm, yy);
+            const lunar = getLunarDate(day, month, year);
             return [lunar.day, lunar.month, lunar.year, lunar.leap];
         }
-        return [dd, mm, yy, 0];
+        return [day, month, year, 0];
     }
 
-    window.haClosePopup = function() {
-        const popup = document.getElementById('ha-lich-popup');
-        if (popup) popup.classList.remove('show');
-    };
+    const popup = document.getElementById('ha-lich-popup');
+    if (!popup) return;
 
-    window.haShowDayPopup = function(dd, mm, yy, theme = 'default', opacity = 95) {
-        const popup = document.getElementById('ha-lich-popup');
-        if (!popup) return;
+    try {
+        // --- CHUẨN BỊ MÀU SẮC THEO THEME POPUP ---
+        const themes = {
+            'default': { bg: '#1c1c1e', text: '#ffffff', accent: '#ffff99' },
+            'theme1':  { bg: '#000000', text: '#ffffff', accent: '#4ade80' },
+            'theme2':  { bg: '#f8fafc', text: '#0f172a', accent: '#d97706' },
+            'theme3':  { bg: '#0f172a', text: '#f8fafc', accent: '#38bdf8' },
+            'theme4':  { bg: '#450a0a', text: '#fef08a', accent: '#fde047' },
+            'theme5':  { bg: '#14532d', text: '#f0fdf4', accent: '#86efac' },
+            'theme6':  { bg: '#38271d', text: '#fff7ed', accent: '#fdba74' },
+            'theme7':  { bg: '#2e1065', text: '#ede9fe', accent: '#c084fc' },
+            'theme8':  { bg: '#fef08a', text: '#451a03', accent: '#9a3412' },
+            'theme9':  { bg: '#e2e8f0', text: '#020617', accent: '#2563eb' },
+            'theme10': { bg: '#083344', text: '#cffafe', accent: '#22d3ee' }
+        };
+        const currentTheme = themes[theme] || themes['default'];
+        
+        const hex2rgb = (hex) => {
+            let v = hex.replace('#', '');
+            if(v.length===3) v = v.split('').map(x=>x+x).join('');
+            return `${parseInt(v.substring(0,2), 16)}, ${parseInt(v.substring(2,4), 16)}, ${parseInt(v.substring(4,6), 16)}`;
+        };
+        
+        const bgRgb = hex2rgb(currentTheme.bg);
+        const textRgb = hex2rgb(currentTheme.text);
+        
+        const [r, g, b] = bgRgb.split(',').map(Number);
+        const lightBg = ((r * 299) + (g * 587) + (b * 114)) / 1000 > 128;
+        
+        const cGood = lightBg ? '#15803d' : '#4ade80';
+        const cBad  = lightBg ? '#b91c1c' : '#f87171';
+        const cWarn = lightBg ? '#b45309' : '#fbbf24';
 
-        try {
-            // --- CHUẨN BỊ MÀU SẮC THEO THEME POPUP ---
-            const themes = {
-                'default': { bg: '#1c1c1e', text: '#ffffff', accent: '#ffff99' },
-                'theme1':  { bg: '#000000', text: '#ffffff', accent: '#4ade80' },
-                'theme2':  { bg: '#f8fafc', text: '#0f172a', accent: '#d97706' },
-                'theme3':  { bg: '#0f172a', text: '#f8fafc', accent: '#38bdf8' },
-                'theme4':  { bg: '#450a0a', text: '#fef08a', accent: '#fde047' },
-                'theme5':  { bg: '#14532d', text: '#f0fdf4', accent: '#86efac' },
-                'theme6':  { bg: '#38271d', text: '#fff7ed', accent: '#fdba74' },
-                'theme7':  { bg: '#2e1065', text: '#ede9fe', accent: '#c084fc' },
-                'theme8':  { bg: '#fef08a', text: '#451a03', accent: '#9a3412' },
-                'theme9':  { bg: '#e2e8f0', text: '#020617', accent: '#2563eb' },
-                'theme10': { bg: '#083344', text: '#cffafe', accent: '#22d3ee' }
-            };
-            const currentTheme = themes[theme] || themes['default'];
-            
-            const hex2rgb = (hex) => {
-                let v = hex.replace('#', '');
-                if(v.length===3) v = v.split('').map(x=>x+x).join('');
-                return `${parseInt(v.substring(0,2), 16)}, ${parseInt(v.substring(2,4), 16)}, ${parseInt(v.substring(4,6), 16)}`;
-            };
-            
-            const bgRgb = hex2rgb(currentTheme.bg);
-            const textRgb = hex2rgb(currentTheme.text);
-            
-            const [r, g, b] = bgRgb.split(',').map(Number);
-            const lightBg = ((r * 299) + (g * 587) + (b * 114)) / 1000 > 128;
-            
-            const cGood = lightBg ? '#15803d' : '#4ade80';
-            const cBad  = lightBg ? '#b91c1c' : '#f87171';
-            const cWarn = lightBg ? '#b45309' : '#fbbf24';
+        // --- TÍNH TOÁN DỮ LIỆU NGÀY ---
+        const jd_val = jdn(dd, mm, yy);
+        const lunarArr = convertSolar2Lunar(dd, mm, yy);
+        const lunarDate = { day: lunarArr[0], month: lunarArr[1], year: lunarArr[2], leap: lunarArr[3], jd: jd_val };
 
-            // --- TÍNH TOÁN DỮ LIỆU NGÀY ---
-            const jd_val = jdn(dd, mm, yy);
-            const lunarArr = convertSolar2Lunar(dd, mm, yy);
-            const lunarDate = { day: lunarArr[0], month: lunarArr[1], year: lunarArr[2], leap: lunarArr[3], jd: jd_val };
+        const canChiNam = CAN[(lunarDate.year + 6) % 10] + " " + CHI[(lunarDate.year + 8) % 12];
+        
+        const canNamIdx = (lunarDate.year + 6) % 10;
+        const canThang1 = ((canNamIdx % 5) + 1) * 2;
+        const canThang = (canThang1 + (lunarDate.month - 1)) % 10;
+        const chiThang = (lunarDate.month + 1) % 12;
+        const canChiThang = CAN[canThang] + " " + CHI[chiThang];
 
-            const canChiNam = CAN[(lunarDate.year + 6) % 10] + " " + CHI[(lunarDate.year + 8) % 12];
-            
-            const canNamIdx = (lunarDate.year + 6) % 10;
-            const canThang1 = ((canNamIdx % 5) + 1) * 2;
-            const canThang = (canThang1 + (lunarDate.month - 1)) % 10;
-            const chiThang = (lunarDate.month + 1) % 12;
-            const canChiThang = CAN[canThang] + " " + CHI[chiThang];
-
-            let canChiNgayStr = "";
-            if (typeof getCanChiNgay === 'function') {
-                const temp = getCanChiNgay(jd_val);
-                canChiNgayStr = Array.isArray(temp) ? temp.join(" ") : temp;
-            } else {
-                 canChiNgayStr = CAN[(jd_val + 9) % 10] + " " + CHI[(jd_val + 1) % 12];
-            }
-
-            const canNgayIdx = (jd_val + 9) % 10;
-            const canGioTyIdx = (canNgayIdx % 5) * 2;
-            const khoiGioTy = CAN[canGioTyIdx] + " Tý";
-
-            let tietKhi = "Không rõ";
-            if (typeof TIETKHI !== 'undefined' && typeof getSunLongitude === 'function') {
-                tietKhi = TIETKHI[getSunLongitude(jd_val + 1, 7.0)];
-            }
-
-            const gioHoangDao = (typeof getGioHoangDao === 'function') ? getGioHoangDao(jd_val) : "...";
-            const gioHacDao = (typeof getGioHacDao === 'function') ? getGioHacDao(jd_val) : "...";
-            const huongXuatHanh = (typeof getHuongXuatHanh === 'function') ? getHuongXuatHanh(jd_val) : "...";
-            
-            const thanSat = (typeof getThanSat === 'function') ? getThanSat(lunarDate) : { 
-                truc: {name:"...", emoji:"", info:{tot:"", xau:""}}, 
-                napAm: "...", 
-                sao: {name:"...", emoji:"", info:{danhGia:"", tenNgay:"", nenLam:"", kiengCu:"", ngoaiLe:"", tuongTinh:"", tho:""}} 
-            };
-            if(!thanSat.truc.info) thanSat.truc.info = {tot:"...", xau:"..."};
-            if(!thanSat.sao.info) thanSat.sao.info = {danhGia:"...", nenLam:"...", kiengCu:""};
-
-            const danhGiaRaw = thanSat.sao.info.danhGia || "";
-            const isGood = danhGiaRaw.includes('Tốt');
-            const isBad = danhGiaRaw.includes('Xấu');
-            const saoBadgeClass = isGood ? 'badge-green' : (isBad ? 'badge-red' : 'badge-yellow');
-            
-            const danhGiaShort = danhGiaRaw.split(' ')[0] || "";
-            const danhGiaDetail = danhGiaRaw.includes('(') ? danhGiaRaw.substring(danhGiaRaw.indexOf('(')) : "";
-            const thoText = (thanSat.sao.info.tho || '').replace(/^\s+/gm, '');
-
-            // --- GÁN CSS VARIABLE CHO POPUP ---
-            const popupRoot = document.getElementById('ha-lich-popup');
-            if (popupRoot) {
-                popupRoot.style.setProperty('--popup-bg-rgb', bgRgb);
-                popupRoot.style.setProperty('--popup-opacity', opacity / 100);
-                popupRoot.style.setProperty('--popup-text', currentTheme.text);
-                popupRoot.style.setProperty('--popup-text-rgb', textRgb);
-                popupRoot.style.setProperty('--popup-accent', currentTheme.accent);
-                popupRoot.style.setProperty('--color-good', cGood);
-                popupRoot.style.setProperty('--color-bad', cBad);
-                popupRoot.style.setProperty('--color-warn', cWarn);
-            }
-
-            // --- DỰNG HTML GIAO DIỆN ---
-            let res = `<div class="lunar-popup-detail" style="font-family: 'Be Vietnam Pro', sans-serif;">`;
-            
-            res += `
-                <div style="text-align:center; margin-bottom: 20px;">
-                    <div style="font-size:1.8em; font-weight: 800; color: var(--popup-accent); letter-spacing: 0.5px; text-shadow: 0 2px 10px rgba(var(--popup-text-rgb), 0.1);">${dd}/${mm}/${yy}</div>
-                    <div style="font-size:0.9em; opacity: 0.7; margin-top: 4px;">Dương lịch</div>
-                </div>`;
-
-            res += `<div class="popup-info-grid">
-                    <div class="popup-info-item full-width">
-                        <span class="info-label">Âm lịch</span>
-                        <span class="info-value" style="font-size: 1.2em;">${lunarDate.day}/${lunarDate.month} ${lunarDate.leap ? '<span style="font-size:0.7em; opacity:0.8">(Nhuận)</span>' : ''}</span>
-                    </div>
-                    <div class="popup-info-item">
-                        <span class="info-label">Ngày</span>
-                        <span class="info-value">${canChiNgayStr}</span>
-                    </div>
-                    <div class="popup-info-item">
-                        <span class="info-label">Tháng</span>
-                        <span class="info-value">${canChiThang}</span>
-                    </div>
-                    <div class="popup-info-item">
-                        <span class="info-label">Năm</span>
-                        <span class="info-value">${canChiNam}</span>
-                    </div>
-                    <div class="popup-info-item">
-                        <span class="info-label">Tiết khí</span>
-                        <span class="info-value">${tietKhi}</span>
-                    </div>
-                </div>`;
-
-            res += `<div class="popup-detail-card">
-                        <div class="popup-detail-title">🧭 Hướng & Giờ</div>
-                        <div class="popup-detail-content">
-                            <div style="margin-bottom: 10px;">
-                                <span class="info-label">Giờ Hoàng Đạo:</span><br>
-                                ${gioHoangDao}
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <span class="info-label">Giờ Hắc Đạo:</span><br>
-                                ${gioHacDao}
-                            </div>
-                            <div>
-                                <span class="info-label">Xuất hành:</span><br>
-                                ${huongXuatHanh}
-                            </div>
-                        </div>
-                    </div>`;
-
-            res += `<div class="popup-detail-card">
-                        <div class="popup-detail-title">
-                            ${thanSat.truc.emoji || '📅'} Trực: 
-                            <span class="ha-badge badge-green" style="margin-left:auto;">${thanSat.truc.name}</span>
-                        </div>
-                        <div class="popup-detail-content">
-                            <div style="margin-bottom: 6px;">✅ <span class="text-highlight">Tốt:</span> ${thanSat.truc.info.tot || "..."}</div>
-                            <div>❌ <span class="text-highlight">Xấu:</span> <span style="color: var(--color-warn);">${thanSat.truc.info.xau || "..."}</span></div>
-                        </div>
-                    </div>`;
-
-            res += `<div class="popup-detail-card">
-                        <div class="popup-detail-title">🌟 Ngũ hành Nạp âm</div>
-                        <div class="popup-detail-content text-highlight">
-                            ${thanSat.napAm}
-                        </div>
-                    </div>`;
-
-            res += `<div class="popup-detail-card">
-                        <div class="popup-detail-title">
-                            ${thanSat.sao.emoji || '✨'} Nhị Thập Bát Tú: 
-                            <span class="ha-badge ${saoBadgeClass}" style="margin-left:auto;">${thanSat.sao.name}</span>
-                        </div>
-                        <div class="popup-detail-content">
-                            <div style="font-style:italic; color: var(--popup-accent); margin-bottom: 12px; font-size: 0.9em;">
-                                (${thanSat.sao.info.tenNgay || ""}) - ${danhGiaShort} ${danhGiaDetail} - ${thanSat.sao.info.tuongTinh || ''}
-                            </div>
-                            <div style="margin-bottom: 8px;">👍 <span class="text-highlight">Nên làm:</span> ${thanSat.sao.info.nenLam}</div>
-                            <div style="margin-bottom: 8px;">👎 <span class="text-highlight">Kiêng cữ:</span> <span style="color: var(--color-warn);">${thanSat.sao.info.kiengCu}</span></div>
-                            ${thanSat.sao.info.ngoaiLe ? 
-                            `<div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(var(--popup-text-rgb), 0.15);">
-                                ✨ <span class="text-highlight">Ngoại lệ:</span><br>
-                                <span style="display:block; margin-top:4px; opacity:0.8;">${thanSat.sao.info.ngoaiLe.replace(/\n/g, '<br>')}</span>
-                            </div>` : ''}
-                            ${thoText ? `<div class="poem-text">${thoText}</div>` : ''}
-                        </div>
-                    </div>`;
-            
-            res += `<div style="text-align:center; font-size:0.85em; color: rgba(var(--popup-text-rgb), 0.5); margin-top: 20px; margin-bottom: 10px;">
-                        Khởi giờ Tý: <span style="color: var(--popup-accent); font-weight: bold;">${khoiGioTy}</span>
-                    </div>`;
-                    
-            res += `</div>`; 
-
-            const titleEl = document.getElementById('ha-popup-title');
-            const contentEl = document.getElementById('ha-popup-content');
-            
-            if(titleEl) titleEl.innerText = `Chi tiết`;
-            if(contentEl) contentEl.innerHTML = res;
-
-            // 1. Hiển thị popup trước (chuyển sang display: flex)
-            popup.classList.add('show');
-
-            // 2. Đợi DOM cập nhật xong rồi mới đưa thanh cuộn về trên cùng
-            requestAnimationFrame(() => {
-                const popupBox = popup.querySelector('.ha-popup-box');
-                if (popupBox) {
-                    popupBox.scrollTop = 0;
-                }
-            });
-
-        } catch(e) {
-            console.error("Lỗi Popup:", e);
-            const contentEl = document.getElementById('ha-popup-content');
-            if(contentEl) contentEl.innerHTML = `<div style="color:red; padding:15px; text-align:center;">Có lỗi xảy ra: ${e.message}</div>`;
-            
-            popup.classList.add('show');
-            requestAnimationFrame(() => {
-                const popupBox = popup.querySelector('.ha-popup-box');
-                if (popupBox) {
-                    popupBox.scrollTop = 0;
-                }
-            });
+        let canChiNgayStr = "";
+        if (typeof getCanChiNgay === 'function') {
+            const temp = getCanChiNgay(jd_val);
+            canChiNgayStr = Array.isArray(temp) ? temp.join(" ") : temp;
+        } else {
+             canChiNgayStr = CAN[(jd_val + 9) % 10] + " " + CHI[(jd_val + 1) % 12];
         }
-    };
+
+        const canNgayIdx = (jd_val + 9) % 10;
+        const canGioTyIdx = (canNgayIdx % 5) * 2;
+        const khoiGioTy = CAN[canGioTyIdx] + " Tý";
+
+        let tietKhi = "Không rõ";
+        if (typeof TIETKHI !== 'undefined' && typeof getSunLongitude === 'function') {
+            tietKhi = TIETKHI[getSunLongitude(jd_val + 1, 7.0)];
+        }
+
+        const gioHoangDao = (typeof getGioHoangDao === 'function') ? getGioHoangDao(jd_val) : "...";
+        const gioHacDao = (typeof getGioHacDao === 'function') ? getGioHacDao(jd_val) : "...";
+        const huongXuatHanh = (typeof getHuongXuatHanh === 'function') ? getHuongXuatHanh(jd_val) : "...";
+        
+        const thanSat = (typeof getThanSat === 'function') ? getThanSat(lunarDate) : { 
+            truc: {name:"...", emoji:"", info:{tot:"", xau:""}}, 
+            napAm: "...", 
+            sao: {name:"...", emoji:"", info:{danhGia:"", tenNgay:"", nenLam:"", kiengCu:"", ngoaiLe:"", tuongTinh:"", tho:""}} 
+        };
+        if(!thanSat.truc.info) thanSat.truc.info = {tot:"...", xau:"..."};
+        if(!thanSat.sao.info) thanSat.sao.info = {danhGia:"...", nenLam:"...", kiengCu:""};
+
+        const danhGiaRaw = thanSat.sao.info.danhGia || "";
+        const isGood = danhGiaRaw.includes('Tốt');
+        const isBad = danhGiaRaw.includes('Xấu');
+        const saoBadgeClass = isGood ? 'badge-green' : (isBad ? 'badge-red' : 'badge-yellow');
+        
+        const danhGiaShort = danhGiaRaw.split(' ')[0] || "";
+        const danhGiaDetail = danhGiaRaw.includes('(') ? danhGiaRaw.substring(danhGiaRaw.indexOf('(')) : "";
+        const thoText = (thanSat.sao.info.tho || '').replace(/^\s+/gm, '');
+
+        // --- GÁN CSS VARIABLE CHO POPUP ---
+        const popupRoot = document.getElementById('ha-lich-popup');
+        if (popupRoot) {
+            popupRoot.style.setProperty('--popup-bg-rgb', bgRgb);
+            popupRoot.style.setProperty('--popup-opacity', opacity / 100);
+            popupRoot.style.setProperty('--popup-text', currentTheme.text);
+            popupRoot.style.setProperty('--popup-text-rgb', textRgb);
+            popupRoot.style.setProperty('--popup-accent', currentTheme.accent);
+            popupRoot.style.setProperty('--color-good', cGood);
+            popupRoot.style.setProperty('--color-bad', cBad);
+            popupRoot.style.setProperty('--color-warn', cWarn);
+        }
+
+        // --- DỰNG HTML GIAO DIỆN ---
+        let res = `<div class="lunar-popup-detail" style="font-family: 'Be Vietnam Pro', sans-serif;">`;
+        
+        res += `
+            <div style="text-align:center; margin-bottom: 20px;">
+                <div style="font-size:1.8em; font-weight: 800; color: var(--popup-accent); letter-spacing: 0.5px; text-shadow: 0 2px 10px rgba(var(--popup-text-rgb), 0.1);">${dd}/${mm}/${yy}</div>
+                <div style="font-size:0.9em; opacity: 0.7; margin-top: 4px;">Dương lịch</div>
+            </div>`;
+
+        res += `<div class="popup-info-grid">
+                <div class="popup-info-item full-width">
+                    <span class="info-label">Âm lịch</span>
+                    <span class="info-value" style="font-size: 1.2em;">${lunarDate.day}/${lunarDate.month} ${lunarDate.leap ? '<span style="font-size:0.7em; opacity:0.8">(Nhuận)</span>' : ''}</span>
+                </div>
+                <div class="popup-info-item">
+                    <span class="info-label">Ngày</span>
+                    <span class="info-value">${canChiNgayStr}</span>
+                </div>
+                <div class="popup-info-item">
+                    <span class="info-label">Tháng</span>
+                    <span class="info-value">${canChiThang}</span>
+                </div>
+                <div class="popup-info-item">
+                    <span class="info-label">Năm</span>
+                    <span class="info-value">${canChiNam}</span>
+                </div>
+                <div class="popup-info-item">
+                    <span class="info-label">Tiết khí</span>
+                    <span class="info-value">${tietKhi}</span>
+                </div>
+            </div>`;
+
+        res += `<div class="popup-detail-card">
+                    <div class="popup-detail-title">🧭 Hướng & Giờ</div>
+                    <div class="popup-detail-content">
+                        <div style="margin-bottom: 10px;">
+                            <span class="info-label">Giờ Hoàng Đạo:</span><br>
+                            ${gioHoangDao}
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <span class="info-label">Giờ Hắc Đạo:</span><br>
+                            ${gioHacDao}
+                        </div>
+                        <div>
+                            <span class="info-label">Xuất hành:</span><br>
+                            ${huongXuatHanh}
+                        </div>
+                    </div>
+                </div>`;
+
+        res += `<div class="popup-detail-card">
+                    <div class="popup-detail-title">
+                        ${thanSat.truc.emoji || '📅'} Trực: 
+                        <span class="ha-badge badge-green" style="margin-left:auto;">${thanSat.truc.name}</span>
+                    </div>
+                    <div class="popup-detail-content">
+                        <div style="margin-bottom: 6px;">✅ <span class="text-highlight">Tốt:</span> ${thanSat.truc.info.tot || "..."}</div>
+                        <div>❌ <span class="text-highlight">Xấu:</span> <span style="color: var(--color-warn);">${thanSat.truc.info.xau || "..."}</span></div>
+                    </div>
+                </div>`;
+
+        res += `<div class="popup-detail-card">
+                    <div class="popup-detail-title">🌟 Ngũ hành Nạp âm</div>
+                    <div class="popup-detail-content text-highlight">
+                        ${thanSat.napAm}
+                    </div>
+                </div>`;
+
+        res += `<div class="popup-detail-card">
+                    <div class="popup-detail-title">
+                        ${thanSat.sao.emoji || '✨'} Nhị Thập Bát Tú: 
+                        <span class="ha-badge ${saoBadgeClass}" style="margin-left:auto;">${thanSat.sao.name}</span>
+                    </div>
+                    <div class="popup-detail-content">
+                        <div style="font-style:italic; color: var(--popup-accent); margin-bottom: 12px; font-size: 0.9em;">
+                            (${thanSat.sao.info.tenNgay || ""}) - ${danhGiaShort} ${danhGiaDetail} - ${thanSat.sao.info.tuongTinh || ''}
+                        </div>
+                        <div style="margin-bottom: 8px;">👍 <span class="text-highlight">Nên làm:</span> ${thanSat.sao.info.nenLam}</div>
+                        <div style="margin-bottom: 8px;">👎 <span class="text-highlight">Kiêng cữ:</span> <span style="color: var(--color-warn);">${thanSat.sao.info.kiengCu}</span></div>
+                        ${thanSat.sao.info.ngoaiLe ? 
+                        `<div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(var(--popup-text-rgb), 0.15);">
+                            ✨ <span class="text-highlight">Ngoại lệ:</span><br>
+                            <span style="display:block; margin-top:4px; opacity:0.8;">${thanSat.sao.info.ngoaiLe.replace(/\n/g, '<br>')}</span>
+                        </div>` : ''}
+                        ${thoText ? `<div class="poem-text">${thoText}</div>` : ''}
+                    </div>
+                </div>`;
+        
+        res += `<div style="text-align:center; font-size:0.85em; color: rgba(var(--popup-text-rgb), 0.5); margin-top: 20px; margin-bottom: 10px;">
+                    Khởi giờ Tý: <span style="color: var(--popup-accent); font-weight: bold;">${khoiGioTy}</span>
+                </div>`;
+                
+        res += `</div>`; 
+
+        const titleEl = document.getElementById('ha-popup-title');
+        const contentEl = document.getElementById('ha-popup-content');
+        
+        if(titleEl) titleEl.innerText = `Chi tiết`;
+        if(contentEl) contentEl.innerHTML = res;
+
+        // 1. Hiển thị popup trước (chuyển sang display: flex)
+        popup.classList.add('show');
+
+        // 2. Đợi DOM cập nhật xong rồi mới đưa thanh cuộn về trên cùng
+        requestAnimationFrame(() => {
+            const popupBox = popup.querySelector('.ha-popup-box');
+            if (popupBox) {
+                popupBox.scrollTop = 0;
+            }
+        });
+
+    } catch(e) {
+        console.error("Lỗi Popup:", e);
+        const contentEl = document.getElementById('ha-popup-content');
+        if(contentEl) contentEl.innerHTML = `<div style="color:red; padding:15px; text-align:center;">Có lỗi xảy ra: ${e.message}</div>`;
+        
+        popup.classList.add('show');
+        requestAnimationFrame(() => {
+            const popupBox = popup.querySelector('.ha-popup-box');
+            if (popupBox) {
+                popupBox.scrollTop = 0;
+            }
+        });
+    }
 }

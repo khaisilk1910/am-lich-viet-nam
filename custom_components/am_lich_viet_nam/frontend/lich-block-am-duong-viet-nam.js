@@ -32,9 +32,9 @@ import {
   getHuongXuatHanh,
   getThanSat,
   getLichAmDuongHelpers
-} from './lich-am-duong-viet-nam-core.js?v=1';
+} from './lich-am-duong-viet-nam-core.js?v=20260803';
 
-import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-popup.js?v=2';
+import { injectPopupDOM, initPopupCore, showDayPopup } from './lich-block-am-duong-viet-nam-popup.js?v=20260803';
 
 (function(){
   'use strict';
@@ -439,6 +439,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       .show_dao_tet:hover, .show_mai_tet:hover { animation: lanternSwingStrong 1.2s ease-in-out infinite; }
       @keyframes lanternSwingSoft { 0% { transform: rotate(0deg); } 25% { transform: rotate(1.5deg); } 50% { transform: rotate(-1.5deg); }75% { transform: rotate(1deg); } 100% { transform: rotate(0deg); } }
       @keyframes lanternSwingStrong { 0% { transform: rotate(0deg); } 20% { transform: rotate(6deg); } 40% { transform: rotate(-5deg); } 60% { transform: rotate(4deg); } 80% { transform: rotate(-3deg); } 100% { transform: rotate(0deg); } }
+      :host([data-paused]) * { animation-play-state: paused !important; }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+      }
     `;
     res += '</style>';
     return res;
@@ -508,11 +512,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       `</div></td>`;
   }
 
-  if (typeof window.activeLunarTab === 'undefined') {
-      window.activeLunarTab = 'none'; 
-  }
-
-  function printTable(mm, yy, today, config){
+  function printTable(mm, yy, today, config, activeLunarTab = 'none'){
     const jd = jdn(today.getDate(), mm, yy);
     const currentMonthArr = getMonth(mm, yy);
     if (currentMonthArr.length === 0) return "";
@@ -655,10 +655,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     res += `<tr><td colspan="7"><div class="thang_am_lich">${getYearCanChi(currentLunarDate.year)}<span class="year-svg-container">${svgNam}</span></div></td></tr>`;
     res += `</table></div>`; 
 
-    let overlayDisplay = (window.activeLunarTab !== 'none') ? 'flex' : 'none';
+    let overlayDisplay = (activeLunarTab !== 'none') ? 'flex' : 'none';
     res += `<div id="tab-overlay" class="tab-overlay" style="display: ${overlayDisplay};">`;
 
-    let calShowStyle = window.activeLunarTab === 'cal' ? 'block' : 'none';
+    let calShowStyle = activeLunarTab === 'cal' ? 'block' : 'none';
     res += `<div id="tab-content-cal" style="display: ${calShowStyle};">`;
     res += `<table class="grid-month" border="0">`;
     res += printHead(mm, yy); 
@@ -678,13 +678,13 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     }
     res += `</table></div>`;
 
-    let convShowStyle = window.activeLunarTab === 'conv' ? 'block' : 'none';
+    let convShowStyle = activeLunarTab === 'conv' ? 'block' : 'none';
     res += `<div id="tab-content-conv" style="display: ${convShowStyle};"></div>`; 
     
     res += `</div>`; 
 
-    let calActive = window.activeLunarTab === 'cal' ? 'active' : '';
-    let convActive = window.activeLunarTab === 'conv' ? 'active' : '';
+    let calActive = activeLunarTab === 'cal' ? 'active' : '';
+    let convActive = activeLunarTab === 'conv' ? 'active' : '';
 
     res += `
       <div class="tab-bar">
@@ -1384,6 +1384,11 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 			this._userNavigatedDate = false;
 			this._viewingSwipeDate = false;
 			this._ignoreNextSwipeClickUntil = 0;
+			this._activeLunarTab = 'none';
+			this._isPageVisible = !document.hidden;
+			this._isIntersecting = true;
+			this._visibilityObserver = null;
+			this._visibilityChangeHandler = null;
 		}
 
     _parseConfigDateValue(value) {
@@ -1457,6 +1462,22 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       document.addEventListener('click', this._clickOutsideBound);
       document.addEventListener('pointerdown', this._outsideDateResetBound, true);
       document.addEventListener('touchstart', this._outsideDateResetBound, true);
+      if (!this._visibilityChangeHandler) {
+        this._visibilityChangeHandler = () => {
+          this._isPageVisible = !document.hidden;
+          this._applyAnimationVisibility();
+        };
+        document.addEventListener('visibilitychange', this._visibilityChangeHandler, { passive: true });
+      }
+      this._isPageVisible = !document.hidden;
+      if (!this._visibilityObserver && typeof IntersectionObserver !== 'undefined') {
+        this._visibilityObserver = new IntersectionObserver((entries) => {
+          this._isIntersecting = entries.some((entry) => entry.isIntersecting);
+          this._applyAnimationVisibility();
+        }, { rootMargin: '80px' });
+        this._visibilityObserver.observe(this);
+      }
+      this._applyAnimationVisibility();
     }
 
     disconnectedCallback() {
@@ -1467,13 +1488,26 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
         document.removeEventListener('pointerdown', this._outsideDateResetBound, true);
         document.removeEventListener('touchstart', this._outsideDateResetBound, true);
       }
+      if (this._visibilityChangeHandler) {
+        document.removeEventListener('visibilitychange', this._visibilityChangeHandler);
+        this._visibilityChangeHandler = null;
+      }
+      if (this._visibilityObserver) {
+        this._visibilityObserver.disconnect();
+        this._visibilityObserver = null;
+      }
+    }
+
+    _applyAnimationVisibility() {
+      const active = this.isConnected && this._isPageVisible && this._isIntersecting;
+      this.toggleAttribute('data-paused', !active);
     }
 
     _handleClickOutside(e) {
-      if (window.activeLunarTab !== 'none') {
+      if (this._activeLunarTab !== 'none') {
         const path = (e && typeof e.composedPath === 'function') ? e.composedPath() : [];
         if (!path.includes(this)) {
-          const closingCalendarTab = window.activeLunarTab === 'cal';
+          const closingCalendarTab = this._activeLunarTab === 'cal';
           this._closeActiveLunarTab({ resetCalendarToToday: closingCalendarTab });
         }
       }
@@ -1481,7 +1515,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
 
     _closeActiveLunarTab(options = {}) {
       const resetCalendarToToday = !!options.resetCalendarToToday;
-      window.activeLunarTab = 'none';
+      this._activeLunarTab = 'none';
 
       if (resetCalendarToToday) {
         const today = new Date();
@@ -2056,7 +2090,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       const yy = this.displayYear;
 
       const renderConfig = { ...(this.config || {}), _weatherInfo: this._weatherInfo || this._buildWeatherInfo() };
-      const html = [ printStyle(), printTable(mm, yy, today, renderConfig) ].join('');
+      const html = [ printStyle(), printTable(mm, yy, today, renderConfig, this._activeLunarTab) ].join('');
       const hoverEffect = this.config.hover_effect || 'neon';
 
       const convHtml = `
@@ -2108,18 +2142,16 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
               return;
           }
           const currentDate = this._normalizeDisplayDate(this.displayDate || new Date());
-          if (typeof window.haShowDayPopup === 'function') {
-              ev.preventDefault();
-              ev.stopPropagation();
-              if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
-              window.haShowDayPopup(
-                  currentDate.getDate(),
-                  currentDate.getMonth() + 1,
-                  currentDate.getFullYear(),
-                  popupTheme,
-                  popupOpacity
-              );
-          }
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+          showDayPopup(
+              currentDate.getDate(),
+              currentDate.getMonth() + 1,
+              currentDate.getFullYear(),
+              popupTheme,
+              popupOpacity
+          );
       };
       this.card.querySelectorAll('.todayduonglich, .ngayamlich').forEach((el) => {
           el.removeAttribute('onclick');
@@ -2142,14 +2174,13 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
                   if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
                   return;
               }
-              if (typeof window.haShowDayPopup !== 'function') return;
               ev.preventDefault();
               ev.stopPropagation();
               const day = parseInt(el.dataset.solarDate, 10);
               const month = parseInt(el.dataset.solarMonth, 10);
               const year = parseInt(el.dataset.solarYear, 10);
               const opacity = parseInt(el.dataset.popupOpacity, 10);
-              window.haShowDayPopup(day, month, year, el.dataset.popupTheme || 'default', Number.isFinite(opacity) ? opacity : 95);
+              showDayPopup(day, month, year, el.dataset.popupTheme || 'default', Number.isFinite(opacity) ? opacity : 95);
           });
       });
 
@@ -2160,14 +2191,14 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       const overlay = this.card.querySelector('#tab-overlay');
 
       const toggleTab = (tabName) => {
-          const currentTab = window.activeLunarTab;
+          const currentTab = this._activeLunarTab;
           if (currentTab === tabName) {
               this._closeActiveLunarTab({ resetCalendarToToday: tabName === 'cal' });
               return;
           }
 
           const leavingCalendarTab = currentTab === 'cal' && tabName !== 'cal';
-          window.activeLunarTab = tabName;
+          this._activeLunarTab = tabName;
 
           if (leavingCalendarTab) {
               const today = new Date();
@@ -2462,6 +2493,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
         type: "lich-block-am-duong-viet-nam",
         name: "Lịch Âm Dương",
         description: "Thẻ Lịch Âm Dương Việt Nam có thể tùy chỉnh màu nền.",
+        documentationURL: "https://github.com/khaisilk1910/am-lich-viet-nam",
         preview: true,
     });
   }

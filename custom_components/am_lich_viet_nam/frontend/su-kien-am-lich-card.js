@@ -463,6 +463,13 @@
       this._handleDocumentClick = this._handleDocumentClick.bind(this);
       this._updateDataRaf = null;
       this._configSignature = '';
+      this._eventEntityIds = null;
+      this._eventEntityScanAt = 0;
+      this._eventStateCount = -1;
+      this._isPageVisible = !document.hidden;
+      this._isIntersecting = true;
+      this._visibilityHandler = null;
+      this._visibilityObserver = null;
       
       // BIẾN LƯU STATE LOCAL CHO THANH TRƯỢT MÀ KHÔNG CẦN VÀO EDITOR
       this._localSoNgay = null; 
@@ -470,14 +477,43 @@
 
     connectedCallback() {
       document.addEventListener('click', this._handleDocumentClick);
+      if (!this._visibilityHandler) {
+        this._visibilityHandler = () => {
+          this._isPageVisible = !document.hidden;
+          this._applyVisibilityState();
+        };
+        document.addEventListener('visibilitychange', this._visibilityHandler, { passive: true });
+      }
+      this._isPageVisible = !document.hidden;
+      if (!this._visibilityObserver && typeof IntersectionObserver !== 'undefined') {
+        this._visibilityObserver = new IntersectionObserver((entries) => {
+          this._isIntersecting = entries.some((entry) => entry.isIntersecting);
+          this._applyVisibilityState();
+        }, { rootMargin: '80px' });
+        this._visibilityObserver.observe(this);
+      }
+      this._applyVisibilityState();
     }
 
     disconnectedCallback() {
       document.removeEventListener('click', this._handleDocumentClick);
+      if (this._visibilityHandler) {
+        document.removeEventListener('visibilitychange', this._visibilityHandler);
+        this._visibilityHandler = null;
+      }
+      if (this._visibilityObserver) {
+        this._visibilityObserver.disconnect();
+        this._visibilityObserver = null;
+      }
       if (this._updateDataRaf) {
         window.cancelAnimationFrame(this._updateDataRaf);
         this._updateDataRaf = null;
       }
+    }
+
+    _applyVisibilityState() {
+      const active = this.isConnected && this._isPageVisible && this._isIntersecting;
+      this.toggleAttribute('data-paused', !active);
     }
 
     _handleDocumentClick(event) {
@@ -518,6 +554,9 @@
       }
       this.config = config;
       this._configSignature = JSON.stringify(this.config || {});
+      this._eventEntityIds = null;
+      this._eventEntityScanAt = 0;
+      this._eventStateCount = -1;
 
       if (!this.shadowRoot) {
         this.attachShadow({ mode: 'open' });
@@ -589,6 +628,34 @@
       });
     }
 
+    getEventEntityIds() {
+      const states = this._hass?.states || {};
+      const configured = Array.isArray(this.config?.entities)
+        ? this.config.entities.map((entityId) => String(entityId || '').trim()).filter(Boolean)
+        : [];
+      if (configured.length) return configured;
+
+      const now = Date.now();
+      const stateCount = Object.keys(states).length;
+      const cacheFresh = Array.isArray(this._eventEntityIds)
+        && stateCount === this._eventStateCount
+        && now - this._eventEntityScanAt < 60000;
+      if (cacheFresh) return this._eventEntityIds;
+
+      this._eventEntityIds = Object.entries(states)
+        .filter(([entityId, stateObj]) => {
+          if (!entityId.startsWith('sensor.')) return false;
+          const attrs = stateObj?.attributes || {};
+          return attrs.ngay_am_lich_su_kien !== undefined
+            || attrs.ngay_duong_lich_su_kien !== undefined
+            || attrs.thu_su_kien !== undefined;
+        })
+        .map(([entityId]) => entityId);
+      this._eventEntityScanAt = now;
+      this._eventStateCount = stateCount;
+      return this._eventEntityIds;
+    }
+
     updateData() {
       if (!this._hass || !this.config) return;
 
@@ -597,17 +664,17 @@
       const soNgay = this._localSoNgay !== null ? this._localSoNgay : configSoNgay;
 
       let events = [];
-      let hasIntegrationData = false; 
+      const eventEntityIds = this.getEventEntityIds();
+      let hasIntegrationData = eventEntityIds.length > 0;
 
-      for (const [entityId, stateObj] of Object.entries(this._hass.states)) {
-        if (!entityId.startsWith('sensor.')) continue;
-        
+      for (const entityId of eventEntityIds) {
+        const stateObj = this._hass.states[entityId];
+        if (!stateObj) {
+          this._eventEntityScanAt = 0;
+          continue;
+        }
         const attrs = stateObj.attributes;
         if (!attrs) continue;
-
-        if (attrs.ngay_am_lich_su_kien !== undefined || attrs.ngay_duong_lich_su_kien !== undefined || attrs.thu_su_kien !== undefined) {
-            hasIntegrationData = true;
-        }
 
         const daysLeft = parseInt(stateObj.state);
         // Lọc bằng soNgay đã được lấy ở trên
@@ -632,7 +699,7 @@
       events.sort((a, b) => a.days - b.days);
 
       // Hash chỉ dựa trên dữ liệu hiển thị + config đã cache, tránh stringify toàn bộ config ở mọi nhịp hass.
-      const eventSignature = events.map(e => `${e.entity_id}|${e.days}|${e.name}|${e.thu}|${e.duong}|${e.am}`).join('||');
+      const eventSignature = events.map(e => `${e.entity_id}|${e.days}|${e.name}|${e.thu}|${e.duong}|${e.am}|${e.attrs?.chi_tiet || ''}|${e.attrs?.so_nam ?? ''}|${e.attrs?.so_tuoi ?? ''}`).join('||');
       const dataHash = `${eventSignature}::${this._configSignature}::${hasIntegrationData}::${this._localSoNgay}`;
       if (this._lastDataString === dataHash) return;
       this._lastDataString = dataHash;
@@ -957,6 +1024,17 @@
 
           /* 10. Phóng to thu nhỏ */
           @keyframes ef-zoom-in-out { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+
+          :host([data-paused]) * {
+            animation-play-state: paused !important;
+          }
+          @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+              animation: none !important;
+              transition-duration: 0.01ms !important;
+              scroll-behavior: auto !important;
+            }
+          }
           .effect-zoom-in-out { animation: ef-zoom-in-out 1.5s ease-in-out infinite; }
 
         </style>
@@ -1159,9 +1237,17 @@
     type: "su-kien-am-lich-card",
     name: "Danh sách Sự Kiện",
     description: "Thẻ hiển thị danh sách đếm ngược sự kiện cho Lịch Âm Việt Nam.",
+    documentationURL: "https://github.com/khaisilk1910/am-lich-viet-nam",
     preview: true,
-    // Không tự gợi ý theo entity để tránh xuất hiện sai ngữ cảnh trong picker HA 2026.6+.
-    getEntitySuggestion: () => null
+    getEntitySuggestion: (hass, entityId) => {
+      const attrs = hass?.states?.[entityId]?.attributes || {};
+      const isCalendarEvent = attrs.ngay_am_lich_su_kien !== undefined
+        || attrs.ngay_duong_lich_su_kien !== undefined
+        || attrs.thu_su_kien !== undefined;
+      return isCalendarEvent
+        ? { config: { type: "custom:su-kien-am-lich-card", entities: [entityId] } }
+        : null;
+    }
   };
   const existingEventCard = window.customCards.find(card => card && card.type === cardRegistration.type);
   if (existingEventCard) Object.assign(existingEventCard, cardRegistration);
