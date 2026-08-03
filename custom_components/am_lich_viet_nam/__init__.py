@@ -15,7 +15,7 @@ from .amlich_core import (
     get_lunar_date, lunar_to_solar_extended, get_year_can_chi, get_lunar_leap_info,
     get_can_chi_day_month_year, get_month_name, get_tiet_khi, get_gio_hoang_dao,
     get_gio_hac_dao, get_huong_xuat_hanh, get_thap_nhi_truc, get_nhi_thap_bat_tu,
-    NGAY_THONG_TIN
+    NGAY_THONG_TIN, THU
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -182,6 +182,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     "thang": lunar.month,
                     "nam": lunar.year,
                     "nam_can_chi": can_chi,
+                    "thu": THU[datetime.datetime(y, m, d).weekday()],
                     "ngay_duong_lich": f"{int(d)}/{int(m)}/{int(y)}",
                     "ngay_am_lich": f"{int(lunar.day)}/{int(lunar.month)}/{int(lunar.year)}" + (" (Nhuận)" if lunar.leap == 1 else "")
                 }
@@ -225,6 +226,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     "thang": default_res["thang"],
                     "nam": default_res["nam"],
                     "nam_can_chi": can_chi,
+                    "thu": THU[datetime.datetime(default_res["nam"], default_res["thang"], default_res["ngay"]).weekday()],
                     "ngay_am_lich": f"{int(d)}/{int(m)}/{int(y)}",
                     "ngay_duong_lich": default_res["ngay_duong_lich"]
                 }
