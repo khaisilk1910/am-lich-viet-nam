@@ -1824,6 +1824,9 @@ import { injectPopupDOM, initPopupCore, showDayPopup } from './lich-block-am-duo
     }
 
     setConfig(config){
+      if (config !== undefined && (config === null || typeof config !== 'object' || Array.isArray(config))) {
+        throw new Error('Cấu hình của lich-block-am-duong-viet-nam phải là một object YAML hợp lệ.');
+      }
       this.config = { weather_show: true, ...(config || {}) };
       this._applyInitialDisplayDateFromConfig(this.config);
       this._ensureCard();
@@ -2487,16 +2490,19 @@ import { injectPopupDOM, initPopupCore, showDayPopup } from './lich-block-am-duo
   if (!customElements.get('lich-block-am-duong-viet-nam-editor')) customElements.define('lich-block-am-duong-viet-nam-editor', LunarCalendarCardEditor);
   if (!customElements.get('lich-block-am-duong-viet-nam')) customElements.define('lich-block-am-duong-viet-nam', LunarCalendarCard);
 
+  const mainCardDescriptor = {
+    type: "lich-block-am-duong-viet-nam",
+    name: "Lịch Âm Dương",
+    description: "Thẻ Lịch Âm Dương Việt Nam có thể tùy chỉnh màu nền.",
+    documentationURL: "https://github.com/khaisilk1910/am-lich-viet-nam",
+    preview: true,
+    // Thẻ lịch tổng hợp không đại diện cho một entity duy nhất; tránh đề xuất sai trong picker mới.
+    getEntitySuggestion: () => null
+  };
   window.customCards = window.customCards || [];
-  if (!window.customCards.some((card) => card && card.type === "lich-block-am-duong-viet-nam")) {
-    window.customCards.push({
-        type: "lich-block-am-duong-viet-nam",
-        name: "Lịch Âm Dương",
-        description: "Thẻ Lịch Âm Dương Việt Nam có thể tùy chỉnh màu nền.",
-        documentationURL: "https://github.com/khaisilk1910/am-lich-viet-nam",
-        preview: true,
-    });
-  }
+  const existingMainCard = window.customCards.find((card) => card && card.type === mainCardDescriptor.type);
+  if (existingMainCard) Object.assign(existingMainCard, mainCardDescriptor);
+  else window.customCards.push(mainCardDescriptor);
 
   // ---- TRUYỀN HÀM TÍNH TOÁN CORE CHO POPUP LÀM VIỆC ----
   initPopupCore(getLichAmDuongHelpers());

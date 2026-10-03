@@ -1110,7 +1110,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     getGridOptions() {
       return {
         rows: 2,
-        min_rows: 1,
+        min_rows: 2,
         columns: 12,
         min_columns: 6
       };

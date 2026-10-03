@@ -546,7 +546,9 @@
     }
 
     setConfig(config) {
-      if (!config) throw new Error("Invalid configuration");
+      if (!config || typeof config !== 'object' || Array.isArray(config)) {
+        throw new Error('Cấu hình của su-kien-am-lich-card phải là một object YAML hợp lệ.');
+      }
       
       // Nếu có sự thay đổi config từ Editor, reset lại số ngày tạm thời
       if (this.config && this.config.so_ngay !== config.so_ngay) {
@@ -611,6 +613,11 @@
 
       this.card.style.borderRadius = 'var(--ha-card-border-radius, 12px)';
       this.card.style.overflow = 'hidden';
+      // Khi Home Assistant Sections cấp chiều cao theo grid row, cho ha-card co giãn theo ô.
+      // Ở Masonry (không có chiều cao cha cố định), phần trăm này tự rơi về chiều cao nội dung.
+      this.card.style.height = '100%';
+      this.card.style.minHeight = '0';
+      this.card.style.boxSizing = 'border-box';
       
       if (this._hass) this.scheduleUpdateData();
     }
@@ -851,11 +858,18 @@
 
       let html = `
         <style>
+          :host {
+            display: block;
+            min-height: 0;
+          }
           .card-wrapper {
             container-type: inline-size;
             width: 100%;
+            height: 100%;
+            min-height: 0;
             display: flex;
             flex-direction: column;
+            box-sizing: border-box;
             max-height: ${cfg.chieu_cao_the}px; 
           }
           
@@ -1211,14 +1225,20 @@
       });
     }
 
-    getCardSize() { return 3; }
+    getCardSize() {
+      // Home Assistant Masonry quy ước 1 đơn vị xấp xỉ 50 px.
+      const configuredHeight = Math.max(120, Number(this.config?.chieu_cao_the) || 350);
+      return Math.max(1, Math.ceil(configuredHeight / 50));
+    }
 
-    // Tương thích tốt hơn với Home Assistant Sections view mới.
-    // Không thay đổi cách đọc/tải dữ liệu sự kiện.
+    // Sections dùng ô cao 56 px, khoảng cách giữa hai hàng là 8 px.
+    // Tính rows từ chiều cao cấu hình để kích thước mặc định không nhỏ hơn chính nội dung thẻ.
     getGridOptions() {
+      const configuredHeight = Math.max(120, Number(this.config?.chieu_cao_the) || 350);
+      const rows = Math.max(3, Math.ceil((configuredHeight + 8) / 64));
       return {
         columns: 6,
-        rows: 4,
+        rows,
         min_columns: 3,
         min_rows: 3
       };

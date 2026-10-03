@@ -342,12 +342,15 @@ class LunarCalendarBubbleCard extends HTMLElement {
             columns: 3,
             min_rows: 1,
             max_rows: 1,
-            min_columns: 3
+            min_columns: 3,
+            max_columns: 3
         };
     }
 
     setConfig(config) {
-        if (!config || !config.type) throw new Error('Invalid configuration');
+        if (!config || typeof config !== 'object' || Array.isArray(config)) {
+            throw new Error('Cấu hình của lich-am-duong-bubble phải là một object YAML hợp lệ.');
+        }
         const mergedConfig = { ...LunarCalendarBubbleCard.getStubConfig(), ...config };
         if (config.greeting_timeout_s === undefined && config.greeting_timeout !== undefined) {
             const legacyTimeout = Number(config.greeting_timeout) || 0;
@@ -2937,12 +2940,15 @@ if (!customElements.get('lich-am-duong-bubble')) {
 }
 
 window.customCards = window.customCards || [];
-if (!window.customCards.some((card) => card.type === 'lich-am-duong-bubble')) {
-    window.customCards.push({
-        type: 'lich-am-duong-bubble',
-        name: 'Bong Bong Lich Am Duong SVG',
-        description: 'Bong bong SVG noi, tu doi vi tri khung chat, hieu ung go chu va ngay am duong.',
-        documentationURL: 'https://github.com/khaisilk1910/am-lich-viet-nam',
-        preview: false
-    });
-}
+const bubbleCardDescriptor = {
+    type: 'lich-am-duong-bubble',
+    name: 'Bong Bong Lich Am Duong SVG',
+    description: 'Bong bong SVG noi, tu doi vi tri khung chat, hieu ung go chu va ngay am duong.',
+    documentationURL: 'https://github.com/khaisilk1910/am-lich-viet-nam',
+    preview: false,
+    // Thẻ nổi không gắn với một entity cụ thể; không đề xuất trong entity-first card picker (HA 2026.6+).
+    getEntitySuggestion: () => null
+};
+const existingBubbleCard = window.customCards.find((card) => card && card.type === bubbleCardDescriptor.type);
+if (existingBubbleCard) Object.assign(existingBubbleCard, bubbleCardDescriptor);
+else window.customCards.push(bubbleCardDescriptor);
