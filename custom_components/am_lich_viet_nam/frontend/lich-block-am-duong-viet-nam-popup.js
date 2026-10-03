@@ -1,4 +1,4 @@
-import { getLichAmDuongHelpers as haLichGetSharedHelpers } from './lich-am-duong-viet-nam-core.js?v=20260803';
+import { getLichAmDuongHelpers as haLichGetSharedHelpers } from './lich-am-duong-viet-nam-core.js?v=20261005';
 // ==========================================
 // LUNAR CALENDAR POPUP MODULE
 // File này chỉ chứa giao diện và logic của Popup

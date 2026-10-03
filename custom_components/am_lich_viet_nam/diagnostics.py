@@ -38,4 +38,10 @@ async def async_get_config_entry_diagnostics(
         "frontend_resources_registered": bool(
             hass.data.get(DOMAIN, {}).get("frontend_resources_registered")
         ),
+        "frontend_version_base": hass.data.get(DOMAIN, {}).get(
+            "frontend_version_base"
+        ),
+        "frontend_resource_urls": list(
+            hass.data.get(DOMAIN, {}).get("frontend_resource_urls", ())
+        ),
     }

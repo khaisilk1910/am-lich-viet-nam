@@ -10,13 +10,14 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.frontend import add_extra_js_url, remove_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.loader import async_get_integration
 
 from .amlich_core import (
     NGAY_THONG_TIN,
@@ -38,7 +39,7 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-UI_URL_BASE = "/am_lich_viet_nam_ui"
+UI_URL_ROOT = "/am_lich_viet_nam_ui"
 UI_DIR_PATH = "frontend"
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
@@ -88,23 +89,89 @@ def _get_frontend_versions(frontend_path: str) -> dict[str, str]:
     return versions
 
 
-async def _async_register_frontend_resources(hass: HomeAssistant) -> None:
-    """Register frontend modules once without mutating Lovelace storage."""
-    domain_data = hass.data.setdefault(DOMAIN, {})
-    if domain_data.get("frontend_resources_registered"):
-        return
-
-    frontend_path = hass.config.path("custom_components", DOMAIN, UI_DIR_PATH)
-    versions = await hass.async_add_executor_job(
-        _get_frontend_versions, frontend_path
+def _is_duplicate_static_path_error(err: Exception) -> bool:
+    """Return True when aiohttp reports a path that is already registered."""
+    message = str(err).lower()
+    return any(
+        marker in message
+        for marker in (
+            "already registered",
+            "already exists",
+            "added route will never be executed",
+            "duplicate",
+        )
     )
 
-    for file_name, version in versions.items():
-        add_extra_js_url(
-            hass, f"{UI_URL_BASE}/{file_name}?hacstag={version}"
+
+async def _async_register_frontend_resources(hass: HomeAssistant) -> None:
+    """Serve and register all frontend modules idempotently.
+
+    The version is part of the static URL prefix so relative ES-module imports also
+    receive a new URL on every integration release. This prevents stale imported
+    modules from surviving browser/cache refreshes after an update.
+    """
+    domain_data = hass.data.setdefault(DOMAIN, {})
+
+    integration = await async_get_integration(hass, DOMAIN)
+    integration_version = str(integration.version or "0")
+    ui_url_base = f"{UI_URL_ROOT}/{integration_version}"
+    frontend_path = hass.config.path("custom_components", DOMAIN, UI_DIR_PATH)
+
+    static_urls: set[str] = domain_data.setdefault("frontend_static_urls", set())
+    if ui_url_base not in static_urls:
+        try:
+            await hass.http.async_register_static_paths(
+                [StaticPathConfig(ui_url_base, frontend_path, True)]
+            )
+        except (RuntimeError, ValueError) as err:
+            # Integration/config-entry reloads can revisit this code while the
+            # aiohttp route from the first setup is still present. A duplicate
+            # route is therefore safe; other registration failures must surface.
+            if not _is_duplicate_static_path_error(err):
+                raise
+            _LOGGER.debug(
+                "Đường dẫn frontend %s đã được đăng ký; tiếp tục dùng lại",
+                ui_url_base,
+            )
+        static_urls.add(ui_url_base)
+
+    # Reuse hashes on the second call during normal startup. Calling
+    # add_extra_js_url again is intentional: it makes setup self-healing if the
+    # frontend URL manager was recreated while hass.data for this integration
+    # remained alive.
+    versions: dict[str, str] | None = domain_data.get("frontend_versions")
+    if not versions or domain_data.get("frontend_version_base") != ui_url_base:
+        versions = await hass.async_add_executor_job(
+            _get_frontend_versions, frontend_path
+        )
+        domain_data["frontend_versions"] = versions
+        domain_data["frontend_version_base"] = ui_url_base
+
+    desired_urls = {
+        f"{ui_url_base}/{file_name}?hacstag={version}"
+        for file_name, version in versions.items()
+    }
+    previous_urls = set(domain_data.get("frontend_resource_urls", ()))
+
+    # Remove obsolete URLs left by an older registration in the same process.
+    for old_url in previous_urls - desired_urls:
+        remove_extra_js_url(hass, old_url)
+
+    # Register every desired URL on each setup attempt. UrlManager stores a set,
+    # so this is cheap and safe while also recovering from transient frontend
+    # registration state loss.
+    for resource_url in sorted(desired_urls):
+        add_extra_js_url(hass, resource_url)
+
+    missing = sorted(set(FRONTEND_RESOURCES) - set(versions))
+    if missing:
+        _LOGGER.error(
+            "Thiếu tài nguyên frontend của Âm lịch Việt Nam: %s",
+            ", ".join(missing),
         )
 
-    domain_data["frontend_resources_registered"] = bool(versions)
+    domain_data["frontend_resource_urls"] = tuple(sorted(desired_urls))
+    domain_data["frontend_resources_registered"] = not missing
 
 
 def _get_date_details(jd: int, lunar_obj: Any) -> dict[str, Any]:
@@ -276,15 +343,6 @@ async def _async_handle_convert_date(
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up shared integration resources."""
     try:
-        await hass.http.async_register_static_paths(
-            [
-                StaticPathConfig(
-                    UI_URL_BASE,
-                    hass.config.path("custom_components", DOMAIN, UI_DIR_PATH),
-                    True,
-                )
-            ]
-        )
         await _async_register_frontend_resources(hass)
     except Exception:  # Frontend failure must not block sensor/action setup.
         _LOGGER.exception("Không thể đăng ký frontend của Âm lịch Việt Nam")
@@ -307,6 +365,14 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up a Vietnamese Lunar Calendar config entry."""
+    # Re-run the idempotent frontend registration from the config-entry path as
+    # well. This is important for entry reloads and protects against a transient
+    # failure in shared async_setup without ever blocking the sensor platform.
+    try:
+        await _async_register_frontend_resources(hass)
+    except Exception:
+        _LOGGER.exception("Không thể đăng ký lại frontend của Âm lịch Việt Nam")
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 

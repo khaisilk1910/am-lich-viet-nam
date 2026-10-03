@@ -8,7 +8,7 @@ import {
   NHI_THAP_BAT_TU,
   NGAY_THONG_TIN,
   CA_DAO_TUC_NGU
-} from './lich-block-am-duong-viet-nam-data.js?v=20260803';
+} from './lich-block-am-duong-viet-nam-data.js?v=20261005';
 
 const PI = Math.PI;
 function INT(d){ return Math.floor(d); }

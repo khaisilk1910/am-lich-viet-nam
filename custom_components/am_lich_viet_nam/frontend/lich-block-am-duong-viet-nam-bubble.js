@@ -3,9 +3,9 @@
 // Custom card: lich-am-duong-bubble
 // ==========================================
 
-import { getSvgItemCount, loadSvgItem, svg_12congiap_names, svg_12congiap_viewboxes } from './lich-block-am-duong-viet-nam-bubble-data.js?v=20260803';
-import { getLichAmDuongHelpers } from './lich-am-duong-viet-nam-core.js?v=20260803';
-import { getLichAmDuongTodayInfo, initPopupCore } from './lich-block-am-duong-viet-nam-popup.js?v=20260803';
+import { getSvgItemCount, loadSvgItem, svg_12congiap_names, svg_12congiap_viewboxes } from './lich-block-am-duong-viet-nam-bubble-data.js?v=20261005';
+import { getLichAmDuongHelpers } from './lich-am-duong-viet-nam-core.js?v=20261005';
+import { getLichAmDuongTodayInfo, initPopupCore } from './lich-block-am-duong-viet-nam-popup.js?v=20261005';
 
 const SVG_COUNT = getSvgItemCount();
 const SVG_NAMES = Array.isArray(svg_12congiap_names) ? svg_12congiap_names : [];
@@ -19,7 +19,7 @@ let mainBlockCardLoadPromise = null;
 async function ensureMainBlockCardLoaded() {
     if (customElements.get(MAIN_BLOCK_CARD_TAG)) return true;
     if (!mainBlockCardLoadPromise) {
-        mainBlockCardLoadPromise = import('./lich-block-am-duong-viet-nam.js?v=20260803')
+        mainBlockCardLoadPromise = import('./lich-block-am-duong-viet-nam.js?v=20261005')
             .catch((err) => {
                 mainBlockCardLoadPromise = null;
                 console.warn('Không thể tải thẻ lịch block chính:', err);

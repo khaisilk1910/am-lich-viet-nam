@@ -197,7 +197,7 @@ export const svg_12congiap_viewboxes = [
   }
 ];
 
-const SVG_ASSET_VERSION = '20260803';
+const SVG_ASSET_VERSION = '20261005';
 const svgCache = new Map();
 
 export function getSvgItemCount() {

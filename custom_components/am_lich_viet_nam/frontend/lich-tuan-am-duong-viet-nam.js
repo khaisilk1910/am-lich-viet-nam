@@ -32,9 +32,9 @@ import {
   getHuongXuatHanh,
   getThanSat,
   getLichAmDuongHelpers
-} from './lich-am-duong-viet-nam-core.js?v=20260803';
+} from './lich-am-duong-viet-nam-core.js?v=20261005';
 
-import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-popup.js?v=20260803';
+import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-popup.js?v=20261005';
 
 (function(){
   'use strict';
@@ -61,7 +61,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
   async function ensureMainBlockCardLoaded() {
     if (customElements.get(MAIN_BLOCK_CARD_TAG)) return true;
     if (!mainBlockCardLoadPromise) {
-      mainBlockCardLoadPromise = import('./lich-block-am-duong-viet-nam.js?v=20260803')
+      mainBlockCardLoadPromise = import('./lich-block-am-duong-viet-nam.js?v=20261005')
         .catch((err) => {
           mainBlockCardLoadPromise = null;
           console.warn('Không thể tải thẻ lịch block chính:', err);

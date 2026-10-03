@@ -32,9 +32,9 @@ import {
   getHuongXuatHanh,
   getThanSat,
   getLichAmDuongHelpers
-} from './lich-am-duong-viet-nam-core.js?v=20260803';
+} from './lich-am-duong-viet-nam-core.js?v=20261005';
 
-import { injectPopupDOM, initPopupCore, showDayPopup } from './lich-block-am-duong-viet-nam-popup.js?v=20260803';
+import { injectPopupDOM, initPopupCore, showDayPopup } from './lich-block-am-duong-viet-nam-popup.js?v=20261005';
 
 (function(){
   'use strict';
