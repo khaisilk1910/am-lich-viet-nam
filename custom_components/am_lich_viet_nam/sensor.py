@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+import logging
 from typing import Any, Callable
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.event import async_track_point_in_time
 from homeassistant.util import dt as dt_util
 
@@ -34,6 +35,7 @@ from .amlich_core import (
     jd_to_date,
 )
 
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -48,7 +50,7 @@ class CalculatedState:
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up sensors from a config entry."""
     is_main = entry.data.get("is_main", entry.data.get("event_name") is None)
@@ -70,6 +72,7 @@ class DailyCalculatedSensor(SensorEntity):
     """Base entity which recalculates once per local day and on demand."""
 
     _attr_should_poll = False
+    _attr_available = True
 
     def __init__(self) -> None:
         self._unsub_daily_update: Callable[[], None] | None = None
@@ -87,9 +90,19 @@ class DailyCalculatedSensor(SensorEntity):
 
     async def _async_refresh(self) -> None:
         today = dt_util.now().date()
-        result = await self.hass.async_add_executor_job(
-            self._calculate_state, today
-        )
+        try:
+            result = await self.hass.async_add_executor_job(
+                self._calculate_state, today
+            )
+        except Exception:  # Keep entity/platform setup resilient to calculation bugs.
+            _LOGGER.exception(
+                "Không thể tính trạng thái cho %s",
+                self.entity_id or self._attr_unique_id,
+            )
+            self._attr_available = False
+            return
+
+        self._attr_available = True
         self._attr_native_value = result.value
         self._attr_extra_state_attributes = result.attributes
         if result.name is not None:
@@ -264,8 +277,8 @@ class AmLichEventSensor(DailyCalculatedSensor):
                 for index, month_info in enumerate(historical_year):
                     if month_info.month != target_month or month_info.leap != 0:
                         continue
-                    month_length = self._lunar_month_length(
-                        historical_year, index, event_year
+                    month_length = get_lunar_month_length(
+                        historical_year[index]
                     )
                     actual_day = min(target_day, month_length)
                     solar_day, solar_month, solar_year = jd_to_date(
@@ -295,9 +308,7 @@ class AmLichEventSensor(DailyCalculatedSensor):
             for index, month_info in enumerate(year_info):
                 if month_info.month != target_month or month_info.leap != 0:
                     continue
-                month_length = self._lunar_month_length(
-                    year_info, index, candidate_year
-                )
+                month_length = get_lunar_month_length(year_info[index])
                 actual_day = min(target_day, month_length)
                 candidate_jd = month_info.jd + actual_day - 1
                 if candidate_jd >= current_jd:
@@ -341,18 +352,6 @@ class AmLichEventSensor(DailyCalculatedSensor):
         attributes["so_tuoi"] = age
 
         return CalculatedState(days_left, attributes, str(event_name))
-
-    @staticmethod
-    def _lunar_month_length(
-        year_info: list[Any], index: int, lunar_year: int
-    ) -> int:
-        if index + 1 < len(year_info):
-            return int(year_info[index + 1].jd - year_info[index].jd)
-        try:
-            next_year = get_year_info(lunar_year + 1)
-            return int(next_year[0].jd - year_info[index].jd)
-        except (IndexError, ValueError):
-            return 30
 
 
 class DuongLichEventSensor(DailyCalculatedSensor):

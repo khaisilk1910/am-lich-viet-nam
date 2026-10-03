@@ -3,9 +3,9 @@
   "name": "Âm lịch Việt Nam",
   "version": "2026.10.03",
   "documentation": "https://github.com/khaisilk1910/am-lich-viet-nam",
+  "integration_type": "helper",
   "requirements": [],
   "dependencies": [
-    "lovelace",
     "frontend"
   ],
   "codeowners": [

@@ -5,15 +5,15 @@ from __future__ import annotations
 from datetime import date
 import hashlib
 import logging
-import os
+from pathlib import Path
 from typing import Any
 
 import voluptuous as vol
 
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
-from homeassistant.components.lovelace.resources import ResourceStorageCollection
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
@@ -40,7 +40,7 @@ _LOGGER = logging.getLogger(__name__)
 
 UI_URL_BASE = "/am_lich_viet_nam_ui"
 UI_DIR_PATH = "frontend"
-PLATFORMS = ["sensor"]
+PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 FRONTEND_RESOURCES = (
     "lich-block-am-duong-viet-nam.js",
@@ -63,94 +63,48 @@ SERVICE_CONVERT_SCHEMA = vol.Schema(
 )
 
 
-def _get_file_version(file_path: str, fallback: str) -> str:
-    """Return a short content hash for a frontend resource."""
-    try:
-        digest = hashlib.sha256()
-        with open(file_path, "rb") as resource_file:
-            for chunk in iter(lambda: resource_file.read(128 * 1024), b""):
-                digest.update(chunk)
-        return digest.hexdigest()[:16]
-    except OSError as err:
-        _LOGGER.warning(
-            "Không thể đọc %s để tạo phiên bản cache (%s). Dùng %s",
-            file_path,
-            err,
-            fallback,
-        )
-        return fallback
+def _get_frontend_versions(frontend_path: str) -> dict[str, str]:
+    """Return content hashes for all frontend resources in one executor job."""
+    versions: dict[str, str] = {}
+    base_path = Path(frontend_path)
 
-
-async def _async_init_resource(hass: HomeAssistant, url: str, version: str) -> bool:
-    """Add or update a Lovelace JavaScript resource."""
-    versioned_url = f"{url}?hacstag={version}"
-    lovelace = hass.data.get("lovelace")
-
-    if lovelace is None:
-        add_extra_js_url(hass, versioned_url)
-        return False
-
-    resources: Any = (
-        lovelace.resources
-        if hasattr(lovelace, "resources")
-        else lovelace.get("resources")
-    )
-    if not resources:
-        add_extra_js_url(hass, versioned_url)
-        return False
-
-    if hasattr(resources, "async_get_info"):
-        await resources.async_get_info()
-
-    for item in resources.async_items():
-        item_url = item.get("url", "")
-        if item_url != url and not item_url.startswith(f"{url}?"):
-            continue
-        if item_url == versioned_url:
-            return False
-
-        _LOGGER.debug("Cập nhật Lovelace resource: %s", versioned_url)
-        if isinstance(resources, ResourceStorageCollection):
-            await resources.async_update_item(
-                item["id"], {"res_type": "module", "url": versioned_url}
+    for file_name in FRONTEND_RESOURCES:
+        file_path = base_path / file_name
+        try:
+            digest = hashlib.sha256()
+            with file_path.open("rb") as resource_file:
+                for chunk in iter(lambda: resource_file.read(128 * 1024), b""):
+                    digest.update(chunk)
+        except OSError as err:
+            _LOGGER.warning(
+                "Không thể đọc tài nguyên frontend %s; bỏ qua đăng ký (%s)",
+                file_path,
+                err,
             )
-        else:
-            add_extra_js_url(hass, versioned_url)
-        return True
+            continue
 
-    if isinstance(resources, ResourceStorageCollection):
-        _LOGGER.debug("Thêm Lovelace resource: %s", versioned_url)
-        await resources.async_create_item(
-            {"res_type": "module", "url": versioned_url}
-        )
-    else:
-        add_extra_js_url(hass, versioned_url)
+        versions[file_name] = digest.hexdigest()[:16]
 
-    return True
+    return versions
 
 
 async def _async_register_frontend_resources(hass: HomeAssistant) -> None:
-    """Register all frontend modules once per Home Assistant start."""
+    """Register frontend modules once without mutating Lovelace storage."""
     domain_data = hass.data.setdefault(DOMAIN, {})
     if domain_data.get("frontend_resources_registered"):
         return
 
-    integration = hass.data.get("integrations", {}).get(DOMAIN)
-    fallback_version = str(getattr(integration, "version", "1.0"))
-    frontend_path = hass.config.path(
-        "custom_components", DOMAIN, UI_DIR_PATH
+    frontend_path = hass.config.path("custom_components", DOMAIN, UI_DIR_PATH)
+    versions = await hass.async_add_executor_job(
+        _get_frontend_versions, frontend_path
     )
 
-    for file_name in FRONTEND_RESOURCES:
-        file_path = os.path.join(frontend_path, file_name)
-        version = await hass.async_add_executor_job(
-            _get_file_version, file_path, fallback_version
-        )
-        await _async_init_resource(
-            hass, f"{UI_URL_BASE}/{file_name}", version
+    for file_name, version in versions.items():
+        add_extra_js_url(
+            hass, f"{UI_URL_BASE}/{file_name}?hacstag={version}"
         )
 
-    domain_data["frontend_resources_registered"] = True
+    domain_data["frontend_resources_registered"] = bool(versions)
 
 
 def _get_date_details(jd: int, lunar_obj: Any) -> dict[str, Any]:
@@ -321,20 +275,19 @@ async def _async_handle_convert_date(
 
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up shared integration resources."""
-    await hass.http.async_register_static_paths(
-        [
-            StaticPathConfig(
-                UI_URL_BASE,
-                hass.config.path("custom_components", DOMAIN, UI_DIR_PATH),
-                True,
-            )
-        ]
-    )
-
     try:
+        await hass.http.async_register_static_paths(
+            [
+                StaticPathConfig(
+                    UI_URL_BASE,
+                    hass.config.path("custom_components", DOMAIN, UI_DIR_PATH),
+                    True,
+                )
+            ]
+        )
         await _async_register_frontend_resources(hass)
-    except Exception:  # Frontend registration must not block sensor setup.
-        _LOGGER.exception("Không thể tự động đăng ký tài nguyên Lovelace")
+    except Exception:  # Frontend failure must not block sensor/action setup.
+        _LOGGER.exception("Không thể đăng ký frontend của Âm lịch Việt Nam")
 
     if not hass.services.has_service(DOMAIN, "convert_date"):
 
@@ -355,7 +308,6 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up a Vietnamese Lunar Calendar config entry."""
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 
 
@@ -363,7 +315,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry without removing shared actions or resources."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
-
-async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload an entry after its options change."""
-    await hass.config_entries.async_reload(entry.entry_id)

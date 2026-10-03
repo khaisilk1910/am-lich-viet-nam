@@ -1,49 +1,110 @@
 {
+  "title": "Vietnamese Lunar Calendar",
   "config": {
     "step": {
       "user": {
+        "title": "Set up Vietnamese Lunar Calendar",
         "data": {
-          "action": "Chọn loại thiết lập"
+          "action": "Choose what to set up"
         }
       },
       "event_am_lich": {
+        "title": "Add lunar-calendar event",
         "data": {
-          "event_name": "Tên sự kiện",
-          "event_day": "Ngày diễn ra",
-          "event_month": "Tháng diễn ra",
-          "event_year": "Năm diễn ra (Tùy chọn)",
-          "birth_day": "Ngày sinh (Tùy chọn)",
-          "birth_month": "Tháng sinh (Tùy chọn)",
-          "birth_year": "Năm sinh (Tùy chọn)",
-          "event_description": "Chi tiết sự kiện"
+          "event_name": "Event name",
+          "event_day": "Day",
+          "event_month": "Month",
+          "event_year": "Year (optional)",
+          "birth_day": "Birth day (optional)",
+          "birth_month": "Birth month (optional)",
+          "birth_year": "Birth year (optional)",
+          "event_description": "Event details"
         }
       },
       "event_duong_lich": {
+        "title": "Add solar-calendar event",
         "data": {
-          "event_name": "Tên sự kiện",
-          "event_day": "Ngày diễn ra",
-          "event_month": "Tháng diễn ra",
-          "event_year": "Năm diễn ra (Tùy chọn)",
-          "event_description": "Chi tiết sự kiện"
+          "event_name": "Event name",
+          "event_day": "Day",
+          "event_month": "Month",
+          "event_year": "Year (optional)",
+          "event_description": "Event details"
         }
       }
+    },
+    "error": {
+      "event_name_required": "The event name cannot be empty.",
+      "invalid_lunar_date": "The lunar-calendar date is invalid or outside the supported range.",
+      "invalid_solar_date": "The solar-calendar date is invalid."
     }
   },
   "options": {
     "step": {
       "init": {
+        "title": "Edit event",
         "data": {
-          "thong_bao": "Thông báo từ hệ thống",
-          "event_name": "Tên sự kiện",
-          "event_day": "Ngày diễn ra",
-          "event_month": "Tháng diễn ra",
-          "event_year": "Năm diễn ra (Tùy chọn)",
-          "birth_day": "Ngày sinh (Tùy chọn)",
-          "birth_month": "Tháng sinh (Tùy chọn)",
-          "birth_year": "Năm sinh (Tùy chọn)",
-          "event_description": "Chi tiết sự kiện"
+          "event_name": "Event name",
+          "event_day": "Day",
+          "event_month": "Month",
+          "event_year": "Year (optional)",
+          "birth_day": "Birth day (optional)",
+          "birth_month": "Birth month (optional)",
+          "birth_year": "Birth year (optional)",
+          "event_description": "Event details"
         }
       }
+    },
+    "error": {
+      "event_name_required": "The event name cannot be empty.",
+      "invalid_lunar_date": "The lunar-calendar date is invalid or outside the supported range.",
+      "invalid_solar_date": "The solar-calendar date is invalid."
+    }
+  },
+  "selector": {
+    "setup_action": {
+      "options": {
+        "main": "Create daily lunar-calendar sensor",
+        "su_kien_am_lich": "Add lunar-calendar event",
+        "su_kien_duong_lich": "Add solar-calendar event"
+      }
+    },
+    "conversion_type": {
+      "options": {
+        "solar_to_lunar": "Solar → Lunar",
+        "lunar_to_solar": "Lunar → Solar"
+      }
+    }
+  },
+  "services": {
+    "convert_date": {
+      "name": "Convert lunar/solar date",
+      "description": "Convert a date between the solar and Vietnamese lunar calendars and return detailed calendar information.",
+      "fields": {
+        "conversion_type": {
+          "name": "Conversion type",
+          "description": "Choose the conversion direction."
+        },
+        "day": {
+          "name": "Day",
+          "description": "Day to convert."
+        },
+        "month": {
+          "name": "Month",
+          "description": "Month to convert."
+        },
+        "year": {
+          "name": "Year",
+          "description": "Year to convert, supported from 1800 through 2199."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "invalid_date": {
+      "message": "Invalid date: {message}"
+    },
+    "conversion_failed": {
+      "message": "The date could not be converted because of an internal processing error."
     }
   }
 }

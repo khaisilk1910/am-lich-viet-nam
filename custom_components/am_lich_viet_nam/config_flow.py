@@ -10,9 +10,8 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import selector
-from homeassistant.util import dt as dt_util
 
-from .amlich_core import get_year_info
+from .amlich_core import get_lunar_month_length, get_year_info
 from .const import DOMAIN
 
 
@@ -45,7 +44,7 @@ def _year_selector() -> selector.NumberSelector:
     return selector.NumberSelector(
         selector.NumberSelectorConfig(
             min=1800,
-            max=max(2199, dt_util.now().year),
+            max=2199,
             step=1,
             mode=selector.NumberSelectorMode.BOX,
         )
@@ -75,6 +74,10 @@ def _optional_key(name: str, value: Any) -> Any:
 def _normalise_input(user_input: dict[str, Any]) -> dict[str, Any]:
     """Convert selector values to integers and remove empty optional values."""
     result = dict(user_input)
+    for text_key in ("event_name", "event_description"):
+        if isinstance(result.get(text_key), str):
+            result[text_key] = result[text_key].strip()
+
     for key in (
         "event_day",
         "event_month",
@@ -96,6 +99,9 @@ def _normalise_input(user_input: dict[str, Any]) -> dict[str, Any]:
 
 def _validate_solar_event(data: dict[str, Any]) -> str | None:
     """Validate a recurring solar event date."""
+    if not data.get("event_name"):
+        return "event_name_required"
+
     day = int(data.get("event_day", 0))
     month = int(data.get("event_month", 0))
     year = data.get("event_year")
@@ -109,6 +115,9 @@ def _validate_solar_event(data: dict[str, Any]) -> str | None:
 
 def _validate_lunar_event(data: dict[str, Any]) -> str | None:
     """Validate a recurring lunar event date."""
+    if not data.get("event_name"):
+        return "event_name_required"
+
     day = int(data.get("event_day", 0))
     month = int(data.get("event_month", 0))
     if day < 1 or day > 30 or month < 1 or month > 12:
@@ -123,16 +132,10 @@ def _validate_lunar_event(data: dict[str, Any]) -> str | None:
     except ValueError:
         return "invalid_lunar_date"
 
-    for index, month_info in enumerate(year_info):
+    for month_info in year_info:
         if month_info.month != month or month_info.leap != 0:
             continue
-        if index + 1 < len(year_info):
-            month_length = year_info[index + 1].jd - month_info.jd
-        else:
-            try:
-                month_length = get_year_info(int(year) + 1)[0].jd - month_info.jd
-            except (IndexError, ValueError):
-                month_length = 30
+        month_length = get_lunar_month_length(month_info)
         return None if day <= month_length else "invalid_lunar_date"
 
     return "invalid_lunar_date"
@@ -198,26 +201,23 @@ def _event_schema(
     return vol.Schema(schema)
 
 
-class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
+class AmLichOptionsFlowHandler(config_entries.OptionsFlowWithReload):
     """Edit an existing calendar or event entry."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        self._entry = config_entry
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ):
         """Handle options for the selected entry."""
-        is_main = self._entry.data.get(
-            "is_main", self._entry.data.get("event_name") is None
+        is_main = self.config_entry.data.get(
+            "is_main", self.config_entry.data.get("event_name") is None
         )
         if is_main:
             if user_input is not None:
                 return self.async_create_entry(title="", data={})
             return self.async_show_form(step_id="init", data_schema=vol.Schema({}))
 
-        event_type = self._entry.options.get(
-            "event_type", self._entry.data.get("event_type", "lunar")
+        event_type = self.config_entry.options.get(
+            "event_type", self.config_entry.data.get("event_type", "lunar")
         )
         errors: dict[str, str] = {}
 
@@ -232,39 +232,39 @@ class AmLichOptionsFlowHandler(config_entries.OptionsFlow):
                 return self.async_create_entry(title="", data=normalised)
             errors["base"] = error
 
-        current_day = self._entry.options.get(
-            "event_day", self._entry.data.get("event_day")
+        current_day = self.config_entry.options.get(
+            "event_day", self.config_entry.data.get("event_day")
         )
-        current_month = self._entry.options.get(
-            "event_month", self._entry.data.get("event_month")
+        current_month = self.config_entry.options.get(
+            "event_month", self.config_entry.data.get("event_month")
         )
         if current_day is None or current_month is None:
-            current_day, current_month = _get_legacy_event_date(self._entry)
+            current_day, current_month = _get_legacy_event_date(self.config_entry)
 
         values = {
-            "event_name": self._entry.options.get(
+            "event_name": self.config_entry.options.get(
                 "event_name",
-                self._entry.data.get(
-                    "event_name", self._entry.title or "Sự kiện"
+                self.config_entry.data.get(
+                    "event_name", self.config_entry.title or "Sự kiện"
                 ),
             ),
             "event_day": current_day,
             "event_month": current_month,
-            "event_year": self._entry.options.get(
-                "event_year", self._entry.data.get("event_year")
+            "event_year": self.config_entry.options.get(
+                "event_year", self.config_entry.data.get("event_year")
             ),
-            "event_description": self._entry.options.get(
+            "event_description": self.config_entry.options.get(
                 "event_description",
-                self._entry.data.get("event_description", ""),
+                self.config_entry.data.get("event_description", ""),
             ),
-            "birth_day": self._entry.options.get(
-                "birth_day", self._entry.data.get("birth_day")
+            "birth_day": self.config_entry.options.get(
+                "birth_day", self.config_entry.data.get("birth_day")
             ),
-            "birth_month": self._entry.options.get(
-                "birth_month", self._entry.data.get("birth_month")
+            "birth_month": self.config_entry.options.get(
+                "birth_month", self.config_entry.data.get("birth_month")
             ),
-            "birth_year": self._entry.options.get(
-                "birth_year", self._entry.data.get("birth_year")
+            "birth_year": self.config_entry.options.get(
+                "birth_year", self.config_entry.data.get("birth_year")
             ),
         }
         return self.async_show_form(
@@ -284,7 +284,7 @@ class AmLichConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(
         config_entry: config_entries.ConfigEntry,
     ) -> AmLichOptionsFlowHandler:
-        return AmLichOptionsFlowHandler(config_entry)
+        return AmLichOptionsFlowHandler()
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None

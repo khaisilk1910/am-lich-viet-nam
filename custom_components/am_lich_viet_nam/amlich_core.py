@@ -1,5 +1,5 @@
+from functools import lru_cache
 from math import floor, pi, sin
-from datetime import datetime
 
 class LunarDate:
     def __init__(self, day, month, year, leap, jd):
@@ -32,7 +32,7 @@ TK20 = [
     0x36aea6, 0x5aab50, 0x464b60, 0x30aae4, 0x56a570, 0x405260, 0x28f263, 0x4ed940, 0x38db47, 0x5cd6a0,
     0x4896d0, 0x344dd5, 0x5a4ad0, 0x42a4d0, 0x2cd4b4, 0x52b250, 0x3cd558, 0x60b540, 0x4ab5a0, 0x3755a6,
     0x5c95b0, 0x4649b0, 0x30a974, 0x56a4b0, 0x40aa50, 0x29aa52, 0x4e6d20, 0x39ad47, 0x5eab60, 0x489370,
-    0x344af5, 0x5a4970, 0x4464b0, 0x2caba4, 0x52a570, 0x3e92e0, 0x6292d0, 0x4cc950, 0x36d556, 0x5a56a0
+    0x344af5, 0x5a4970, 0x4464b0, 0x2c74a3, 0x50ea50, 0x3d6a58, 0x6256a0, 0x4aaad0, 0x3696d5, 0x5c92e0
 ]
 
 TK21 = [
@@ -308,17 +308,37 @@ def decode_lunar_year(yy, k):
     return ly
 	
 
-def get_year_info(yyyy):
+def _get_year_code(yyyy):
+    """Return the encoded lunar-year table value for a supported year."""
     if 1800 <= yyyy <= 1899:
-        return decode_lunar_year(yyyy, TK19[yyyy - 1800])
-    elif 1900 <= yyyy <= 1999:
-        return decode_lunar_year(yyyy, TK20[yyyy - 1900])
-    elif 2000 <= yyyy <= 2099:
-        return decode_lunar_year(yyyy, TK21[yyyy - 2000])
-    elif 2100 <= yyyy <= 2199:
-        return decode_lunar_year(yyyy, TK22[yyyy - 2100])
-    else:
-        raise ValueError("Chỉ hỗ trợ từ năm 1800 đến 2199.")
+        return TK19[yyyy - 1800]
+    if 1900 <= yyyy <= 1999:
+        return TK20[yyyy - 1900]
+    if 2000 <= yyyy <= 2099:
+        return TK21[yyyy - 2000]
+    if 2100 <= yyyy <= 2199:
+        return TK22[yyyy - 2100]
+    raise ValueError("Chỉ hỗ trợ từ năm 1800 đến 2199.")
+
+
+def _get_encoded_month_length(yyyy, month, leap=0):
+    """Return a lunar month length directly from the encoded year table."""
+    if not 1 <= month <= 12:
+        raise ValueError("Tháng âm lịch phải nằm trong khoảng 1-12.")
+
+    year_code = _get_year_code(yyyy)
+    leap_month = year_code & 0xF
+    if leap:
+        if month != leap_month:
+            raise ValueError("Tháng được yêu cầu không phải tháng nhuận của năm này.")
+        return 29 + ((year_code >> 16) & 0x1)
+
+    return 29 + ((year_code >> (16 - month)) & 0x1)
+
+
+@lru_cache(maxsize=400)
+def get_year_info(yyyy):
+    return decode_lunar_year(yyyy, _get_year_code(yyyy))
 
 
 def find_lunar_date(jd, ly):
@@ -348,15 +368,9 @@ def get_month_name(month, leap):
     return name + " (Nhuận)" if leap else name
 
 def get_lunar_month_length(lunar_date):
-    ly = get_year_info(lunar_date.year)
-    for i in range(len(ly)):
-        if ly[i].month == lunar_date.month and ly[i].leap == lunar_date.leap:
-            if i + 1 < len(ly):
-                return ly[i + 1].jd - ly[i].jd
-    # Nếu là tháng cuối cùng trong dữ liệu, giả định là 29 hoặc 30
-    # Logic này có thể cần cải thiện nếu cần độ chính xác tuyệt đối ở biên
-    next_year_ly = get_year_info(lunar_date.year + 1)
-    return next_year_ly[0].jd - ly[-1].jd if next_year_ly else 29
+    return _get_encoded_month_length(
+        lunar_date.year, lunar_date.month, lunar_date.leap
+    )
 
 # ===== Các hàm tính toán mới =====
 
@@ -463,7 +477,7 @@ def get_lunar_leap_info(yyyy):
             if m.leap == 1:
                 return m.month
         return 0
-    except:
+    except ValueError:
         return 0
 
 def lunar_to_solar_extended(dd, mm, yyyy):
@@ -482,15 +496,10 @@ def lunar_to_solar_extended(dd, mm, yyyy):
                 leap_month = m_info.month
                 
             if m_info.month == mm:
-                # Tính độ dài của tháng
-                if i + 1 < len(ly):
-                    m_len = ly[i+1].jd - m_info.jd
-                else:
-                    try:
-                        next_ly = get_year_info(yyyy + 1)
-                        m_len = next_ly[0].jd - m_info.jd
-                    except ValueError:
-                        m_len = 30 # Dự phòng
+                # Đọc trực tiếp độ dài tháng từ bảng mã năm, kể cả biên 2199.
+                m_len = _get_encoded_month_length(
+                    yyyy, m_info.month, m_info.leap
+                )
                         
                 if 1 <= dd <= m_len:
                     target_jd = m_info.jd + dd - 1
