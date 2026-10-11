@@ -2486,23 +2486,42 @@ import { injectPopupDOM, initPopupCore, showDayPopup } from './lich-block-am-duo
     }
   }
 
-  // Đăng ký Element
-  if (!customElements.get('lich-block-am-duong-viet-nam-editor')) customElements.define('lich-block-am-duong-viet-nam-editor', LunarCalendarCardEditor);
-  if (!customElements.get('lich-block-am-duong-viet-nam')) customElements.define('lich-block-am-duong-viet-nam', LunarCalendarCard);
-
-  const mainCardDescriptor = {
-    type: "lich-block-am-duong-viet-nam",
-    name: "Lịch Âm Dương",
-    description: "Thẻ Lịch Âm Dương Việt Nam có thể tùy chỉnh màu nền.",
-    documentationURL: "https://github.com/khaisilk1910/am-lich-viet-nam",
-    preview: true,
-    // Thẻ lịch tổng hợp không đại diện cho một entity duy nhất; tránh đề xuất sai trong picker mới.
-    getEntitySuggestion: () => null
+  // HA frontend issue #53890: extra_js_url can execute BEFORE its scoped
+  // CustomElementRegistry polyfill. Defining a card into the old registry
+  // makes it permanently invisible to Lovelace even if the JS loaded fine.
+  // Wait for the registered HA app element in the CURRENT registry; it is
+  // defined by the app bundle AFTER the polyfill was imported.
+  // Check only while bootstrapping; do not block rendering or the HA event loop.
+  const registerAfterHomeAssistant = (register) => {
+    const check = () => {
+      if (window.customElements.get('home-assistant')) {
+        register();
+      } else {
+        window.requestAnimationFrame(check);
+      }
+    };
+    check();
   };
-  window.customCards = window.customCards || [];
-  const existingMainCard = window.customCards.find((card) => card && card.type === mainCardDescriptor.type);
-  if (existingMainCard) Object.assign(existingMainCard, mainCardDescriptor);
-  else window.customCards.push(mainCardDescriptor);
+
+  registerAfterHomeAssistant(() => {
+    // Đăng ký Element
+    if (!customElements.get('lich-block-am-duong-viet-nam-editor')) customElements.define('lich-block-am-duong-viet-nam-editor', LunarCalendarCardEditor);
+    if (!customElements.get('lich-block-am-duong-viet-nam')) customElements.define('lich-block-am-duong-viet-nam', LunarCalendarCard);
+
+    const mainCardDescriptor = {
+      type: "lich-block-am-duong-viet-nam",
+      name: "Lịch Âm Dương",
+      description: "Thẻ Lịch Âm Dương Việt Nam có thể tùy chỉnh màu nền.",
+      documentationURL: "https://github.com/khaisilk1910/am-lich-viet-nam",
+      preview: true,
+      // Thẻ lịch tổng hợp không đại diện cho một entity duy nhất; tránh đề xuất sai trong picker mới.
+      getEntitySuggestion: () => null
+    };
+    window.customCards = window.customCards || [];
+    const existingMainCard = window.customCards.find((card) => card && card.type === mainCardDescriptor.type);
+    if (existingMainCard) Object.assign(existingMainCard, mainCardDescriptor);
+    else window.customCards.push(mainCardDescriptor);
+  });
 
   // ---- TRUYỀN HÀM TÍNH TOÁN CORE CHO POPUP LÀM VIỆC ----
   initPopupCore(getLichAmDuongHelpers());

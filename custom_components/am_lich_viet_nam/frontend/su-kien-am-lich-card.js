@@ -1,9 +1,15 @@
 (function() {
   'use strict';
 
-  // Fixed v3: giữ nguyên logic tải sự kiện, sửa hiển thị ngày/tháng 1 chữ số và thêm tương thích HA mới.
+  // v3.1 (2026-10-11): tăng độ ổn định khi Home Assistant/Android WebView khôi phục dashboard.
+  // LƯU Ý: JS chỉ chạy sau khi Lovelace tải resource thành công; lỗi HTTP/cache phải xử lý ở Resources.
 
   // HÀM TIỆN ÍCH CHUNG
+  // Nội dung cảm biến là dữ liệu, không được diễn giải thành HTML khi hiển thị.
+  const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[char]);
+
   const hexToRgba = (hex, opacity) => {
     let c;
     if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
@@ -466,6 +472,8 @@
       this._eventEntityIds = null;
       this._eventEntityScanAt = 0;
       this._eventStateCount = -1;
+      this._needsUpdate = false;
+      this._wasActive = false;
       this._isPageVisible = !document.hidden;
       this._isIntersecting = true;
       this._visibilityHandler = null;
@@ -493,6 +501,8 @@
         this._visibilityObserver.observe(this);
       }
       this._applyVisibilityState();
+      // hass/setConfig có thể đến trước khi gắn vào DOM; luôn đồng bộ khi kết nối.
+      this.scheduleUpdateData();
     }
 
     disconnectedCallback() {
@@ -505,15 +515,21 @@
         this._visibilityObserver.disconnect();
         this._visibilityObserver = null;
       }
-      if (this._updateDataRaf) {
+      if (this._updateDataRaf !== null) {
         window.cancelAnimationFrame(this._updateDataRaf);
         this._updateDataRaf = null;
+        this._needsUpdate = true;
       }
+      this._wasActive = false;
     }
 
     _applyVisibilityState() {
       const active = this.isConnected && this._isPageVisible && this._isIntersecting;
       this.toggleAttribute('data-paused', !active);
+      if (!active) this._needsUpdate = true;
+      const resumed = active && !this._wasActive;
+      this._wasActive = active;
+      if (resumed && this._needsUpdate) this.scheduleUpdateData();
     }
 
     _handleDocumentClick(event) {
@@ -554,11 +570,16 @@
       if (this.config && this.config.so_ngay !== config.so_ngay) {
           this._localSoNgay = null;
       }
+      const nextSignature = JSON.stringify(config);
+      const configChanged = nextSignature !== this._configSignature;
       this.config = config;
-      this._configSignature = JSON.stringify(this.config || {});
-      this._eventEntityIds = null;
-      this._eventEntityScanAt = 0;
-      this._eventStateCount = -1;
+      if (configChanged) {
+        this._configSignature = nextSignature;
+        this._lastDataString = null;
+        this._eventEntityIds = null;
+        this._eventEntityScanAt = 0;
+        this._eventStateCount = -1;
+      }
 
       if (!this.shadowRoot) {
         this.attachShadow({ mode: 'open' });
@@ -566,6 +587,7 @@
 
       if (!this.card) {
         this.card = document.createElement('ha-card');
+        this.card.textContent = 'Đang tải dữ liệu sự kiện…';
         this.shadowRoot.appendChild(this.card);
       }
       
@@ -628,10 +650,27 @@
     }
 
     scheduleUpdateData() {
-      if (this._updateDataRaf) return;
+      if (!this.config || !this._hass) return;
+      // Android WebView có thể ngừng chạy rAF khi app chuyển nền.
+      // Đừng giữ rAF treo rồi bỏ lỡ cập nhật lúc mở lại ứng dụng.
+      if (!this.isConnected || !this._isPageVisible || !this._isIntersecting) {
+        this._needsUpdate = true;
+        return;
+      }
+      if (this._updateDataRaf !== null) return;
+      this._needsUpdate = false;
       this._updateDataRaf = window.requestAnimationFrame(() => {
         this._updateDataRaf = null;
-        this.updateData();
+        if (!this.isConnected || document.hidden || !this._isIntersecting) {
+          this._needsUpdate = true;
+          return;
+        }
+        try {
+          this.updateData();
+        } catch (error) {
+          // Lỗi vẽ thẻ không được im lặng hay chặn các lần cập nhật sau.
+          console.error('[su-kien-am-lich-card] Không thể cập nhật thẻ:', error);
+        }
       });
     }
 
@@ -643,11 +682,12 @@
       if (configured.length) return configured;
 
       const now = Date.now();
-      const stateCount = Object.keys(states).length;
-      const cacheFresh = Array.isArray(this._eventEntityIds)
-        && stateCount === this._eventStateCount
-        && now - this._eventEntityScanAt < 60000;
-      if (cacheFresh) return this._eventEntityIds;
+      // Tránh duyệt toàn bộ hass.states ở mỗi nhịp cập nhật của Home Assistant.
+      // Nếu chưa tìm thấy cảm biến, kiểm tra lại sớm hơn để hỗ trợ khởi động chậm.
+      const scanInterval = this._eventEntityIds?.length ? 60000 : 5000;
+      if (Array.isArray(this._eventEntityIds) && now - this._eventEntityScanAt < scanInterval) {
+        return this._eventEntityIds;
+      }
 
       this._eventEntityIds = Object.entries(states)
         .filter(([entityId, stateObj]) => {
@@ -659,7 +699,6 @@
         })
         .map(([entityId]) => entityId);
       this._eventEntityScanAt = now;
-      this._eventStateCount = stateCount;
       return this._eventEntityIds;
     }
 
@@ -706,12 +745,18 @@
       events.sort((a, b) => a.days - b.days);
 
       // Hash chỉ dựa trên dữ liệu hiển thị + config đã cache, tránh stringify toàn bộ config ở mọi nhịp hass.
-      const eventSignature = events.map(e => `${e.entity_id}|${e.days}|${e.name}|${e.thu}|${e.duong}|${e.am}|${e.attrs?.chi_tiet || ''}|${e.attrs?.so_nam ?? ''}|${e.attrs?.so_tuoi ?? ''}`).join('||');
-      const dataHash = `${eventSignature}::${this._configSignature}::${hasIntegrationData}::${this._localSoNgay}`;
+      const visibleDetails = ['ngay_am_lich_su_kien', 'ngay_duong_lich_su_kien',
+        'thu_su_kien', 'nam_can_chi_su_kien', 'so_nam', 'so_tuoi', 'chi_tiet'];
+      const eventSignature = JSON.stringify(events.map(e => [
+        e.entity_id, e.days, e.name, e.thu, e.duong, e.am,
+        ...visibleDetails.map(key => e.attrs?.[key] ?? null)
+      ]));
+      const dataHash = `${eventSignature}::${this._configSignature}::${hasIntegrationData}::${soNgay}`;
       if (this._lastDataString === dataHash) return;
-      this._lastDataString = dataHash;
 
       this.renderEvents(events, soNgay, hasIntegrationData);
+      // Chỉ cache sau khi render thành công, để lỗi nhất thời có thể phục hồi.
+      this._lastDataString = dataHash;
     }
 
     renderEvents(events, soNgay, hasIntegrationData) {
@@ -1119,11 +1164,11 @@
           }
 
           html += `
-            <tr class="event-row" data-id="${ev.entity_id}">
+            <tr class="event-row" data-id="${escapeHtml(ev.entity_id)}">
               <td align="center" width="20%" style="border-bottom: solid 1px rgba(255,255,255,0.2); vertical-align: middle; padding: 8px 0;">
-                <div class="txt-thu-am" style="color:${cfg.mau_thu_ngayam_songay}; margin-bottom: 2px;">${ev.thu}</div>
-                <div class="txt-duong" style="color:${cfg.mau_ngay_duong}; margin-bottom: 2px;">${ev.duong}</div>
-                <div class="txt-thu-am" style="color:${cfg.mau_thu_ngayam_songay};">${ev.am}</div>
+                <div class="txt-thu-am" style="color:${cfg.mau_thu_ngayam_songay}; margin-bottom: 2px;">${escapeHtml(ev.thu)}</div>
+                <div class="txt-duong" style="color:${cfg.mau_ngay_duong}; margin-bottom: 2px;">${escapeHtml(ev.duong)}</div>
+                <div class="txt-thu-am" style="color:${cfg.mau_thu_ngayam_songay};">${escapeHtml(ev.am)}</div>
               </td>
               <td align="center" style="background:${mau_td}; width: 4px; border-radius: 2px; margin-bottom: 5px;"></td>
               <td align="center" width="80%" style="border-bottom: solid 1px rgba(255,255,255,0.2);">
@@ -1131,7 +1176,7 @@
                   <div class="emoji-sk">${icon}</div>
                   <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center;">
                     <div style="color:${cfg.mau_ten_su_kien}; text-align: left;">
-                      <span class="txt-ten-sk">${ev.name}</span>
+                      <span class="txt-ten-sk">${escapeHtml(ev.name)}</span>
                     </div>
                     <div style="color:${cfg.mau_thu_ngayam_songay}; text-align: right; padding-right: 10px; margin-top: 4px;">
                       <span class="txt-so-ngay ${classHieuUng}">${textNgayConLai}</span>
@@ -1142,7 +1187,7 @@
                 </div>
               </td>
             </tr>
-            <tr class="detail-row" id="detail-${ev.entity_id}" style="display: ${isExp ? 'table-row' : 'none'};">
+            <tr class="detail-row" id="detail-${escapeHtml(ev.entity_id)}" style="display: ${isExp ? 'table-row' : 'none'};">
               <td colspan="3" style="border-bottom: solid 1px rgba(255,255,255,0.2); padding: 0 5px 10px 5px;"><div class="detail-content">
           `;
           for (const [key, label] of Object.entries(eventLabels)) {
@@ -1152,9 +1197,9 @@
               const valLower = valStr.toLowerCase();
               if (valStr !== '' && valLower !== 'không rõ' && valLower !== 'unknown' && valStr !== '0') {
                 if (key === 'chi_tiet') {
-                  html += `<div class="attr-box" style="border-left: 3px solid ${cfg.mau_thu_ngayam_songay};"><div class="attr-label" style="color:${cfg.mau_tieu_de_chi_tiet}">${label}:</div><div class="attr-value-full" style="color:${cfg.mau_chi_tiet}">${val}</div></div>`;
+                  html += `<div class="attr-box" style="border-left: 3px solid ${cfg.mau_thu_ngayam_songay};"><div class="attr-label" style="color:${cfg.mau_tieu_de_chi_tiet}">${label}:</div><div class="attr-value-full" style="color:${cfg.mau_chi_tiet}">${escapeHtml(val)}</div></div>`;
                 } else {
-                  html += `<div class="attr-row"><span class="attr-label" style="color:${cfg.mau_tieu_de_chi_tiet}">${label}:</span><span class="attr-value" style="color:${cfg.mau_chi_tiet}">${val}</span></div>`;
+                  html += `<div class="attr-row"><span class="attr-label" style="color:${cfg.mau_tieu_de_chi_tiet}">${label}:</span><span class="attr-value" style="color:${cfg.mau_chi_tiet}">${escapeHtml(val)}</span></div>`;
                 }
               }
             }
@@ -1165,7 +1210,10 @@
       }
       
       html += '</div></div>';
+      const previousScrollTop = this.card.querySelector('#event-container')?.scrollTop || 0;
       this.card.innerHTML = html;
+      const currentScrollArea = this.card.querySelector('#event-container');
+      if (currentScrollArea) currentScrollArea.scrollTop = previousScrollTop;
 
       // SỰ KIỆN CHO THANH TRƯỢT GIAO DIỆN NGOÀI
       const sliderUI = this.card.querySelector('#days-slider-ui');
@@ -1245,32 +1293,54 @@
     }
   }
 
-  if (!customElements.get('su-kien-am-lich-editor')) {
-    customElements.define('su-kien-am-lich-editor', SuKienAmLichCardEditor);
-  }
-  if (!customElements.get('su-kien-am-lich-card')) {
-    customElements.define('su-kien-am-lich-card', SuKienAmLichCard);
-  }
-
-  window.customCards = window.customCards || [];
-  const cardRegistration = {
-    type: "su-kien-am-lich-card",
-    name: "Danh sách Sự Kiện",
-    description: "Thẻ hiển thị danh sách đếm ngược sự kiện cho Lịch Âm Việt Nam.",
-    documentationURL: "https://github.com/khaisilk1910/am-lich-viet-nam",
-    preview: true,
-    getEntitySuggestion: (hass, entityId) => {
-      const attrs = hass?.states?.[entityId]?.attributes || {};
-      const isCalendarEvent = attrs.ngay_am_lich_su_kien !== undefined
-        || attrs.ngay_duong_lich_su_kien !== undefined
-        || attrs.thu_su_kien !== undefined;
-      return isCalendarEvent
-        ? { config: { type: "custom:su-kien-am-lich-card", entities: [entityId] } }
-        : null;
-    }
+  // HA frontend issue #53890: extra_js_url can execute BEFORE its scoped
+  // CustomElementRegistry polyfill. Defining a card into the old registry
+  // makes it permanently invisible to Lovelace even if the JS loaded fine.
+  // Wait for the registered HA app element in the CURRENT registry; it is
+  // defined by the app bundle AFTER the polyfill was imported.
+  // Check only while bootstrapping; do not block rendering or the HA event loop.
+  const registerAfterHomeAssistant = (register) => {
+    const check = () => {
+      if (window.customElements.get('home-assistant')) {
+        register();
+      } else {
+        window.requestAnimationFrame(check);
+      }
+    };
+    check();
   };
-  const existingEventCard = window.customCards.find(card => card && card.type === cardRegistration.type);
-  if (existingEventCard) Object.assign(existingEventCard, cardRegistration);
-  else window.customCards.push(cardRegistration);
 
+  registerAfterHomeAssistant(() => {
+    if (!customElements.get('su-kien-am-lich-editor')) {
+      customElements.define('su-kien-am-lich-editor', SuKienAmLichCardEditor);
+    }
+    if (!customElements.get('su-kien-am-lich-card')) {
+      customElements.define('su-kien-am-lich-card', SuKienAmLichCard);
+    }
+
+    // Nếu resource được nạp lại, không tạo bản đăng ký trùng.
+    // Trên một trang đã load phiên bản cũ, cần reload dashboard để thay class đã định nghĩa.
+    if (!Array.isArray(window.customCards)) window.customCards = [];
+    const cardRegistration = {
+      type: "su-kien-am-lich-card",
+      name: "Danh sách Sự Kiện",
+      description: "Thẻ hiển thị danh sách đếm ngược sự kiện cho Lịch Âm Việt Nam.",
+      documentationURL: "https://github.com/khaisilk1910/am-lich-viet-nam",
+      preview: true,
+      getEntitySuggestion: (hass, entityId) => {
+        const attrs = hass?.states?.[entityId]?.attributes || {};
+        const isCalendarEvent = attrs.ngay_am_lich_su_kien !== undefined
+          || attrs.ngay_duong_lich_su_kien !== undefined
+          || attrs.thu_su_kien !== undefined;
+        return isCalendarEvent
+          ? { config: { type: "custom:su-kien-am-lich-card", entities: [entityId] } }
+          : null;
+      }
+    };
+    const existingEventCard = window.customCards.find(card => card && card.type === cardRegistration.type);
+    if (existingEventCard) Object.assign(existingEventCard, cardRegistration);
+    else window.customCards.push(cardRegistration);
+  });
+
+  window.__suKienAmLichCardVersion = '2026.10.11.2';
 })();

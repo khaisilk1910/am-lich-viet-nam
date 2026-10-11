@@ -2173,27 +2173,46 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
     }
   }
 
-  if (!customElements.get(WEEKLY_EDITOR_TAG)) {
-    customElements.define(WEEKLY_EDITOR_TAG, WeeklyLunarCalendarCardEditor);
-  }
-
-  if (!customElements.get(WEEKLY_CARD_TAG)) {
-    customElements.define(WEEKLY_CARD_TAG, WeeklyLunarCalendarCard);
-  }
-
-  const weeklyCardDescriptor = {
-    type: WEEKLY_CARD_TAG,
-    name: WEEKLY_CARD_NAME,
-    description: "Thẻ tuần Âm Dương Việt Nam: hôm nay ở giữa, mũi tên hoặc kéo ngang để tiến/lùi từng tuần, bấm ngày để xem popup chi tiết, có trình chỉnh màu trong UI.",
-    documentationURL: "https://github.com/khaisilk1910/am-lich-viet-nam",
-    preview: true,
-    // Thẻ này không gắn với entity cụ thể, nên không tự gợi ý trong picker theo entity để tránh làm rối UI Home Assistant 2026.6+.
-    getEntitySuggestion: () => null
+  // HA frontend issue #53890: extra_js_url can execute BEFORE its scoped
+  // CustomElementRegistry polyfill. Defining a card into the old registry
+  // makes it permanently invisible to Lovelace even if the JS loaded fine.
+  // Wait for the registered HA app element in the CURRENT registry; it is
+  // defined by the app bundle AFTER the polyfill was imported.
+  // Check only while bootstrapping; do not block rendering or the HA event loop.
+  const registerAfterHomeAssistant = (register) => {
+    const check = () => {
+      if (window.customElements.get('home-assistant')) {
+        register();
+      } else {
+        window.requestAnimationFrame(check);
+      }
+    };
+    check();
   };
-  window.customCards = window.customCards || [];
-  const existingWeeklyCard = window.customCards.find((card) => card && card.type === WEEKLY_CARD_TAG);
-  if (existingWeeklyCard) Object.assign(existingWeeklyCard, weeklyCardDescriptor);
-  else window.customCards.push(weeklyCardDescriptor);
+
+  registerAfterHomeAssistant(() => {
+    if (!customElements.get(WEEKLY_EDITOR_TAG)) {
+      customElements.define(WEEKLY_EDITOR_TAG, WeeklyLunarCalendarCardEditor);
+    }
+
+    if (!customElements.get(WEEKLY_CARD_TAG)) {
+      customElements.define(WEEKLY_CARD_TAG, WeeklyLunarCalendarCard);
+    }
+
+    const weeklyCardDescriptor = {
+      type: WEEKLY_CARD_TAG,
+      name: WEEKLY_CARD_NAME,
+      description: "Thẻ tuần Âm Dương Việt Nam: hôm nay ở giữa, mũi tên hoặc kéo ngang để tiến/lùi từng tuần, bấm ngày để xem popup chi tiết, có trình chỉnh màu trong UI.",
+      documentationURL: "https://github.com/khaisilk1910/am-lich-viet-nam",
+      preview: true,
+      // Thẻ này không gắn với entity cụ thể, nên không tự gợi ý trong picker theo entity để tránh làm rối UI Home Assistant 2026.6+.
+      getEntitySuggestion: () => null
+    };
+    window.customCards = window.customCards || [];
+    const existingWeeklyCard = window.customCards.find((card) => card && card.type === WEEKLY_CARD_TAG);
+    if (existingWeeklyCard) Object.assign(existingWeeklyCard, weeklyCardDescriptor);
+    else window.customCards.push(weeklyCardDescriptor);
+  });
 
   // Truyền lõi tính toán cho popup dùng chung với thẻ lịch block âm dương.
   initPopupCore(getLichAmDuongHelpers());

@@ -2931,24 +2931,45 @@ class LunarCalendarBubbleEditor extends HTMLElement {
     }
 }
 
-if (!customElements.get('lich-am-duong-bubble-editor')) {
-    customElements.define('lich-am-duong-bubble-editor', LunarCalendarBubbleEditor);
-}
+  // HA frontend issue #53890: extra_js_url can execute BEFORE its scoped
+  // CustomElementRegistry polyfill. Defining a card into the old registry
+  // makes it permanently invisible to Lovelace even if the JS loaded fine.
+  // Wait for the registered HA app element in the CURRENT registry; it is
+  // defined by the app bundle AFTER the polyfill was imported.
+  // Check only while bootstrapping; do not block rendering or the HA event loop.
+  const registerAfterHomeAssistant = (register) => {
+    const check = () => {
+      if (window.customElements.get('home-assistant')) {
+        register();
+      } else {
+        window.requestAnimationFrame(check);
+      }
+    };
+    check();
+  };
 
-if (!customElements.get('lich-am-duong-bubble')) {
-    customElements.define('lich-am-duong-bubble', LunarCalendarBubbleCard);
-}
+  registerAfterHomeAssistant(() => {
+  if (!customElements.get('lich-am-duong-bubble-editor')) {
+      customElements.define('lich-am-duong-bubble-editor', LunarCalendarBubbleEditor);
+  }
 
-window.customCards = window.customCards || [];
-const bubbleCardDescriptor = {
-    type: 'lich-am-duong-bubble',
-    name: 'Bong Bong Lich Am Duong SVG',
-    description: 'Bong bong SVG noi, tu doi vi tri khung chat, hieu ung go chu va ngay am duong.',
-    documentationURL: 'https://github.com/khaisilk1910/am-lich-viet-nam',
-    preview: false,
-    // Thẻ nổi không gắn với một entity cụ thể; không đề xuất trong entity-first card picker (HA 2026.6+).
-    getEntitySuggestion: () => null
-};
-const existingBubbleCard = window.customCards.find((card) => card && card.type === bubbleCardDescriptor.type);
-if (existingBubbleCard) Object.assign(existingBubbleCard, bubbleCardDescriptor);
-else window.customCards.push(bubbleCardDescriptor);
+  if (!customElements.get('lich-am-duong-bubble')) {
+      customElements.define('lich-am-duong-bubble', LunarCalendarBubbleCard);
+  }
+
+  window.customCards = window.customCards || [];
+  const bubbleCardDescriptor = {
+      type: 'lich-am-duong-bubble',
+      name: 'Bong Bong Lich Am Duong SVG',
+      description: 'Bong bong SVG noi, tu doi vi tri khung chat, hieu ung go chu va ngay am duong.',
+      documentationURL: 'https://github.com/khaisilk1910/am-lich-viet-nam',
+      preview: false,
+      // Thẻ nổi không gắn với một entity cụ thể; không đề xuất trong entity-first card picker (HA 2026.6+).
+      getEntitySuggestion: () => null
+  };
+  const existingBubbleCard = window.customCards.find((card) => card && card.type === bubbleCardDescriptor.type);
+  if (existingBubbleCard) Object.assign(existingBubbleCard, bubbleCardDescriptor);
+  else window.customCards.push(bubbleCardDescriptor);
+  });
+
+
