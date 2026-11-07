@@ -1,4 +1,5 @@
 from functools import lru_cache
+from datetime import date, timedelta
 from math import floor, pi, sin
 
 class LunarDate:
@@ -81,25 +82,66 @@ TIETKHI = [
 NGAY_LE_DL = {
     "1/1": "Tết Dương lịch", "9/1": "Truyền thống học sinh, sinh viên Việt Nam", "3/2": "Thành lập Đảng Cộng Sản Việt Nam",
     "14/2": "Lễ tình nhân", "27/2": "Thầy thuốc Việt Nam", "8/3": "Quốc tế Phụ nữ", "20/3": "Quốc tế Hạnh phúc",
-    "22/3": "Nước sạch Thế giới", "26/3": "Thành lập Đoàn TNCS Hồ Chí Minh", "31/3": "Lễ Phục Sinh", "1/4": "Cá tháng Tư",
-    "30/4": "Giải phóng Miền Nam", "1/5": "Quốc tế Lao động", "7/5": "Chiến thắng Điện Biên Phủ", "12/5": "Ngày của Mẹ",
-    "19/5": "Ngày sinh Chủ tịch Hồ Chí Minh", "1/6": "Quốc tế Thiếu Nhi", "18/6": "Ngày của Cha", "21/6": "Báo chí Việt Nam",
+    "22/3": "Nước sạch Thế giới", "26/3": "Thành lập Đoàn TNCS Hồ Chí Minh", "1/4": "Cá tháng Tư",
+    "30/4": "Giải phóng Miền Nam", "1/5": "Quốc tế Lao động", "7/5": "Chiến thắng Điện Biên Phủ", 
+    "19/5": "Ngày sinh Chủ tịch Hồ Chí Minh", "1/6": "Quốc tế Thiếu Nhi", "21/6": "Báo chí Việt Nam",
     "28/6": "Gia đình Việt Nam", "11/7": "Dân số thế giới", "27/7": "Thương binh liệt sĩ", "28/7": "Thành lập công đoàn Việt Nam",
     "19/8": "Kỷ niệm Cách mạng Tháng 8 thành công", "2/9": "Quốc Khánh", "10/9": "Thành lập Mặt trận Tổ quốc Việt Nam",
     "1/10": "Quốc tế người cao tuổi", "10/10": "Ngày giải phóng Thủ Đô", "13/10": "Doanh nhân Việt Nam",
     "16/10": "Ngày Lương thực thế giới", "17/10": "Ngày quốc tế xóa nghèo", "20/10": "Phụ nữ Việt Nam (20.10.1930)",
     "31/10": "Halloween", "9/11": "Pháp luật Việt Nam", "19/11": "Quốc tế Nam giới", "20/11": "Nhà giáo Việt Nam",
-    "23/11": "Thành lập Hội chữ thập đỏ Việt Nam", "28/11": "Lễ Tạ Ơn", "29/11": "Black Friday",
-    "1/12": "Thế giới phòng chống AIDS", "19/12": "Toàn quốc kháng chiến", "25/12": "Lễ Giáng Sinh",
+    "23/11": "Thành lập Hội chữ thập đỏ Việt Nam", "1/12": "Thế giới phòng chống AIDS", "19/12": "Toàn quốc kháng chiến", "25/12": "Lễ Giáng Sinh",
     "22/12": "Thành lập Quân đội nhân dân Việt Nam"
 }
 
 NGAY_LE_AL = {
-    "1/1": "Tết Nguyên Đán", "15/1": "Tết Nguyên Tiêu", "3/3": "Tết Hàn Thực, Tiết Thanh Minh",
+    "1/1": "Tết Nguyên Đán", "15/1": "Tết Nguyên Tiêu", "3/3": "Tết Hàn Thực", "10/1": "Vía Thần Tài",
     "10/3": "Giỗ tổ Hùng Vương", "15/4": "Lễ Phật Đản", "5/5": "Tết Đoan Ngọ", "7/7": "Lễ Thất Tịch",
     "15/7": "Lễ Vu Lan", "15/8": "Tết Trung Thu", "9/9": "Tết Trùng Cửu", "10/10": "Tết Trùng Thập",
     "15/10": "Tết Hạ Nguyên", "23/12": "Ông Táo Về Trời"
 }
+
+
+def _easter_sunday(year: int) -> date:
+    """Gregorian Easter Sunday (Meeus/Jones/Butcher computus)."""
+    a = year % 19
+    b, c = divmod(year, 100)
+    d, e = divmod(b, 4)
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i, k = divmod(c, 4)
+    l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+    month, day = divmod(h + l - 7 * m + 114, 31)
+    return date(year, month, day + 1)
+
+
+def _nth_weekday(year: int, month: int, weekday: int, ordinal: int) -> date:
+    """Get an nth weekday, using Monday=0 and ordinal starting at one."""
+    first = date(year, month, 1)
+    return first + timedelta(days=(weekday - first.weekday()) % 7 + 7 * (ordinal - 1))
+
+
+def get_solar_holiday(solar_date: date) -> str:
+    """Lookup fixed and variable-date holidays for the actual year.
+
+    Do not attach a moving holiday to an arbitrary fixed date in every year.
+    """
+    labels = []
+    fixed = NGAY_LE_DL.get(f"{solar_date.day}/{solar_date.month}")
+    if fixed:
+        labels.append(fixed)
+    year = solar_date.year
+    moving = (
+        (_easter_sunday(year), "Lễ Phục Sinh"),
+        (_nth_weekday(year, 5, 6, 2), "Ngày của Mẹ"),
+        (_nth_weekday(year, 6, 6, 3), "Ngày của Cha"),
+        (_nth_weekday(year, 11, 3, 4), "Lễ Tạ Ơn"),
+        (_nth_weekday(year, 11, 3, 4) + timedelta(days=1), "Black Friday"),
+    )
+    labels.extend(name for holiday, name in moving if solar_date == holiday)
+    return " | ".join(labels) if labels else "Không Có"
 
 
 THAP_NHI_TRUC = {
@@ -514,6 +556,8 @@ def lunar_to_solar_extended(dd, mm, yyyy):
                     }
                     
         return results, leap_month
-    except Exception as e:
-        raise ValueError(f"Lỗi tính toán: {str(e)}")
+    except ValueError:
+        # Invalid input is expected; unexpected defects must keep their original
+        # exception type/traceback for useful Home Assistant diagnostics.
+        raise
 

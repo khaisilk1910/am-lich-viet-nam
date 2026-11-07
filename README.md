@@ -13,21 +13,80 @@
 <img width="519" height="153" alt="image" src="https://github.com/user-attachments/assets/9592c336-b3b0-49d6-9a5b-ba9daf34804c" />
 
 
-## Cài đặt
+## Cài đặt trên Home Assistant 2026.11 và Marketplace
 
-1. Nhấn nút bên dưới để thêm vào HACS trên Home Assistant.
+**Yêu cầu:** Home Assistant **2026.11.0 trở lên**. Từ Home Assistant 2026.11,
+HACS được tích hợp vào Home Assistant với tên **Marketplace**. Kho mã này là
+**custom integration**, không phải gói dashboard-only hay add-on.
 
-   [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=khaisilk1910&repository=am-lich-viet-nam&category=integration)
+1. Trong Home Assistant, vào **Settings → Marketplace**. Tìm **Âm lịch Việt Nam**.
+   Nếu không tìm thấy, chọn **Add from link**, kết nối GitHub khi được yêu cầu
+   rồi thêm URL `https://github.com/khaisilk1910/am-lich-viet-nam`
+   (loại **Integration** nếu được hỏi) và cài đặt từ Marketplace.
+2. Với Home Assistant 2026.11, **cài mới không cần khởi động lại**:
+   Marketplace thường mở thẳng biểu mẫu thiết lập sau khi cài đặt.
+   Nếu chưa thấy, vào **Settings → Devices & services → Add integration**,
+   tìm **Âm lịch Việt Nam** và chọn **Âm lịch chính** để tạo sensor
+   `sensor.am_lich_hang_ngay` (thực thể thực tế có thể mang hậu tố nếu đã tồn tại).
+3. Có thể thêm entry **Sự kiện âm lịch** hoặc **Sự kiện dương lịch** ngay trong
+   biểu mẫu cài đặt để tạo sensor đếm ngược. Muốn sửa sự kiện, mở entry tương ứng
+   trong Devices & services và chọn **Configure**.
+4. Mở dashboard, chọn **Edit dashboard → Add card** và tìm một trong bốn
+   thẻ đi kèm. Các module được tích hợp tự đăng ký, **không cần thêm thủ công
+   `/local/...` vào Lovelace resources**.
 
-   - Sau khi thêm trong HACS và khởi động lại Home Assistant
-     
-   - Vào Settings -> Integrations -> Add integration nhập `Âm lịch Việt Nam` để thêm
-  
-   - Sau khi thêm xong tích hợp vào tích hợp nhấn `Add Entry` chọn `Sự kiện Âm lịch (Đếm ngược ngày lễ, giỗ)` điền tên sự kiện âm lịch và các thông tin khác nếu có
-     
-   <img width="680" height="856" alt="image" src="https://github.com/user-attachments/assets/e60fe52f-02e1-4dcc-be00-67de58c6c5e0" />
+### Bốn thẻ Lovelace có sẵn
 
+| Thẻ | `type` (khi sửa YAML) |
+| --- | --- |
+| Lịch âm dương dạng khối | `custom:lich-block-am-duong-viet-nam` |
+| Lịch âm dương dạng bubble | `custom:lich-am-duong-bubble` |
+| Lịch âm dương theo tuần | `custom:lich-tuan-am-duong-viet-nam` |
+| Sự kiện âm lịch | `custom:su-kien-am-lich-card` |
 
+Tất cả thẻ có editor cấu hình và hỗ trợ hiển thị theo kích thước thẻ.
+Có thể cấu hình trực quan hoặc nhập YAML; giữ nguyên tên các thuộc tính cũ
+để dashboard trước đây tiếp tục hoạt động. Ảnh trang trí Tết từ các phiên bản
+cũ, nếu đã tự cài, vẫn dùng đường dẫn `/local/images/lich-block-am-duong-viet-nam`;
+đây là **bộ ảnh tuỳ chọn** và không đi kèm bản Marketplace. Các thẻ vẫn dùng
+được khi không có bộ ảnh này.
+
+**Lưu ý khi nâng cấp:** nếu thẻ vẫn hiển thị giao diện cũ, tải lại trang với
+cache được làm mới (hard reload) hoặc đóng/mở lại ứng dụng di động. URL
+module đã chứa phiên bản tích hợp nên bản cập nhật không phải băm tệp JS
+lúc Home Assistant khởi động. **Khi cập nhật mã Python, hãy khởi động lại
+Home Assistant theo thông báo của Marketplace/Repairs**. Không thêm cùng một
+resource bằng tay vì có thể tải module trùng lặp.
+
+### Kiểm tra lỗi và chẩn đoán
+
+- Xem **Settings → System → Logs** để tìm `custom_components.am_lich_viet_nam`.
+- Bật log chi tiết bằng cách thêm vào `configuration.yaml`:
+
+  ```yaml
+  logger:
+    logs:
+      custom_components.am_lich_viet_nam: debug
+  ```
+
+- Trong **Devices & services**, mở entry và tải **Diagnostics** để kiểm tra
+  trạng thái đăng ký frontend, phiên bản URL và cấu hình đã ẩn thông tin sự kiện.
+- Action `am_lich_viet_nam.convert_date` cho phép đổi ngày âm/dương từ mục
+  **Developer tools → Actions**, với trường `conversion_type`, `day`, `month`, `year`.
+- Tích hợp tính toán theo ngày trong executor, không tạo polling liên tục.
+  Trạng thái sensor sẽ chuyển unavailable nếu không thể tính, đồng thời ghi log.
+
+**Phát hành trên Marketplace:** trước khi tạo GitHub Release, cập nhật
+`version` trong `custom_components/am_lich_viet_nam/manifest.json` và tạo tag
+trùng phiên bản (chấp nhận tiền tố `v`), chẳng hạn `v2026.11.7`.
+Workflow CI sẽ kiểm tra và báo lỗi khi không khớp; **không tự đổi hoặc ép ghi đè tag**.
+Kiểm thử bộ máy âm lịch và frontend bằng `python -m unittest discover -s tests -v`
+và `node --experimental-default-type=module tests/test_frontend.mjs`.
+Có thể thử dựng cả bốn thẻ trong Chromium với `python tests/smoke_lovelace.py`
+(sau khi cài Playwright và Chromium); đây là smoke test giả lập giao diện,
+không thay thế việc kiểm tra trên Home Assistant thật.
+
+---
 
 ## Automation để thông báo khi 30 ngày Sau sẽ có sự kiện ( các bạn có thể tùy biến theo khả năng dựa vào các sensor)
 <img width="748" height="576" alt="image" src="https://github.com/user-attachments/assets/1b58c37b-aba6-42e6-b2b1-66172606069c" />

@@ -8,7 +8,7 @@ import {
   NHI_THAP_BAT_TU,
   NGAY_THONG_TIN,
   CA_DAO_TUC_NGU
-} from './lich-block-am-duong-viet-nam-data.js?v=20261005';
+} from './lich-block-am-duong-viet-nam-data.js';
 
 const PI = Math.PI;
 function INT(d){ return Math.floor(d); }
@@ -74,10 +74,49 @@ const TUAN_EN = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Sa
 const GIO_HD = ["110100101100","001101001011","110011010010","101100110100","001011001101","010010110011"]; 
 const TIETKHI = ["Xuân Phân","Thanh Minh","Cốc Vũ","Lập Hạ","Tiểu Mãn","Mang Chủng","Hạ Chí","Tiểu Thử","Đại Thử","Lập Thu","Xử Thử","Bạch Lộ","Thu Phân","Hàn lộ","Sương Giáng","Lập đông","Tiểu Tuyết","Đại Tuyết","Đông Chí","Tiểu Hàn","Đại Hàn","Lập Xuân","Vũ Thủy","Kinh Trập"];
 
-const NGAY_LE_DL = ["1/1","9/1","3/2","14/2","26/2","27/2","8/3","20/3","22/3","26/3","31/3","1/4","30/4","1/5","7/5","12/5","19/5","1/6","18/6","21/6","28/6","11/7","27/7","28/7","19/8","2/9","10/9","1/10","10/10","13/10","16/10","17/10","20/10","31/10","9/11","19/11","20/11","23/11","28/11","29/11","1/12","19/12","25/12","22/12"];
-const NGAY_LE_DL_STRING = ["Tết Dương lịch","Truyền thống HS-SV","Thành lập Đảng","Lễ tình nhân","Vía Thần Tài","Thầy thuốc Việt Nam","Quốc tế Phụ nữ","Quốc tế Hạnh phúc","Nước sạch Thế giới","Thành lập Đoàn TNCS Hồ Chí Minh","Lễ Phục Sinh","Cá tháng Tư","Giải phóng Miền Nam","Quốc tế Lao động","Chiến thắng Điện Biên Phủ","Ngày của Mẹ","Ngày sinh Chủ tịch Hồ Chí Minh","Quốc tế Thiếu Nhi","Ngày của Cha","Báo chí Việt Nam","Gia đình Việt Nam","Dân số thế giới","Thương binh liệt sĩ","Thành lập công đoàn VN","Cách mạng Tháng 8","Quốc Khánh","Thành lập MTTQ Việt Nam","Quốc tế người cao tuổi","Giải phóng Thủ Đô","Doanh nhân Việt Nam","Lương thực thế giới","Quốc tế xóa nghèo","Phụ nữ Việt Nam","Halloween","Pháp luật Việt Nam","Quốc tế Nam giới","Nhà giáo Việt Nam","Thành lập Hội chữ thập đỏ","Lễ Tạ Ơn","Black Friday","Phòng chống AIDS","Toàn quốc kháng chiến","Lễ Giáng Sinh","Thành lập Quân đội nhân dân"];
-const NGAY_LE_AL = ["1/1","2/1","3/1","15/1","3/3","10/3","15/4","5/5","7/7","15/7","15/8","9/9","10/10","15/10","23/12"];
-const NGAY_LE_AL_STRING = ["Mùng Một Tết","Mùng 2 Tết","Mùng 3 Tết","Tết Nguyên Tiêu","Tết Hàn Thực","Giỗ tổ Hùng Vương","Lễ Phật Đản","Tết Đoan Ngọ","Lễ Thất Tịch","Lễ Vu Lan","Tết Trung Thu","Tết Trùng Cửu","Tết Trùng Thập","Tết Hạ Nguyên","Ông Táo Về Trời"];
+const NGAY_LE_DL = ["1/1","9/1","3/2","14/2","27/2","8/3","20/3","22/3","26/3","1/4","30/4","1/5","7/5","19/5","1/6","21/6","28/6","11/7","27/7","28/7","19/8","2/9","10/9","1/10","10/10","13/10","16/10","17/10","20/10","31/10","9/11","19/11","20/11","23/11","1/12","19/12","25/12","22/12"];
+const NGAY_LE_DL_STRING = ["Tết Dương lịch","Truyền thống HS-SV","Thành lập Đảng","Lễ tình nhân","Thầy thuốc Việt Nam","Quốc tế Phụ nữ","Quốc tế Hạnh phúc","Nước sạch Thế giới","Thành lập Đoàn TNCS Hồ Chí Minh","Cá tháng Tư","Giải phóng Miền Nam","Quốc tế Lao động","Chiến thắng Điện Biên Phủ","Ngày sinh Chủ tịch Hồ Chí Minh","Quốc tế Thiếu Nhi","Báo chí Việt Nam","Gia đình Việt Nam","Dân số thế giới","Thương binh liệt sĩ","Thành lập công đoàn VN","Cách mạng Tháng 8","Quốc Khánh","Thành lập MTTQ Việt Nam","Quốc tế người cao tuổi","Giải phóng Thủ Đô","Doanh nhân Việt Nam","Lương thực thế giới","Quốc tế xóa nghèo","Phụ nữ Việt Nam","Halloween","Pháp luật Việt Nam","Quốc tế Nam giới","Nhà giáo Việt Nam","Thành lập Hội chữ thập đỏ","Phòng chống AIDS","Toàn quốc kháng chiến","Lễ Giáng Sinh","Thành lập Quân đội nhân dân"];
+const NGAY_LE_AL = ["1/1","2/1","3/1","15/1","3/3","10/1","10/3","15/4","5/5","7/7","15/7","15/8","9/9","10/10","15/10","23/12"];
+const NGAY_LE_AL_STRING = ["Mùng Một Tết","Mùng 2 Tết","Mùng 3 Tết","Tết Nguyên Tiêu","Tết Hàn Thực","Vía Thần Tài","Giỗ tổ Hùng Vương","Lễ Phật Đản","Tết Đoan Ngọ","Lễ Thất Tịch","Lễ Vu Lan","Tết Trung Thu","Tết Trùng Cửu","Tết Trùng Thập","Tết Hạ Nguyên","Ông Táo Về Trời"];
+
+// Các ngày lễ biến động phải được tính cho năm đang xem, không dùng ngày cố định.
+function easterSunday(year) {
+  const a = year % 19;
+  const b = Math.floor(year / 100), c = year % 100;
+  const d = Math.floor(b / 4), e = b % 4;
+  const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const value = h + l - 7 * m + 114;
+  return new Date(year, Math.floor(value / 31) - 1, (value % 31) + 1);
+}
+
+function nthWeekday(year, monthIndex, weekday, ordinal) {
+  const first = new Date(year, monthIndex, 1);
+  return new Date(year, monthIndex, 1 + (weekday - first.getDay() + 7) % 7 + 7 * (ordinal - 1));
+}
+
+function getSolarHolidays(solarDate) {
+  const year = solarDate.getFullYear();
+  const key = `${solarDate.getDate()}/${solarDate.getMonth() + 1}`;
+  const labels = NGAY_LE_DL.flatMap((day, i) => day === key ? [NGAY_LE_DL_STRING[i]] : []);
+  const thanksgiving = nthWeekday(year, 10, 4, 4);
+  const moving = [
+    [easterSunday(year), 'Lễ Phục Sinh'],
+    [nthWeekday(year, 4, 0, 2), 'Ngày của Mẹ'],
+    [nthWeekday(year, 5, 0, 3), 'Ngày của Cha'],
+    [thanksgiving, 'Lễ Tạ Ơn'],
+    [new Date(year, thanksgiving.getMonth(), thanksgiving.getDate() + 1), 'Black Friday']
+  ];
+  for (const [holiday, label] of moving) {
+    if (holiday.getFullYear() === year &&
+        holiday.getMonth() === solarDate.getMonth() &&
+        holiday.getDate() === solarDate.getDate()) labels.push(label);
+  }
+  return labels.join(' | ');
+}
 
 const PAGE_LOAD_ID = Date.now() + '_' + Math.random().toString(36).slice(2);
 
@@ -455,6 +494,7 @@ export {
   TIETKHI,
   NGAY_LE_DL,
   NGAY_LE_DL_STRING,
+  getSolarHolidays,
   NGAY_LE_AL,
   NGAY_LE_AL_STRING,
   LunarDate,

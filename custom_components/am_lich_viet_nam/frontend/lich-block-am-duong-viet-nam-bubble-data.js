@@ -197,7 +197,6 @@ export const svg_12congiap_viewboxes = [
   }
 ];
 
-const SVG_ASSET_VERSION = '20261005';
 const svgCache = new Map();
 
 export function getSvgItemCount() {
@@ -208,7 +207,7 @@ export async function loadSvgItem(index) {
   const safeIndex = Math.max(0, Math.min(getSvgItemCount() - 1, Number.parseInt(index, 10) || 0));
   if (!svgCache.has(safeIndex)) {
     const fileName = String(safeIndex).padStart(2, '0') + '.svg';
-    const url = new URL('./assets/bubble-svg/' + fileName + '?v=' + SVG_ASSET_VERSION, import.meta.url);
+    const url = new URL('./assets/bubble-svg/' + fileName, import.meta.url);
     svgCache.set(safeIndex, fetch(url).then((response) => {
       if (!response.ok) throw new Error('Không thể tải SVG ' + fileName + ': HTTP ' + response.status);
       return response.text();

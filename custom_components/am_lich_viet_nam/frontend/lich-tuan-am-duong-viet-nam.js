@@ -32,9 +32,9 @@ import {
   getHuongXuatHanh,
   getThanSat,
   getLichAmDuongHelpers
-} from './lich-am-duong-viet-nam-core.js?v=20261005';
+} from './lich-am-duong-viet-nam-core.js';
 
-import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-popup.js?v=20261005';
+import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-popup.js';
 
 (function(){
   'use strict';
@@ -61,7 +61,7 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
   async function ensureMainBlockCardLoaded() {
     if (customElements.get(MAIN_BLOCK_CARD_TAG)) return true;
     if (!mainBlockCardLoadPromise) {
-      mainBlockCardLoadPromise = import('./lich-block-am-duong-viet-nam.js?v=20261005')
+      mainBlockCardLoadPromise = import('./lich-block-am-duong-viet-nam.js')
         .catch((err) => {
           mainBlockCardLoadPromise = null;
           console.warn('Không thể tải thẻ lịch block chính:', err);
@@ -1234,40 +1234,10 @@ import { injectPopupDOM, initPopupCore } from './lich-block-am-duong-viet-nam-po
       return date;
     }
 
-    _withForcedPopupDate(date, callback) {
-      const fixedDate = this._normalizePopupDate(date);
-      const RealDate = window.Date;
-      const fixedTime = new RealDate(
-        fixedDate.getFullYear(),
-        fixedDate.getMonth(),
-        fixedDate.getDate(),
-        12,
-        0,
-        0,
-        0
-      ).getTime();
-
-      function FakeDate(...args) {
-        if (!(this instanceof FakeDate)) {
-          if (args.length === 0) return new RealDate(fixedTime).toString();
-          return RealDate(...args);
-        }
-        if (args.length === 0) return new RealDate(fixedTime);
-        return new RealDate(...args);
-      }
-
-      Object.setPrototypeOf(FakeDate, RealDate);
-      FakeDate.prototype = RealDate.prototype;
-      FakeDate.now = () => fixedTime;
-      FakeDate.parse = RealDate.parse;
-      FakeDate.UTC = RealDate.UTC;
-
-      try {
-        window.Date = FakeDate;
-        return callback();
-      } finally {
-        window.Date = RealDate;
-      }
+    _withForcedPopupDate(_date, callback) {
+      // The main card already accepts selected_date in setConfig(). Do not
+      // monkey-patch the global Date constructor, which can affect HA itself.
+      return callback();
     }
 
     _assignPopupDateToCard(mainCard, popupDate, dateValue = this._formatPopupDateValue(popupDate)) {

@@ -16,7 +16,6 @@ from homeassistant.util import dt as dt_util
 
 from .amlich_core import (
     NGAY_LE_AL,
-    NGAY_LE_DL,
     NGAY_THONG_TIN,
     THU,
     get_can_chi_day_month_year,
@@ -25,6 +24,7 @@ from .amlich_core import (
     get_gio_hoang_dao,
     get_huong_xuat_hanh,
     get_lunar_date,
+    get_solar_holiday,
     get_lunar_month_length,
     get_month_name,
     get_nhi_thap_bat_tu,
@@ -102,7 +102,7 @@ class DailyCalculatedSensor(SensorEntity):
             self._attr_available = False
             return
 
-        self._attr_available = True
+        self._attr_available = result.value is not None
         self._attr_native_value = result.value
         self._attr_extra_state_attributes = result.attributes
         if result.name is not None:
@@ -148,7 +148,8 @@ class AmLichSensor(DailyCalculatedSensor):
     def _calculate_state(self, today: date) -> CalculatedState:
         lunar = get_lunar_date(today.day, today.month, today.year)
         if not lunar:
-            return CalculatedState("Lỗi: Không thể tính toán", {})
+            _LOGGER.warning("Không tính được âm lịch cho ngày dương %s", today.isoformat())
+            return CalculatedState(None, {})
 
         jd = lunar.jd
         weekday = THU[today.weekday()]
@@ -162,9 +163,7 @@ class AmLichSensor(DailyCalculatedSensor):
         can_chi_day, can_chi_month, can_chi_year = (
             get_can_chi_day_month_year(lunar)
         )
-        solar_holiday = NGAY_LE_DL.get(
-            f"{today.day}/{today.month}", "Không Có"
-        )
+        solar_holiday = get_solar_holiday(today)
         lunar_holiday = (
             NGAY_LE_AL.get(f"{lunar.day}/{lunar.month}")
             if lunar.leap == 0
@@ -293,14 +292,16 @@ class AmLichEventSensor(DailyCalculatedSensor):
 
         lunar_today = get_lunar_date(today.day, today.month, today.year)
         if not lunar_today:
-            return CalculatedState("Lỗi", {}, str(event_name))
+            _LOGGER.warning("Không tính được âm lịch cho sự kiện %s vào %s", self._entry.entry_id, today.isoformat())
+            return CalculatedState(None, {}, str(event_name))
 
         current_jd = lunar_today.jd
         event_jd: int | None = None
         occurrence_year: int | None = None
 
+        first_year = max(lunar_today.year, event_year or lunar_today.year)
         for year_offset in range(3):
-            candidate_year = lunar_today.year + year_offset
+            candidate_year = first_year + year_offset
             try:
                 year_info = get_year_info(candidate_year)
             except ValueError:
@@ -319,7 +320,8 @@ class AmLichEventSensor(DailyCalculatedSensor):
                 break
 
         if event_jd is None or occurrence_year is None:
-            return CalculatedState("Không tính được", {}, str(event_name))
+            _LOGGER.warning("Không tìm được lần diễn ra tiếp theo cho sự kiện âm lịch %s", self._entry.entry_id)
+            return CalculatedState(None, {}, str(event_name))
 
         days_left = int(event_jd - current_jd)
         event_date = today + timedelta(days=days_left)
@@ -427,14 +429,15 @@ class DuongLichEventSensor(DailyCalculatedSensor):
             except ValueError:
                 pass
 
-        target_year = today.year
+        target_year = max(today.year, event_year or today.year)
         try:
             next_event = date(target_year, target_month, target_day)
         except ValueError:
             if target_month == 2 and target_day == 29:
                 next_event = date(target_year, 3, 1)
             else:
-                return CalculatedState("Ngày không hợp lệ", {}, str(event_name))
+                _LOGGER.warning("Ngày sự kiện dương lịch không hợp lệ: entry=%s, %s/%s", self._entry.entry_id, target_day, target_month)
+                return CalculatedState(None, {}, str(event_name))
 
         if next_event < today:
             target_year += 1
@@ -444,9 +447,8 @@ class DuongLichEventSensor(DailyCalculatedSensor):
                 if target_month == 2 and target_day == 29:
                     next_event = date(target_year, 3, 1)
                 else:
-                    return CalculatedState(
-                        "Ngày không hợp lệ", {}, str(event_name)
-                    )
+                    _LOGGER.warning("Ngày sự kiện dương lịch không hợp lệ: entry=%s, %s/%s", self._entry.entry_id, target_day, target_month)
+                    return CalculatedState(None, {}, str(event_name))
 
         days_left = (next_event - today).days
         years_elapsed = target_year - event_year if event_year is not None else 0

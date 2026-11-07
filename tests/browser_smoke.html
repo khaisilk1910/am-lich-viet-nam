@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="vi">
+<head><meta charset="utf-8"><title>Âm lịch Lovelace smoke test</title>
+<style>body {font:14px sans-serif;margin:16px;background:#eef2f6} .test-card{width:min(560px,96%);margin:18px 0;padding:8px;background:white}</style>
+<script>
+  // Simulate HA custom-element readiness, not the whole Home Assistant frontend.
+  if (!customElements.get('home-assistant')) customElements.define('home-assistant', class extends HTMLElement {});
+</script>
+<script type="module">
+  await Promise.all([
+    import('../custom_components/am_lich_viet_nam/frontend/lich-block-am-duong-viet-nam.js'),
+    import('../custom_components/am_lich_viet_nam/frontend/su-kien-am-lich-card.js'),
+    import('../custom_components/am_lich_viet_nam/frontend/lich-block-am-duong-viet-nam-bubble.js'),
+    import('../custom_components/am_lich_viet_nam/frontend/lich-tuan-am-duong-viet-nam.js'),
+  ]);
+  window.smokeLoaded = true;
+</script>
+</head><body><h2>Smoke test</h2></body></html>

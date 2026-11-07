@@ -1,7 +1,7 @@
 {
   "domain": "am_lich_viet_nam",
   "name": "Âm lịch Việt Nam",
-  "version": "2026.10.11",
+  "version": "2026.11.7",
   "documentation": "https://github.com/khaisilk1910/am-lich-viet-nam",
   "integration_type": "service",
   "requirements": [],
@@ -12,5 +12,9 @@
     "@khaisilk1910"
   ],
   "iot_class": "calculated",
-  "config_flow": true
+  "config_flow": true,
+  "issue_tracker": "https://github.com/khaisilk1910/am-lich-viet-nam/issues",
+  "categories": [
+    "productivity_information.calendars_todos"
+  ]
 }

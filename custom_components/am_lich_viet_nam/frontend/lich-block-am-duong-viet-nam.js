@@ -12,6 +12,7 @@ import {
   TIETKHI,
   NGAY_LE_DL,
   NGAY_LE_DL_STRING,
+  getSolarHolidays,
   NGAY_LE_AL,
   NGAY_LE_AL_STRING,
   getUniqueDailyContent,
@@ -32,9 +33,9 @@ import {
   getHuongXuatHanh,
   getThanSat,
   getLichAmDuongHelpers
-} from './lich-am-duong-viet-nam-core.js?v=20261005';
+} from './lich-am-duong-viet-nam-core.js';
 
-import { injectPopupDOM, initPopupCore, showDayPopup } from './lich-block-am-duong-viet-nam-popup.js?v=20261005';
+import { injectPopupDOM, initPopupCore, showDayPopup } from './lich-block-am-duong-viet-nam-popup.js';
 
 (function(){
   'use strict';
@@ -551,7 +552,8 @@ import { injectPopupDOM, initPopupCore, showDayPopup } from './lich-block-am-duo
     res += `<tr>`;
     let res_left = "";
     let res_right = "";
-    if (mm === 2 && today.getDate() === 26) {
+    // Vía Thần Tài là mùng 10 tháng Giêng âm lịch, không phải 26/02 cố định.
+    if (currentLunarDate.month === 1 && currentLunarDate.day === 10 && currentLunarDate.leap === 0) {
       res_right = `<div class="show_right_tet"><img src="/local/images/lich-block-am-duong-viet-nam/thantai_right.png" style="width:100%; height:100%;"></div>`;
       res_left = `<div class="show_left_tet"><img src="/local/images/lich-block-am-duong-viet-nam/thantai_left.png" style="width:100%; height:100%;"></div>`;
     }
@@ -579,12 +581,11 @@ import { injectPopupDOM, initPopupCore, showDayPopup } from './lich-block-am-duo
     else if (currentLunarDate.day === 15) noiDungLe = `Ngày Rằm`;
 
     const d_m = `${today.getDate()}/${mm}`;
-    const idxDL = NGAY_LE_DL.indexOf(d_m);
-    const infoDL = idxDL !== -1 ? NGAY_LE_DL_STRING[idxDL] : "";
+    const infoDL = getSolarHolidays(today);
 
     const d_m_al = `${currentLunarDate.day}/${currentLunarDate.month}`;
     const idxAL = NGAY_LE_AL.indexOf(d_m_al);
-    const infoAL = idxAL !== -1 ? NGAY_LE_AL_STRING[idxAL] : "";
+    const infoAL = currentLunarDate.leap === 0 && idxAL !== -1 ? NGAY_LE_AL_STRING[idxAL] : "";
 
     let displayArray = [];
     if (noiDungLe) displayArray.push(noiDungLe);
@@ -1419,14 +1420,14 @@ import { injectPopupDOM, initPopupCore, showDayPopup } from './lich-block-am-duo
     _resolveInitialDisplayDateFromConfig(config = {}) {
       const candidates = [
         this._wlcPopupDate,
-        this.selectedDate,
-        this.initialDate,
-        this.currentDate,
-        this.date,
         config.selected_date,
         config.initial_date,
         config.display_date,
         config.date,
+        this.selectedDate,
+        this.initialDate,
+        this.currentDate,
+        this.date,
         this.getAttribute && this.getAttribute('data-wlc-popup-date'),
         this.getAttribute && this.getAttribute('data-selected-date'),
         this.displayDate
@@ -1828,7 +1829,12 @@ import { injectPopupDOM, initPopupCore, showDayPopup } from './lich-block-am-duo
         throw new Error('Cấu hình của lich-block-am-duong-viet-nam phải là một object YAML hợp lệ.');
       }
       this.config = { weather_show: true, ...(config || {}) };
-      this._applyInitialDisplayDateFromConfig(this.config);
+      if (this._applyInitialDisplayDateFromConfig(this.config) &&
+          [this.config.selected_date, this.config.initial_date, this.config.display_date, this.config.date]
+            .some(value => value !== undefined && value !== null && value !== '')) {
+        // An explicitly configured date is not an automatic "today" view.
+        this._userNavigatedDate = true;
+      }
       this._ensureCard();
       this.card.style.borderRadius = 'var(--ha-card-border-radius, 16px)';
       
@@ -2431,7 +2437,11 @@ import { injectPopupDOM, initPopupCore, showDayPopup } from './lich-block-am-duo
                   resDiv.style.display = 'block';
               } catch (error) {
                   resDiv.style.display = 'block';
-                  resDiv.innerHTML = `<span style="color: var(--lc-holiday-color); text-shadow: var(--lc-text-shadow-light);">❌ Đã xảy ra lỗi hệ thống: ${error.message}</span>`;
+                  const errorSpan = document.createElement('span');
+                  errorSpan.style.color = 'var(--lc-holiday-color)';
+                  errorSpan.style.textShadow = 'var(--lc-text-shadow-light)';
+                  errorSpan.textContent = `❌ Đã xảy ra lỗi hệ thống: ${String(error?.message || error)}`;
+                  resDiv.replaceChildren(errorSpan);
               }
           });
       }

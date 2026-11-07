@@ -1,4 +1,4 @@
-import { getLichAmDuongHelpers as haLichGetSharedHelpers } from './lich-am-duong-viet-nam-core.js?v=20261005';
+import { getLichAmDuongHelpers as haLichGetSharedHelpers } from './lich-am-duong-viet-nam-core.js';
 // ==========================================
 // LUNAR CALENDAR POPUP MODULE
 // File này chỉ chứa giao diện và logic của Popup
@@ -387,7 +387,13 @@ export function showDayPopup(dd, mm, yy, theme = 'default', opacity = 95) {
     } catch(e) {
         console.error("Lỗi Popup:", e);
         const contentEl = document.getElementById('ha-popup-content');
-        if(contentEl) contentEl.innerHTML = `<div style="color:red; padding:15px; text-align:center;">Có lỗi xảy ra: ${e.message}</div>`;
+        if (contentEl) {
+            contentEl.replaceChildren();
+            const message = document.createElement('div');
+            message.style.cssText = 'color:red; padding:15px; text-align:center;';
+            message.textContent = `Có lỗi xảy ra: ${e.message}`;
+            contentEl.appendChild(message);
+        }
         
         popup.classList.add('show');
         requestAnimationFrame(() => {

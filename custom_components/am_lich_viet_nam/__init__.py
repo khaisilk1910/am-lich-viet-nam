@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import date
-import hashlib
 import logging
 from pathlib import Path
 from typing import Any
@@ -64,58 +63,45 @@ SERVICE_CONVERT_SCHEMA = vol.Schema(
 )
 
 
-def _get_frontend_versions(frontend_path: str) -> dict[str, str]:
-    """Return content hashes for all frontend resources in one executor job."""
-    versions: dict[str, str] = {}
-    base_path = Path(frontend_path)
-
-    for file_name in FRONTEND_RESOURCES:
-        file_path = base_path / file_name
-        try:
-            digest = hashlib.sha256()
-            with file_path.open("rb") as resource_file:
-                for chunk in iter(lambda: resource_file.read(128 * 1024), b""):
-                    digest.update(chunk)
-        except OSError as err:
-            _LOGGER.warning(
-                "Không thể đọc tài nguyên frontend %s; bỏ qua đăng ký (%s)",
-                file_path,
-                err,
-            )
-            continue
-
-        versions[file_name] = digest.hexdigest()[:16]
-
-    return versions
+def _check_frontend_files(frontend_path: str) -> list[str]:
+    """Check the shipped resources without reading large JS files into memory."""
+    base = Path(frontend_path)
+    return [name for name in FRONTEND_RESOURCES if not (base / name).is_file()]
 
 
 def _is_duplicate_static_path_error(err: Exception) -> bool:
-    """Return True when aiohttp reports a path that is already registered."""
+    """Handle a route left in aiohttp after a config-entry reload."""
     message = str(err).lower()
-    return any(
-        marker in message
-        for marker in (
-            "already registered",
-            "already exists",
-            "added route will never be executed",
-            "duplicate",
-        )
-    )
+    return any(marker in message for marker in (
+        "already registered", "already exists", "added route will never be executed",
+        "duplicate",
+    ))
 
 
 async def _async_register_frontend_resources(hass: HomeAssistant) -> None:
-    """Serve and register all frontend modules idempotently.
+    """Publish versioned Lovelace resources once per Home Assistant process.
 
-    The version is part of the static URL prefix so relative ES-module imports also
-    receive a new URL on every integration release. This prevents stale imported
-    modules from surviving browser/cache refreshes after an update.
+    A release version changes the URL, including relative ESM imports. Do not hash
+    megabytes of JS at startup or run registration again for every event entry.
     """
     domain_data = hass.data.setdefault(DOMAIN, {})
+    if domain_data.get("frontend_resources_registered"):
+        return
 
     integration = await async_get_integration(hass, DOMAIN)
     integration_version = str(integration.version or "0")
     ui_url_base = f"{UI_URL_ROOT}/{integration_version}"
     frontend_path = hass.config.path("custom_components", DOMAIN, UI_DIR_PATH)
+
+    missing = await hass.async_add_executor_job(_check_frontend_files, frontend_path)
+    if missing:
+        domain_data["frontend_resources_registered"] = False
+        _LOGGER.error(
+            "Thiếu %d tệp Lovelace trong %s: %s. "
+            "Hãy cài đặt lại integration từ Marketplace.",
+            len(missing), frontend_path, ", ".join(missing),
+        )
+        return
 
     static_urls: set[str] = domain_data.setdefault("frontend_static_urls", set())
     if ui_url_base not in static_urls:
@@ -124,54 +110,25 @@ async def _async_register_frontend_resources(hass: HomeAssistant) -> None:
                 [StaticPathConfig(ui_url_base, frontend_path, True)]
             )
         except (RuntimeError, ValueError) as err:
-            # Integration/config-entry reloads can revisit this code while the
-            # aiohttp route from the first setup is still present. A duplicate
-            # route is therefore safe; other registration failures must surface.
             if not _is_duplicate_static_path_error(err):
                 raise
-            _LOGGER.debug(
-                "Đường dẫn frontend %s đã được đăng ký; tiếp tục dùng lại",
-                ui_url_base,
-            )
+            _LOGGER.debug("Đường dẫn Lovelace đã tồn tại: %s", ui_url_base)
         static_urls.add(ui_url_base)
 
-    # Reuse hashes on the second call during normal startup. Calling
-    # add_extra_js_url again is intentional: it makes setup self-healing if the
-    # frontend URL manager was recreated while hass.data for this integration
-    # remained alive.
-    versions: dict[str, str] | None = domain_data.get("frontend_versions")
-    if not versions or domain_data.get("frontend_version_base") != ui_url_base:
-        versions = await hass.async_add_executor_job(
-            _get_frontend_versions, frontend_path
-        )
-        domain_data["frontend_versions"] = versions
-        domain_data["frontend_version_base"] = ui_url_base
-
-    desired_urls = {
-        f"{ui_url_base}/{file_name}?hacstag={version}"
-        for file_name, version in versions.items()
-    }
+    desired_urls = {f"{ui_url_base}/{name}" for name in FRONTEND_RESOURCES}
     previous_urls = set(domain_data.get("frontend_resource_urls", ()))
-
-    # Remove obsolete URLs left by an older registration in the same process.
     for old_url in previous_urls - desired_urls:
         remove_extra_js_url(hass, old_url)
-
-    # Register every desired URL on each setup attempt. UrlManager stores a set,
-    # so this is cheap and safe while also recovering from transient frontend
-    # registration state loss.
     for resource_url in sorted(desired_urls):
         add_extra_js_url(hass, resource_url)
 
-    missing = sorted(set(FRONTEND_RESOURCES) - set(versions))
-    if missing:
-        _LOGGER.error(
-            "Thiếu tài nguyên frontend của Âm lịch Việt Nam: %s",
-            ", ".join(missing),
-        )
-
     domain_data["frontend_resource_urls"] = tuple(sorted(desired_urls))
-    domain_data["frontend_resources_registered"] = not missing
+    domain_data["frontend_version_base"] = ui_url_base
+    domain_data["frontend_resources_registered"] = True
+    _LOGGER.debug(
+        "Đã đăng ký %d module Lovelace, phiên bản %s; không đọc hash tệp JS",
+        len(desired_urls), integration_version,
+    )
 
 
 def _get_date_details(jd: int, lunar_obj: Any) -> dict[str, Any]:
@@ -325,8 +282,15 @@ async def _async_handle_convert_date(
 ) -> ServiceResponse:
     """Handle the convert_date action."""
     try:
-        return await hass.async_add_executor_job(_convert_date, dict(call.data))
+        result = await hass.async_add_executor_job(_convert_date, dict(call.data))
+        _LOGGER.debug(
+            "Quy đổi %s %s/%s/%s thành công",
+            call.data["conversion_type"], call.data["day"],
+            call.data["month"], call.data["year"],
+        )
+        return result
     except ValueError as err:
+        _LOGGER.warning("Ngày yêu cầu quy đổi không hợp lệ: %s", err)
         raise ServiceValidationError(
             translation_domain=DOMAIN,
             translation_key="invalid_date",
@@ -363,21 +327,22 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Set up a Vietnamese Lunar Calendar config entry."""
-    # Re-run the idempotent frontend registration from the config-entry path as
-    # well. This is important for entry reloads and protects against a transient
-    # failure in shared async_setup without ever blocking the sensor platform.
-    try:
-        await _async_register_frontend_resources(hass)
-    except Exception:
-        _LOGGER.exception("Không thể đăng ký lại frontend của Âm lịch Việt Nam")
+    # async_setup() normally registered resources already. Retry only after a
+    # previous frontend failure; avoid repeating work for every event entry.
+    if not hass.data.get(DOMAIN, {}).get("frontend_resources_registered"):
+        try:
+            await _async_register_frontend_resources(hass)
+        except Exception:
+            _LOGGER.exception("Không thể đăng ký frontend khi tải entry %s", entry.entry_id)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    return True
+    _LOGGER.debug("Đã tải sensor cho entry %s (%s)", entry.entry_id, entry.title)
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry without removing shared actions or resources."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Unload sensors; keep global frontend resources and date actions."""
+    await hass.config_entries.async_unload_platforms_or_raise(entry, PLATFORMS)
+    _LOGGER.debug("Đã gỡ sensor cho entry %s", entry.entry_id)
 

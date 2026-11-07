@@ -1342,5 +1342,5 @@
     else window.customCards.push(cardRegistration);
   });
 
-  window.__suKienAmLichCardVersion = '2026.10.11.2';
+  window.__suKienAmLichCardVersion = '2026.11.7';
 })();
